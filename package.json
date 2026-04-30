@@ -10,9 +10,14 @@
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check"
+    "check": "biome check",
+    "db:generate": "dotenv -e .env.local -- drizzle-kit generate",
+    "db:migrate": "dotenv -e .env.local -- drizzle-kit migrate",
+    "db:push": "dotenv -e .env.local -- drizzle-kit push",
+    "db:studio": "dotenv -e .env.local -- drizzle-kit studio"
   },
   "dependencies": {
+    "@solid-primitives/i18n": "^2.2.1",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/router-plugin": "^1.133.21",
     "@tanstack/solid-form": "latest",
@@ -23,7 +28,9 @@
     "@tanstack/solid-router-ssr-query": "latest",
     "@tanstack/solid-start": "latest",
     "better-auth": "^1.5.3",
+    "drizzle-orm": "^0.45.2",
     "nitro": "npm:nitro-nightly@latest",
+    "postgres": "^3.4.9",
     "solid-js": "^1.9.12",
     "tailwindcss": "^4.1.18"
   },
@@ -31,6 +38,9 @@
     "@biomejs/biome": "2.4.5",
     "@solidjs/testing-library": "^0.8.10",
     "@tanstack/devtools-vite": "latest",
+    "@types/node": "^25.6.0",
+    "dotenv-cli": "^11.0.0",
+    "drizzle-kit": "^0.31.10",
     "jsdom": "^28.1.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
