@@ -13,7 +13,11 @@ import { Route as LangRouteImport } from './routes/$lang'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LangIndexRouteImport } from './routes/$lang/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as LangAuthVerifyRouteImport } from './routes/$lang/auth/verify'
+import { Route as LangAuthRegisterRouteImport } from './routes/$lang/auth/register'
 import { Route as LangAuthLoginRouteImport } from './routes/$lang/auth/login'
+import { Route as LangAuthRegisterReaderRouteImport } from './routes/$lang/auth/register/reader'
+import { Route as LangAuthRegisterMemberRouteImport } from './routes/$lang/auth/register/member'
 
 const LangRoute = LangRouteImport.update({
   id: '/$lang',
@@ -35,10 +39,30 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LangAuthVerifyRoute = LangAuthVerifyRouteImport.update({
+  id: '/auth/verify',
+  path: '/auth/verify',
+  getParentRoute: () => LangRoute,
+} as any)
+const LangAuthRegisterRoute = LangAuthRegisterRouteImport.update({
+  id: '/auth/register',
+  path: '/auth/register',
+  getParentRoute: () => LangRoute,
+} as any)
 const LangAuthLoginRoute = LangAuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
   getParentRoute: () => LangRoute,
+} as any)
+const LangAuthRegisterReaderRoute = LangAuthRegisterReaderRouteImport.update({
+  id: '/reader',
+  path: '/reader',
+  getParentRoute: () => LangAuthRegisterRoute,
+} as any)
+const LangAuthRegisterMemberRoute = LangAuthRegisterMemberRouteImport.update({
+  id: '/member',
+  path: '/member',
+  getParentRoute: () => LangAuthRegisterRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -46,13 +70,21 @@ export interface FileRoutesByFullPath {
   '/$lang': typeof LangRouteWithChildren
   '/$lang/': typeof LangIndexRoute
   '/$lang/auth/login': typeof LangAuthLoginRoute
+  '/$lang/auth/register': typeof LangAuthRegisterRouteWithChildren
+  '/$lang/auth/verify': typeof LangAuthVerifyRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/$lang/auth/register/member': typeof LangAuthRegisterMemberRoute
+  '/$lang/auth/register/reader': typeof LangAuthRegisterReaderRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$lang': typeof LangIndexRoute
   '/$lang/auth/login': typeof LangAuthLoginRoute
+  '/$lang/auth/register': typeof LangAuthRegisterRouteWithChildren
+  '/$lang/auth/verify': typeof LangAuthVerifyRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/$lang/auth/register/member': typeof LangAuthRegisterMemberRoute
+  '/$lang/auth/register/reader': typeof LangAuthRegisterReaderRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -60,20 +92,45 @@ export interface FileRoutesById {
   '/$lang': typeof LangRouteWithChildren
   '/$lang/': typeof LangIndexRoute
   '/$lang/auth/login': typeof LangAuthLoginRoute
+  '/$lang/auth/register': typeof LangAuthRegisterRouteWithChildren
+  '/$lang/auth/verify': typeof LangAuthVerifyRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/$lang/auth/register/member': typeof LangAuthRegisterMemberRoute
+  '/$lang/auth/register/reader': typeof LangAuthRegisterReaderRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$lang' | '/$lang/' | '/$lang/auth/login' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/$lang'
+    | '/$lang/'
+    | '/$lang/auth/login'
+    | '/$lang/auth/register'
+    | '/$lang/auth/verify'
+    | '/api/auth/$'
+    | '/$lang/auth/register/member'
+    | '/$lang/auth/register/reader'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$lang' | '/$lang/auth/login' | '/api/auth/$'
+  to:
+    | '/'
+    | '/$lang'
+    | '/$lang/auth/login'
+    | '/$lang/auth/register'
+    | '/$lang/auth/verify'
+    | '/api/auth/$'
+    | '/$lang/auth/register/member'
+    | '/$lang/auth/register/reader'
   id:
     | '__root__'
     | '/'
     | '/$lang'
     | '/$lang/'
     | '/$lang/auth/login'
+    | '/$lang/auth/register'
+    | '/$lang/auth/verify'
     | '/api/auth/$'
+    | '/$lang/auth/register/member'
+    | '/$lang/auth/register/reader'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -112,6 +169,20 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$lang/auth/verify': {
+      id: '/$lang/auth/verify'
+      path: '/auth/verify'
+      fullPath: '/$lang/auth/verify'
+      preLoaderRoute: typeof LangAuthVerifyRouteImport
+      parentRoute: typeof LangRoute
+    }
+    '/$lang/auth/register': {
+      id: '/$lang/auth/register'
+      path: '/auth/register'
+      fullPath: '/$lang/auth/register'
+      preLoaderRoute: typeof LangAuthRegisterRouteImport
+      parentRoute: typeof LangRoute
+    }
     '/$lang/auth/login': {
       id: '/$lang/auth/login'
       path: '/auth/login'
@@ -119,17 +190,48 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof LangAuthLoginRouteImport
       parentRoute: typeof LangRoute
     }
+    '/$lang/auth/register/reader': {
+      id: '/$lang/auth/register/reader'
+      path: '/reader'
+      fullPath: '/$lang/auth/register/reader'
+      preLoaderRoute: typeof LangAuthRegisterReaderRouteImport
+      parentRoute: typeof LangAuthRegisterRoute
+    }
+    '/$lang/auth/register/member': {
+      id: '/$lang/auth/register/member'
+      path: '/member'
+      fullPath: '/$lang/auth/register/member'
+      preLoaderRoute: typeof LangAuthRegisterMemberRouteImport
+      parentRoute: typeof LangAuthRegisterRoute
+    }
   }
 }
+
+interface LangAuthRegisterRouteChildren {
+  LangAuthRegisterMemberRoute: typeof LangAuthRegisterMemberRoute
+  LangAuthRegisterReaderRoute: typeof LangAuthRegisterReaderRoute
+}
+
+const LangAuthRegisterRouteChildren: LangAuthRegisterRouteChildren = {
+  LangAuthRegisterMemberRoute: LangAuthRegisterMemberRoute,
+  LangAuthRegisterReaderRoute: LangAuthRegisterReaderRoute,
+}
+
+const LangAuthRegisterRouteWithChildren =
+  LangAuthRegisterRoute._addFileChildren(LangAuthRegisterRouteChildren)
 
 interface LangRouteChildren {
   LangIndexRoute: typeof LangIndexRoute
   LangAuthLoginRoute: typeof LangAuthLoginRoute
+  LangAuthRegisterRoute: typeof LangAuthRegisterRouteWithChildren
+  LangAuthVerifyRoute: typeof LangAuthVerifyRoute
 }
 
 const LangRouteChildren: LangRouteChildren = {
   LangIndexRoute: LangIndexRoute,
   LangAuthLoginRoute: LangAuthLoginRoute,
+  LangAuthRegisterRoute: LangAuthRegisterRouteWithChildren,
+  LangAuthVerifyRoute: LangAuthVerifyRoute,
 }
 
 const LangRouteWithChildren = LangRoute._addFileChildren(LangRouteChildren)

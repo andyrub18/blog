@@ -13,4 +13,7 @@ export const env = {
   get BETTER_AUTH_SECRET() {
     return required('BETTER_AUTH_SECRET')
   },
+  get BETTER_AUTH_URL() {
+    return process.env.BETTER_AUTH_URL ?? 'http://localhost:3000'
+  },
 }

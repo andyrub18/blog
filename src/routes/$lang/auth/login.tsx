@@ -1,9 +1,18 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
+import { createServerFn } from '@tanstack/solid-start'
 import LoginForm from '../../../components/auth/LoginForm'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import { useI18n } from '../../../i18n/context'
 
+const ensureGuest = createServerFn({ method: 'GET' })
+  .inputValidator((data: { lang: string }) => data)
+  .handler(async ({ data }) => {
+    const { redirectIfAuthenticated } = await import('../../../lib/session')
+    await redirectIfAuthenticated(data.lang)
+  })
+
 export const Route = createFileRoute('/$lang/auth/login')({
+  beforeLoad: ({ params }) => ensureGuest({ data: { lang: params.lang } }),
   component: LoginPage,
 })
 
@@ -38,7 +47,7 @@ function LoginPage() {
         <p class="mt-6 text-center text-sm text-neutral-600">
           {t('auth.login.noAccount')}{' '}
           <Link
-            to="/$lang/auth/login"
+            to="/$lang/auth/register"
             params={{ lang: params().lang }}
             class="font-medium text-[#00209F] hover:underline"
           >
