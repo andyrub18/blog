@@ -28,4 +28,4 @@
 
 - Overview: /docs/OVERVIEW.md
 - Architecture: /docs/ARCHITECTURE.md
-- Roadmap & Phases: /docs/phases/**/*.md
+- Roadmap & Phases: /docs/phases/\*_/_.md
