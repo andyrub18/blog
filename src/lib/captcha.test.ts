@@ -104,6 +104,30 @@ describe('assertCaptchaConfigured', () => {
     expect(() => assertCaptchaConfigured()).toThrowError(/TURNSTILE_SECRET_KEY/)
   })
 
+  it('allows a local production build through the documented escape hatch', () => {
+    process.env.NODE_ENV = 'production'
+    delete process.env.TURNSTILE_SECRET_KEY
+    process.env.ALLOW_INSECURE_LOCAL = 'true'
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(() => assertCaptchaConfigured()).not.toThrow()
+  })
+
+  it('warns loudly when the escape hatch is used', () => {
+    process.env.NODE_ENV = 'production'
+    delete process.env.TURNSTILE_SECRET_KEY
+    process.env.ALLOW_INSECURE_LOCAL = 'true'
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    assertCaptchaConfigured()
+    expect(String(warn.mock.calls[0][0])).toContain('ALLOW_INSECURE_LOCAL')
+  })
+
+  it('still throws in production when the hatch is not exactly "true"', () => {
+    process.env.NODE_ENV = 'production'
+    delete process.env.TURNSTILE_SECRET_KEY
+    process.env.ALLOW_INSECURE_LOCAL = '1'
+    expect(() => assertCaptchaConfigured()).toThrowError(/TURNSTILE_SECRET_KEY/)
+  })
+
   it('allows development without a secret', () => {
     process.env.NODE_ENV = 'development'
     delete process.env.TURNSTILE_SECRET_KEY

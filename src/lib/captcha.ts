@@ -73,10 +73,20 @@ export async function verifyCaptcha(
  * working one right up until the registration table fills with junk.
  */
 export function assertCaptchaConfigured(): void {
-  if (process.env.NODE_ENV === 'production' && !captchaConfigured()) {
-    throw new Error(
-      'TURNSTILE_SECRET_KEY must be set in production. Without it the ' +
-        'registration endpoints have no bot defence.',
+  if (process.env.NODE_ENV !== 'production' || captchaConfigured()) return
+
+  if (process.env.ALLOW_INSECURE_LOCAL === 'true') {
+    console.warn(
+      '\n[captcha] ALLOW_INSECURE_LOCAL is set: running a production build with ' +
+        'NO bot defence on reader registration. Never set this on a deployed ' +
+        'server.\n',
     )
+    return
   }
+
+  throw new Error(
+    'TURNSTILE_SECRET_KEY must be set in production. Without it reader ' +
+      'registration has no bot defence. To run a production build locally ' +
+      'without Cloudflare keys, set ALLOW_INSECURE_LOCAL=true.',
+  )
 }

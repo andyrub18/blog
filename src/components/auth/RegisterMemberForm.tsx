@@ -1,9 +1,8 @@
 import type { JSX } from '@solidjs/web'
-import { useRouteContext, useRouter } from '@tanstack/solid-router'
+import { useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
 import { type SignUpErrorCode, signUpMember } from '../../lib/auth-actions'
 import { m } from '../../paraglide/messages'
-import Turnstile from './Turnstile'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -40,7 +39,6 @@ type FieldErrors = Partial<
 
 export default function RegisterMemberForm() {
   const router = useRouter()
-  const context = useRouteContext({ from: '/_app' })
   const [submitting, setSubmitting] = createSignal(false)
   const [serverError, setServerError] = createSignal<string | null>(null)
   const [errors, setErrors] = createSignal<FieldErrors>({})
@@ -187,8 +185,6 @@ export default function RegisterMemberForm() {
             class={fileClass}
           />
         </Field>
-
-        <Turnstile siteKey={context().config.turnstileSiteKey} />
 
         <button
           type="submit"

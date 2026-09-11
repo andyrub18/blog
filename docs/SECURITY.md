@@ -42,12 +42,21 @@ forget — a legitimate senior member account that has been compromised or turne
    credential stuffing against one targeted member arrives from many addresses.
    Counters live in Postgres, not memory, so they survive a deploy and are
    shared across instances.
-3. ~~**Bot defence on registration**~~ **DONE.** Cloudflare Turnstile, verified
-   server-side in `lib/captcha.ts`. Chosen over reCAPTCHA because it does not
-   profile the visitor: asking Haitians to pass through Google's tracking to
-   prove they are human is the wrong trade for this movement. Verification
-   **fails closed** — a Cloudflare outage blocks registration rather than opening
-   it — and a missing secret is a startup failure in production.
+3. ~~**Bot defence on registration**~~ **DONE, on reader registration only.**
+   Cloudflare Turnstile, verified server-side in `lib/captcha.ts`. Chosen over
+   reCAPTCHA because it does not profile the visitor: asking Haitians to pass
+   through Google's tracking to prove they are human is the wrong trade for this
+   movement. Verification **fails closed** — a Cloudflare outage blocks
+   registration rather than opening it — and a missing secret is a startup
+   failure in production.
+
+   **Not on the member application, deliberately.** That form asks for three
+   PDFs, two essays and a human review; the friction already filters automated
+   abuse far better than a challenge does, and adding one would tax the most
+   committed applicants for nothing. Volume abuse there is a rate-limiting
+   problem, and it is rate-limited. Reader registration is different: it is
+   cheap, auto-approved after email verification, and it grants forum access,
+   so fake accounts are both easy to make and useful to an adversary.
 4. **Fix the orphaned-account bug** in `signUpMember` (see `phases/01-ENROLLMENT.md`).
 5. **Remove the mock Google path before launch.** `mockGoogleSignIn` returning
    `NOT_IMPLEMENTED` is safe today; a half-finished OAuth path shipped to production is not.

@@ -72,5 +72,9 @@ From `SECURITY.md`, in order:
    fails until they are set.
 3. **Retire the mock Google sign-in path.**
 
+None of these blocks development. In development the mailer prints to the console
+and the captcha is skipped; `ALLOW_INSECURE_LOCAL=true` covers a local production
+build too. They block *deploying*, which is the right place for them to bite.
+
 Rate limiting and bot defence landed with the enrollment groundwork — see
 `SECURITY.md` P0 items 2 and 3.

@@ -33,7 +33,8 @@ find .output/public/assets -name '*.js' | while read f; do gzip -c "$f" | wc -c;
 npm run dev            # dev server on :3000
 npm run build          # production build
 npm run typecheck      # tsc --noEmit
-npm test               # vitest (unit + integration + component)
+npm test               # vitest: unit + component + Postgres suite
+npm run test:db        # only the Postgres integration tests (needs Docker)
 npm run test:coverage  # with coverage
 npm run test:e2e       # playwright (starts its own dev server)
 npm run check          # biome lint + format check
@@ -137,9 +138,25 @@ missing, orphaned, blank, or has mismatched placeholders.
 
 ## Testing
 
-Vitest for unit, integration and component tests (`src/**/*.test.ts[x]`);
-Playwright for e2e (`e2e/`). E2E specs that need real accounts are skipped
-unless `E2E_DATABASE` is set, so the suite is green in CI without a database.
+Three layers — three Vitest projects plus Playwright:
+
+- **unit** — `src/**/*.test.ts[x]`, jsdom. Pure logic and components.
+- **db** — `src/**/*.db.test.ts`, node, real PostgreSQL in Docker via
+  Testcontainers. `src/test/postgres.ts` starts a throwaway container and applies
+  the committed migrations, so a migration that does not apply cleanly fails here
+  rather than on deploy. Needs a running Docker daemon.
+- **e2e** — `e2e/`, Playwright, desktop and mobile. Specs needing real accounts
+  are skipped unless `E2E_DATABASE` is set.
+
+Anything whose correctness lives in SQL belongs in the db project. The rate
+limiter is the example: its behaviour is an `INSERT … ON CONFLICT DO UPDATE` with
+a `CASE`, and a mock would simply agree with whatever it did. The real container
+caught a `Date` serialisation bug that made every call throw — no unit test could
+have found it.
+
+Note `extends: true` on each project in `vitest.config.ts`. Without it a project
+does not inherit `resolve.conditions`, Solid resolves its server build, and every
+component render fails with "Client-only API called on the server side".
 
 Test the rule, not the implementation. The upload tests assert that a ZIP
 labelled `application/pdf` is rejected; that is the actual security property.
@@ -161,7 +178,9 @@ Three rules:
   catches a missing translation.
 
 Locally, leaving `RESEND_API_KEY` unset prints mail to the console. In production
-a missing key is a startup failure, on purpose.
+a missing key is a startup failure, on purpose. To run a *production build*
+locally without Cloudflare or Resend credentials, set `ALLOW_INSECURE_LOCAL=true`
+— it lifts both guards and warns loudly. Never set it on a deployed server.
 
 ## Rate limiting and captcha
 
@@ -176,6 +195,11 @@ Counters are in Postgres (`auth_throttle`), not memory: an in-memory counter
 resets on deploy and is per-instance, so an attacker gets a fresh budget from
 each. `rate_limit` is a separate table owned by Better Auth; its shape is
 dictated by the library, so do not tidy it.
+
+Captcha applies to **reader registration only**. The member application asks for
+three PDFs, two essays and a human review — that friction filters automated abuse
+better than a challenge, and adding one would tax the most committed applicants
+for nothing. Volume abuse there is rate-limited instead.
 
 Captcha verification **fails closed**. If Cloudflare is unreachable, registration
 is blocked rather than waved through. Locally, leaving `TURNSTILE_SECRET_KEY`

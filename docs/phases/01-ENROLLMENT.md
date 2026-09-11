@@ -100,10 +100,36 @@ individually.
 
 ## Flow E — Invitation (cooptation)
 
-A senior member may invite someone directly with a signed, single-use, expiring token
-(7 days). The invitee still verifies their email; the invitation replaces the dossier
-review, and the inviting member is recorded as the sponsor. This is how the movement
-bootstraps its first cohort without everyone filing paperwork.
+Someone who arrives by recommendation should not have to argue their way in through the
+public process. The manifesto already provides for this — *cooptation* — and it is how
+the first cohort forms at all, since there is nobody to review the reviewers.
+
+A senior member issues a signed, single-use invitation expiring in 7 days. What the
+invitation changes, and what it deliberately does not:
+
+**Skipped — the committee review.** The sponsor's judgement replaces it. The application
+is created already approved, and the sponsoring member is recorded against it.
+
+**Skipped — the CAPTCHA.** A valid invitation token is a stronger proof of humanity than
+any challenge, since a senior member issued it by hand. Rate limiting still applies.
+
+**Kept — email verification.** It is how the movement reaches the member, and it costs
+one click.
+
+**Kept — the contribution plan.** Not as a gate, but because the six-month probation
+review checks the member against what they said they would do. Skipping it would leave
+the probation review with nothing to evaluate. The CV and the vision essay may be
+deferred; the plan may not.
+
+**Kept — the probation period.** A sponsor vouches for someone; they do not certify them.
+The manifesto's six months apply to every member by the same rule.
+
+**Kept — the audit record.** `role_change` records the sponsor. If a sponsored member
+later turns out to be a problem, the movement can see who vouched and when. The manifesto
+commits KLE to *reddition de comptes*, and an invitation route with no trail is exactly
+where that commitment would quietly fail.
+
+So: fewer forms, the same standards, and one named person accountable for the judgement.
 
 ## Flow F — Blocking and demotion
 

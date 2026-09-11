@@ -58,14 +58,21 @@ export async function consume(
   const expiresAt = new Date(now.getTime() + rule.windowSeconds * 1000)
 
   const db = await database()
+  // Dates are passed as ISO strings with an explicit cast. A raw JS `Date`
+  // inside a `sql` template is handed to the driver unserialised and throws
+  // `The "string" argument must be of type string ... Received an instance of
+  // Date`, which would make every call to this function fail.
+  const nowIso = now.toISOString()
+  const expiresIso = expiresAt.toISOString()
+
   const [row] = await db
     .insert(authThrottle)
     .values({ key, count: 1, expiresAt })
     .onConflictDoUpdate({
       target: authThrottle.key,
       set: {
-        count: sql`CASE WHEN ${authThrottle.expiresAt} <= ${now} THEN 1 ELSE ${authThrottle.count} + 1 END`,
-        expiresAt: sql`CASE WHEN ${authThrottle.expiresAt} <= ${now} THEN ${expiresAt} ELSE ${authThrottle.expiresAt} END`,
+        count: sql`CASE WHEN ${authThrottle.expiresAt} <= ${nowIso}::timestamptz THEN 1 ELSE ${authThrottle.count} + 1 END`,
+        expiresAt: sql`CASE WHEN ${authThrottle.expiresAt} <= ${nowIso}::timestamptz THEN ${expiresIso}::timestamptz ELSE ${authThrottle.expiresAt} END`,
       },
     })
     .returning({ count: authThrottle.count, expiresAt: authThrottle.expiresAt })

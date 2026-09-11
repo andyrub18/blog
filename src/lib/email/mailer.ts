@@ -66,10 +66,18 @@ export function getMailer(): Mailer {
   }
 
   if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'RESEND_API_KEY and EMAIL_FROM must be set in production. ' +
-        'Without them no verification email is ever delivered and no account ' +
-        'can be activated.',
+    if (process.env.ALLOW_INSECURE_LOCAL !== 'true') {
+      throw new Error(
+        'RESEND_API_KEY and EMAIL_FROM must be set in production. ' +
+          'Without them no verification email is ever delivered and no account ' +
+          'can be activated. To run a production build locally without a mail ' +
+          'provider, set ALLOW_INSECURE_LOCAL=true.',
+      )
+    }
+    console.warn(
+      '\n[email] ALLOW_INSECURE_LOCAL is set: production build with NO mail ' +
+        'provider. Verification emails are printed, not sent. Never set this ' +
+        'on a deployed server.\n',
     )
   }
 

@@ -5,7 +5,7 @@ import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import { nitro } from 'nitro/vite'
 import { defineConfig } from 'vite'
 import solidPlugin from 'vite-plugin-solid'
-import { paraglideOptions } from './src/i18n/paraglide-options'
+import { paraglideOptions } from './src/i18n/paraglide-options.ts'
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },

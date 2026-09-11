@@ -215,7 +215,6 @@ export const signUpMember = createServerFn({ method: 'POST' })
       cv: file('cv'),
       vision: file('vision'),
       contribution: file('contribution'),
-      captchaToken: get('captchaToken') || undefined,
     }
   })
   .handler(async ({ data }): Promise<SignUpResult> => {
@@ -229,10 +228,12 @@ export const signUpMember = createServerFn({ method: 'POST' })
     const { memberApplication } = await import('./db/schema')
     const { randomUUID } = await import('node:crypto')
 
-    const gate = await guard({
-      action: 'signUp',
-      captchaToken: data.captchaToken ?? null,
-    })
+    // No captcha here, deliberately. This form already asks for three PDFs,
+    // two essays and a human review; that friction filters automated abuse far
+    // better than a challenge does, and a captcha would only tax the most
+    // committed applicants. Volume abuse is a rate-limiting problem, which the
+    // per-IP counter below handles.
+    const gate = await guard({ action: 'signUp' })
     if (!gate.ok) return { ok: false, code: gate.code }
 
     // Validate and hold every file in memory BEFORE creating the account.
