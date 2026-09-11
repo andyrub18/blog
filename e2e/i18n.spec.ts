@@ -18,15 +18,15 @@ test.describe('language routing', () => {
   test('switching language keeps you on the same page', async ({ page }) => {
     await page.goto('/fr/auth/login')
     await page.getByRole('button', { name: 'Kreyòl' }).click()
-    await expect(page).toHaveURL(/\/ht\/auth\/login$/)
+    await expect(page).toHaveURL(/\/ht\/auth\/login\/?$/)
   })
 
   test('the language choice survives a reload', async ({ page }) => {
     await page.goto('/fr')
     await page.getByRole('button', { name: 'Kreyòl' }).click()
-    await expect(page).toHaveURL(/\/ht$/)
+    await expect(page).toHaveURL(/\/ht\/?$/)
     await page.reload()
-    await expect(page).toHaveURL(/\/ht$/)
+    await expect(page).toHaveURL(/\/ht\/?$/)
   })
 
   test('an unknown language code does not 500', async ({ page }) => {

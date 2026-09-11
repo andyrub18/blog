@@ -4,20 +4,18 @@ import RegisterReaderForm from '../../../../components/auth/RegisterReaderForm'
 import LanguageSwitcher from '../../../../components/LanguageSwitcher'
 import { m } from '../../../../paraglide/messages'
 
-const ensureGuest = createServerFn({ method: 'GET' })
-  .inputValidator((data: { lang: string }) => data)
-  .handler(async ({ data }) => {
-    const { redirectIfAuthenticated } = await import('../../../../lib/session.server')
-    await redirectIfAuthenticated(data.lang)
-  })
+const ensureGuest = createServerFn({ method: 'GET' }).handler(async () => {
+  const { redirectIfAuthenticated } = await import('../../../../lib/session.server')
 
-export const Route = createFileRoute('/$lang/auth/register/reader')({
-  beforeLoad: ({ params }) => ensureGuest({ data: { lang: params.lang } }),
+  await redirectIfAuthenticated()
+})
+
+export const Route = createFileRoute('/_app/auth/register/reader')({
+  beforeLoad: () => ensureGuest(),
   component: RegisterReaderPage,
 })
 
 function RegisterReaderPage() {
-  const params = Route.useParams()
   return (
     <main class="min-h-screen flex items-center justify-center bg-linear-to-br from-neutral-50 via-white to-neutral-100 px-4 py-12">
       <div class="w-full max-w-md">
@@ -37,11 +35,7 @@ function RegisterReaderPage() {
         </div>
         <p class="mt-6 text-center text-sm text-neutral-600">
           {m.auth_register_common_haveAccount()}{' '}
-          <Link
-            to="/$lang/auth/login"
-            params={{ lang: params().lang }}
-            class="font-medium text-[#00209F] hover:underline"
-          >
+          <Link to="/auth/login" class="font-medium text-[#00209F] hover:underline">
             {m.auth_register_common_signIn()}
           </Link>
         </p>

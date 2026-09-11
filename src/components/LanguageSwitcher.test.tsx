@@ -2,28 +2,30 @@ import { render, screen } from '@solidjs/testing-library'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const navigate = vi.fn()
-const setLocaleCookie = vi.fn().mockResolvedValue({ ok: true })
+const push = vi.fn()
+const setLocale = vi.fn()
+let currentLocale = 'fr'
 
 vi.mock('@tanstack/solid-router', () => ({
-  useRouter: () => ({ history: { push: navigate } }),
+  useRouter: () => ({ history: { push } }),
   useLocation: () => () => ({ pathname: '/fr/auth/login' }),
 }))
 
-vi.mock('../i18n/detect', () => ({
-  setLocaleCookie: (...args: Array<unknown>) => setLocaleCookie(...args),
-}))
-
-vi.mock('../i18n/context', () => ({
-  useLocale: () => () => 'fr',
+// Partial mock: the compiled messages import other runtime exports, so
+// replacing the whole module breaks them.
+vi.mock('../paraglide/runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../paraglide/runtime')>()),
+  getLocale: () => currentLocale,
+  setLocale: (...args: Array<unknown>) => setLocale(...args),
 }))
 
 const { default: LanguageSwitcher } = await import('./LanguageSwitcher')
 
 describe('LanguageSwitcher', () => {
   beforeEach(() => {
-    navigate.mockClear()
-    setLocaleCookie.mockClear()
+    push.mockClear()
+    setLocale.mockClear()
+    currentLocale = 'fr'
   })
 
   it('offers every supported language by its own name', () => {
@@ -48,9 +50,12 @@ describe('LanguageSwitcher', () => {
     render(() => <LanguageSwitcher />)
     await user.click(screen.getByRole('button', { name: 'Kreyòl' }))
 
-    expect(setLocaleCookie).toHaveBeenCalledWith({ data: { locale: 'ht' } })
-    // /fr/auth/login -> /ht/auth/login, not back to the home page.
-    expect(navigate).toHaveBeenCalledWith('/ht/auth/login')
+    expect(setLocale).toHaveBeenCalledWith('ht', { reload: false })
+    // /fr/auth/login -> /ht/auth/login, not back to the home page, and not
+    // /ht/fr/auth/login — the old prefix must be stripped before the new one.
+    // Real deLocalizeHref/localizeHref run here, so this exercises the actual
+    // URL patterns from src/i18n/paraglide-options.ts.
+    expect(push).toHaveBeenCalledWith(expect.stringMatching(/^\/ht\/auth\/login$/))
   })
 
   it('does nothing when the active language is chosen again', async () => {
@@ -58,7 +63,7 @@ describe('LanguageSwitcher', () => {
     render(() => <LanguageSwitcher />)
     await user.click(screen.getByRole('button', { name: 'Français' }))
 
-    expect(setLocaleCookie).not.toHaveBeenCalled()
-    expect(navigate).not.toHaveBeenCalled()
+    expect(setLocale).not.toHaveBeenCalled()
+    expect(push).not.toHaveBeenCalled()
   })
 })

@@ -34,7 +34,7 @@ forget — a legitimate senior member account that has been compromised or turne
 2. **Rate limiting.** Better Auth ships rate limiting; enable it and add stricter custom
    rules on sign-in, sign-up, verification and password reset. Add per-IP limits on uploads.
 3. **Bot defence on registration** — Turnstile or hCaptcha, both privacy-respecting.
-4. **Fix the orphaned-account bug** in `signUpMember` (see `phases/02-ENROLLMENT.md`).
+4. **Fix the orphaned-account bug** in `signUpMember` (see `phases/01-ENROLLMENT.md`).
 5. **Remove the mock Google path before launch.** `mockGoogleSignIn` returning
    `NOT_IMPLEMENTED` is safe today; a half-finished OAuth path shipped to production is not.
 6. **Cookies and transport:** HTTPS only, HSTS, session cookie `httpOnly` + `secure` +
@@ -73,7 +73,7 @@ forget — a legitimate senior member account that has been compromised or turne
 13. **Mandatory TOTP 2FA for `senior_member` and `super_admin`**, optional for everyone
     else. Better Auth has a 2FA plugin with account lockout after repeated failures. These
     are the accounts that can read dossiers; this is the highest-value control on the list.
-14. **Audit log** as specified in `phases/02-ENROLLMENT.md`, including every dossier
+14. **Audit log** as specified in `phases/01-ENROLLMENT.md`, including every dossier
     download. Review it periodically — an audit log nobody reads is a log file.
 15. **Session hygiene:** reasonable expiry, a visible list of active sessions, and a
     "sign out everywhere" control.

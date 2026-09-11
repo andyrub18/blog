@@ -54,7 +54,7 @@ export function tanstackStartCookies(): BetterAuthPlugin {
  * Wrapped in `createServerOnlyFn` so the body — and with it the server-only
  * `@tanstack/solid-start/server` import — is stripped from the client bundle.
  * `src/lib/auth.ts` is reachable from client code through
- * `routes/$lang.tsx` -> `lib/session.ts`, so without this the build fails
+ * `routes/_app.tsx` -> `lib/session.ts`, so without this the build fails
  * import protection.
  */
 const forwardSetCookieHeader = createServerOnlyFn(async (setCookies: string) => {

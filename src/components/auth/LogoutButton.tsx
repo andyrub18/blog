@@ -1,12 +1,10 @@
 import { useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
-import { useLocale } from '../../i18n/context'
 import { signOut } from '../../lib/auth-actions'
 import { m } from '../../paraglide/messages'
 
 export default function LogoutButton(props: { class?: string }) {
   const router = useRouter()
-  const locale = useLocale()
   const [loading, setLoading] = createSignal(false)
 
   async function onClick() {
@@ -15,7 +13,7 @@ export default function LogoutButton(props: { class?: string }) {
       await signOut()
     } finally {
       setLoading(false)
-      await router.navigate({ to: '/$lang/auth/login', params: { lang: locale() } })
+      await router.navigate({ to: '/auth/login' })
       router.invalidate()
     }
   }

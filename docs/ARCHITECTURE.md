@@ -11,7 +11,7 @@ This project will use a simple layered architecture
 ## Server and client boundary
 
 This is the rule that is easiest to get wrong and most expensive to get wrong.
-`src/routes/$lang.tsx` imports `src/lib/session.ts`, which makes that module —
+`src/routes/_app.tsx` imports `src/lib/session.ts`, which makes that module —
 and everything it reaches — client code. A static import of anything server-only
 therefore ships to the browser. It once put the entire Better Auth server, with
 its kysely, sqlite and postgres adapters, into the client bundle: 136 KB gzipped.

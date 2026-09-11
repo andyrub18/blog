@@ -1,6 +1,5 @@
 import { useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
-import { useLocale } from '../../i18n/context'
 import { type SignUpErrorCode, signUpReader } from '../../lib/auth-actions'
 import {
   isValidEmail,
@@ -33,7 +32,6 @@ const INPUT_CLASS =
 
 export default function RegisterReaderForm() {
   const router = useRouter()
-  const locale = useLocale()
   const [submitting, setSubmitting] = createSignal(false)
   const [serverError, setServerError] = createSignal<string | null>(null)
   const [errors, setErrors] = createSignal<FieldErrors>({})
@@ -97,9 +95,7 @@ export default function RegisterReaderForm() {
           title={m.auth_register_success_title()}
           hint={m.auth_register_success_verifyHint()}
           loginCta={m.auth_verify_goLogin()}
-          onLogin={() =>
-            router.navigate({ to: '/$lang/auth/login', params: { lang: locale() } })
-          }
+          onLogin={() => router.navigate({ to: '/auth/login' })}
         />
       }
     >
@@ -149,10 +145,7 @@ export default function RegisterReaderForm() {
             name="essay"
             rows="5"
             class="rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
-            placeholder={m.auth_register_common_essayPlaceholder(
-              {},
-              { locale: locale() },
-            )}
+            placeholder={m.auth_register_common_essayPlaceholder()}
             aria-invalid={errors().essay ? 'true' : undefined}
           />
           <Show when={errors().essay}>

@@ -9,179 +9,166 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as LangRouteImport } from './routes/$lang'
-import { Route as LangIndexRouteImport } from './routes/$lang/index'
-import { Route as LangAuthLoginRouteImport } from './routes/$lang/auth/login'
-import { Route as LangAuthRegisterRouteImport } from './routes/$lang/auth/register'
-import { Route as LangAuthVerifyRouteImport } from './routes/$lang/auth/verify'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppAuthLoginRouteImport } from './routes/_app/auth/login'
+import { Route as AppAuthRegisterRouteImport } from './routes/_app/auth/register'
+import { Route as AppAuthVerifyRouteImport } from './routes/_app/auth/verify'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as LangAuthRegisterMemberRouteImport } from './routes/$lang/auth/register/member'
-import { Route as LangAuthRegisterReaderRouteImport } from './routes/$lang/auth/register/reader'
+import { Route as AppAuthRegisterIndexRouteImport } from './routes/_app/auth/register/index'
+import { Route as AppAuthRegisterMemberRouteImport } from './routes/_app/auth/register/member'
+import { Route as AppAuthRegisterReaderRouteImport } from './routes/_app/auth/register/reader'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LangRoute = LangRouteImport.update({
-  id: '/$lang',
-  path: '/$lang',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LangIndexRoute = LangIndexRouteImport.update({
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => LangRoute,
+  getParentRoute: () => AppRoute,
 } as any)
-const LangAuthLoginRoute = LangAuthLoginRouteImport.update({
+const AppAuthLoginRoute = AppAuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
-  getParentRoute: () => LangRoute,
+  getParentRoute: () => AppRoute,
 } as any)
-const LangAuthRegisterRoute = LangAuthRegisterRouteImport.update({
+const AppAuthRegisterRoute = AppAuthRegisterRouteImport.update({
   id: '/auth/register',
   path: '/auth/register',
-  getParentRoute: () => LangRoute,
+  getParentRoute: () => AppRoute,
 } as any)
-const LangAuthVerifyRoute = LangAuthVerifyRouteImport.update({
+const AppAuthVerifyRoute = AppAuthVerifyRouteImport.update({
   id: '/auth/verify',
   path: '/auth/verify',
-  getParentRoute: () => LangRoute,
+  getParentRoute: () => AppRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LangAuthRegisterMemberRoute = LangAuthRegisterMemberRouteImport.update({
+const AppAuthRegisterIndexRoute = AppAuthRegisterIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAuthRegisterRoute,
+} as any)
+const AppAuthRegisterMemberRoute = AppAuthRegisterMemberRouteImport.update({
   id: '/member',
   path: '/member',
-  getParentRoute: () => LangAuthRegisterRoute,
+  getParentRoute: () => AppAuthRegisterRoute,
 } as any)
-const LangAuthRegisterReaderRoute = LangAuthRegisterReaderRouteImport.update({
+const AppAuthRegisterReaderRoute = AppAuthRegisterReaderRouteImport.update({
   id: '/reader',
   path: '/reader',
-  getParentRoute: () => LangAuthRegisterRoute,
+  getParentRoute: () => AppAuthRegisterRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/$lang': typeof LangRouteWithChildren
-  '/$lang/': typeof LangIndexRoute
-  '/$lang/auth/login': typeof LangAuthLoginRoute
-  '/$lang/auth/register': typeof LangAuthRegisterRouteWithChildren
-  '/$lang/auth/verify': typeof LangAuthVerifyRoute
+  '/': typeof AppIndexRoute
+  '/auth/login': typeof AppAuthLoginRoute
+  '/auth/register': typeof AppAuthRegisterRouteWithChildren
+  '/auth/verify': typeof AppAuthVerifyRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/$lang/auth/register/member': typeof LangAuthRegisterMemberRoute
-  '/$lang/auth/register/reader': typeof LangAuthRegisterReaderRoute
+  '/auth/register/member': typeof AppAuthRegisterMemberRoute
+  '/auth/register/reader': typeof AppAuthRegisterReaderRoute
+  '/auth/register/': typeof AppAuthRegisterIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/$lang': typeof LangIndexRoute
-  '/$lang/auth/login': typeof LangAuthLoginRoute
-  '/$lang/auth/register': typeof LangAuthRegisterRouteWithChildren
-  '/$lang/auth/verify': typeof LangAuthVerifyRoute
+  '/': typeof AppIndexRoute
+  '/auth/login': typeof AppAuthLoginRoute
+  '/auth/verify': typeof AppAuthVerifyRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/$lang/auth/register/member': typeof LangAuthRegisterMemberRoute
-  '/$lang/auth/register/reader': typeof LangAuthRegisterReaderRoute
+  '/auth/register/member': typeof AppAuthRegisterMemberRoute
+  '/auth/register/reader': typeof AppAuthRegisterReaderRoute
+  '/auth/register': typeof AppAuthRegisterIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/$lang': typeof LangRouteWithChildren
-  '/$lang/': typeof LangIndexRoute
-  '/$lang/auth/login': typeof LangAuthLoginRoute
-  '/$lang/auth/register': typeof LangAuthRegisterRouteWithChildren
-  '/$lang/auth/verify': typeof LangAuthVerifyRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_app/': typeof AppIndexRoute
+  '/_app/auth/login': typeof AppAuthLoginRoute
+  '/_app/auth/register': typeof AppAuthRegisterRouteWithChildren
+  '/_app/auth/verify': typeof AppAuthVerifyRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/$lang/auth/register/member': typeof LangAuthRegisterMemberRoute
-  '/$lang/auth/register/reader': typeof LangAuthRegisterReaderRoute
+  '/_app/auth/register/member': typeof AppAuthRegisterMemberRoute
+  '/_app/auth/register/reader': typeof AppAuthRegisterReaderRoute
+  '/_app/auth/register/': typeof AppAuthRegisterIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/$lang'
-    | '/$lang/'
-    | '/$lang/auth/login'
-    | '/$lang/auth/register'
-    | '/$lang/auth/verify'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/verify'
     | '/api/auth/$'
-    | '/$lang/auth/register/member'
-    | '/$lang/auth/register/reader'
+    | '/auth/register/member'
+    | '/auth/register/reader'
+    | '/auth/register/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/$lang'
-    | '/$lang/auth/login'
-    | '/$lang/auth/register'
-    | '/$lang/auth/verify'
+    | '/auth/login'
+    | '/auth/verify'
     | '/api/auth/$'
-    | '/$lang/auth/register/member'
-    | '/$lang/auth/register/reader'
+    | '/auth/register/member'
+    | '/auth/register/reader'
+    | '/auth/register'
   id:
     | '__root__'
-    | '/'
-    | '/$lang'
-    | '/$lang/'
-    | '/$lang/auth/login'
-    | '/$lang/auth/register'
-    | '/$lang/auth/verify'
+    | '/_app'
+    | '/_app/'
+    | '/_app/auth/login'
+    | '/_app/auth/register'
+    | '/_app/auth/verify'
     | '/api/auth/$'
-    | '/$lang/auth/register/member'
-    | '/$lang/auth/register/reader'
+    | '/_app/auth/register/member'
+    | '/_app/auth/register/reader'
+    | '/_app/auth/register/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  LangRoute: typeof LangRouteWithChildren
+  AppRoute: typeof AppRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/$lang': {
-      id: '/$lang'
-      path: '/$lang'
-      fullPath: '/$lang'
-      preLoaderRoute: typeof LangRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/$lang/': {
-      id: '/$lang/'
-      path: '/'
-      fullPath: '/$lang/'
-      preLoaderRoute: typeof LangIndexRouteImport
-      parentRoute: typeof LangRoute
-    }
-    '/$lang/auth/login': {
-      id: '/$lang/auth/login'
+    '/_app/auth/login': {
+      id: '/_app/auth/login'
       path: '/auth/login'
-      fullPath: '/$lang/auth/login'
-      preLoaderRoute: typeof LangAuthLoginRouteImport
-      parentRoute: typeof LangRoute
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AppAuthLoginRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/$lang/auth/register': {
-      id: '/$lang/auth/register'
+    '/_app/auth/register': {
+      id: '/_app/auth/register'
       path: '/auth/register'
-      fullPath: '/$lang/auth/register'
-      preLoaderRoute: typeof LangAuthRegisterRouteImport
-      parentRoute: typeof LangRoute
+      fullPath: '/auth/register'
+      preLoaderRoute: typeof AppAuthRegisterRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/$lang/auth/verify': {
-      id: '/$lang/auth/verify'
+    '/_app/auth/verify': {
+      id: '/_app/auth/verify'
       path: '/auth/verify'
-      fullPath: '/$lang/auth/verify'
-      preLoaderRoute: typeof LangAuthVerifyRouteImport
-      parentRoute: typeof LangRoute
+      fullPath: '/auth/verify'
+      preLoaderRoute: typeof AppAuthVerifyRouteImport
+      parentRoute: typeof AppRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -190,55 +177,64 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$lang/auth/register/member': {
-      id: '/$lang/auth/register/member'
-      path: '/member'
-      fullPath: '/$lang/auth/register/member'
-      preLoaderRoute: typeof LangAuthRegisterMemberRouteImport
-      parentRoute: typeof LangAuthRegisterRoute
+    '/_app/auth/register/': {
+      id: '/_app/auth/register/'
+      path: '/'
+      fullPath: '/auth/register/'
+      preLoaderRoute: typeof AppAuthRegisterIndexRouteImport
+      parentRoute: typeof AppAuthRegisterRoute
     }
-    '/$lang/auth/register/reader': {
-      id: '/$lang/auth/register/reader'
+    '/_app/auth/register/member': {
+      id: '/_app/auth/register/member'
+      path: '/member'
+      fullPath: '/auth/register/member'
+      preLoaderRoute: typeof AppAuthRegisterMemberRouteImport
+      parentRoute: typeof AppAuthRegisterRoute
+    }
+    '/_app/auth/register/reader': {
+      id: '/_app/auth/register/reader'
       path: '/reader'
-      fullPath: '/$lang/auth/register/reader'
-      preLoaderRoute: typeof LangAuthRegisterReaderRouteImport
-      parentRoute: typeof LangAuthRegisterRoute
+      fullPath: '/auth/register/reader'
+      preLoaderRoute: typeof AppAuthRegisterReaderRouteImport
+      parentRoute: typeof AppAuthRegisterRoute
     }
   }
 }
 
-interface LangAuthRegisterRouteChildren {
-  LangAuthRegisterMemberRoute: typeof LangAuthRegisterMemberRoute
-  LangAuthRegisterReaderRoute: typeof LangAuthRegisterReaderRoute
+interface AppAuthRegisterRouteChildren {
+  AppAuthRegisterMemberRoute: typeof AppAuthRegisterMemberRoute
+  AppAuthRegisterReaderRoute: typeof AppAuthRegisterReaderRoute
+  AppAuthRegisterIndexRoute: typeof AppAuthRegisterIndexRoute
 }
 
-const LangAuthRegisterRouteChildren: LangAuthRegisterRouteChildren = {
-  LangAuthRegisterMemberRoute: LangAuthRegisterMemberRoute,
-  LangAuthRegisterReaderRoute: LangAuthRegisterReaderRoute,
+const AppAuthRegisterRouteChildren: AppAuthRegisterRouteChildren = {
+  AppAuthRegisterMemberRoute: AppAuthRegisterMemberRoute,
+  AppAuthRegisterReaderRoute: AppAuthRegisterReaderRoute,
+  AppAuthRegisterIndexRoute: AppAuthRegisterIndexRoute,
 }
 
-const LangAuthRegisterRouteWithChildren =
-  LangAuthRegisterRoute._addFileChildren(LangAuthRegisterRouteChildren)
+const AppAuthRegisterRouteWithChildren = AppAuthRegisterRoute._addFileChildren(
+  AppAuthRegisterRouteChildren,
+)
 
-interface LangRouteChildren {
-  LangIndexRoute: typeof LangIndexRoute
-  LangAuthLoginRoute: typeof LangAuthLoginRoute
-  LangAuthRegisterRoute: typeof LangAuthRegisterRouteWithChildren
-  LangAuthVerifyRoute: typeof LangAuthVerifyRoute
+interface AppRouteChildren {
+  AppIndexRoute: typeof AppIndexRoute
+  AppAuthLoginRoute: typeof AppAuthLoginRoute
+  AppAuthRegisterRoute: typeof AppAuthRegisterRouteWithChildren
+  AppAuthVerifyRoute: typeof AppAuthVerifyRoute
 }
 
-const LangRouteChildren: LangRouteChildren = {
-  LangIndexRoute: LangIndexRoute,
-  LangAuthLoginRoute: LangAuthLoginRoute,
-  LangAuthRegisterRoute: LangAuthRegisterRouteWithChildren,
-  LangAuthVerifyRoute: LangAuthVerifyRoute,
+const AppRouteChildren: AppRouteChildren = {
+  AppIndexRoute: AppIndexRoute,
+  AppAuthLoginRoute: AppAuthLoginRoute,
+  AppAuthRegisterRoute: AppAuthRegisterRouteWithChildren,
+  AppAuthVerifyRoute: AppAuthVerifyRoute,
 }
 
-const LangRouteWithChildren = LangRoute._addFileChildren(LangRouteChildren)
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  LangRoute: LangRouteWithChildren,
+  AppRoute: AppRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
@@ -246,11 +242,10 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
+import type { createStart } from '@tanstack/solid-start'
 declare module '@tanstack/solid-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

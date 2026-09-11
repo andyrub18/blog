@@ -30,11 +30,19 @@ exactly that with `paraglideMiddleware` and AsyncLocalStorage, and the setup was
 also left on the default `cookie`/`globalVariable` strategy, which never consulted
 the URL that actually determines the language on this site.
 
-Corrected: the strategy is now `url` first, the middleware is registered in
-`src/start.ts` via `createStart({ requestMiddleware })`, and all 98 call sites
-collapsed to `m.key()`. The middleware passes the original request through, since
-TanStack Router owns URL localization under `/$lang`. Paraglide's cookie is named
-`lang` to match `src/i18n/detect.ts`, so the two cannot disagree.
+Corrected in two passes. First the strategy became `url`-first with the
+middleware registered as a request middleware, and all 98 call sites collapsed to
+`m.key()`.
+
+Then the `$lang` route parameter went away entirely. `src/server.ts` wraps the
+handler in `paraglideMiddleware`, and `src/router.tsx` uses TanStack Router's
+`rewrite` option — `deLocalizeUrl` on the way in, `localizeUrl` on the way out —
+so routes are written once at their plain path and links are localized
+automatically. `src/i18n/context.tsx` and `src/i18n/detect.ts` were deleted: with
+the locale in the URL and in the request scope, neither had anything left to do.
+
+URLs are unchanged for readers; `/fr/auth/login` and `/ht/auth/login` work
+exactly as before.
 
 **Dropped `@tanstack/solid-form`.** Only an alpha supports Solid 2, and the three
 forms were inconsistent — one already used plain signals. All three now use plain
@@ -43,7 +51,7 @@ and made the forms directly testable.
 
 **Session moved server-side.** `authClient.useSession()` fetched the session from
 the browser, so the first paint rendered signed-out. The session now loads in the
-`/$lang` route's `beforeLoad` and arrives in the SSR payload. This also removed
+`_app` layout's `beforeLoad` and arrives in the SSR payload. This also removed
 the dependency on `better-auth/solid`'s Solid 1 reactivity.
 
 ## Bugs fixed
@@ -73,7 +81,7 @@ The client bundle was **332.8 KB gzipped**. A single 136 KB chunk turned out to
 be the entire Better Auth *server* — kysely, sqlite and postgres adapters — in
 the browser.
 
-Cause: `routes/$lang.tsx` imports `lib/session.ts`, so `session.ts` is client
+Cause: the app layout imports `lib/session.ts`, so `session.ts` is client
 code. Its non-server-function exports (`getSession`, `requireUser`, …) carried a
 dynamic `import('./auth')`, which pulled the auth server into the client graph.
 

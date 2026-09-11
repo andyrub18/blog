@@ -4,20 +4,18 @@ import LoginForm from '../../../components/auth/LoginForm'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import { m } from '../../../paraglide/messages'
 
-const ensureGuest = createServerFn({ method: 'GET' })
-  .inputValidator((data: { lang: string }) => data)
-  .handler(async ({ data }) => {
-    const { redirectIfAuthenticated } = await import('../../../lib/session.server')
-    await redirectIfAuthenticated(data.lang)
-  })
+const ensureGuest = createServerFn({ method: 'GET' }).handler(async () => {
+  const { redirectIfAuthenticated } = await import('../../../lib/session.server')
 
-export const Route = createFileRoute('/$lang/auth/login')({
-  beforeLoad: ({ params }) => ensureGuest({ data: { lang: params.lang } }),
+  await redirectIfAuthenticated()
+})
+
+export const Route = createFileRoute('/_app/auth/login')({
+  beforeLoad: () => ensureGuest(),
   component: LoginPage,
 })
 
 function LoginPage() {
-  const params = Route.useParams()
   return (
     <main class="min-h-screen flex items-center justify-center bg-linear-to-br from-neutral-50 via-white to-neutral-100 px-4 py-12">
       <div class="w-full max-w-md">
@@ -45,11 +43,7 @@ function LoginPage() {
 
         <p class="mt-6 text-center text-sm text-neutral-600">
           {m.auth_login_noAccount()}{' '}
-          <Link
-            to="/$lang/auth/register"
-            params={{ lang: params().lang }}
-            class="font-medium text-[#00209F] hover:underline"
-          >
+          <Link to="/auth/register" class="font-medium text-[#00209F] hover:underline">
             {m.auth_login_register()}
           </Link>
         </p>

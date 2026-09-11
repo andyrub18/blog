@@ -1,26 +1,23 @@
 import { useLocation, useRouter } from '@tanstack/solid-router'
 import { For } from 'solid-js'
 import { LOCALE_LABELS, LOCALES, type Locale } from '../i18n'
-import { useLocale } from '../i18n/context'
-import { setLocaleCookie } from '../i18n/detect'
 import { m } from '../paraglide/messages'
+import { deLocalizeHref, getLocale, localizeHref, setLocale } from '../paraglide/runtime'
 
 export default function LanguageSwitcher() {
-  const locale = useLocale()
   const router = useRouter()
   const location = useLocation()
 
-  function pathWithoutLocale() {
-    const segments = location().pathname.split('/').filter(Boolean)
-    return `/${segments.slice(1).join('/')}`
-  }
-
-  async function handleChange(next: Locale) {
-    if (next === locale()) return
-    await setLocaleCookie({ data: { locale: next } })
-    const tail = pathWithoutLocale()
-    const href = `/${next}${tail === '/' ? '' : tail}`
-    router.history.push(href)
+  function handleChange(next: Locale) {
+    if (next === getLocale()) return
+    // Persist the choice without a full document reload; the navigation below
+    // is what actually re-renders the page in the new language.
+    setLocale(next, { reload: false })
+    // Strip the current prefix before adding the new one, or `/fr/x` would
+    // become `/ht/fr/x`.
+    router.history.push(
+      localizeHref(deLocalizeHref(location().pathname), { locale: next }),
+    )
   }
 
   return (
@@ -32,13 +29,13 @@ export default function LanguageSwitcher() {
         {(code) => (
           <button
             type="button"
-            onClick={() => void handleChange(code)}
+            onClick={() => handleChange(code)}
             class={
-              code === locale()
-                ? 'rounded px-2 py-1 font-semibold bg-neutral-900 text-white'
+              code === getLocale()
+                ? 'rounded bg-neutral-900 px-2 py-1 font-semibold text-white'
                 : 'rounded px-2 py-1 text-neutral-700 hover:bg-neutral-100'
             }
-            aria-current={code === locale() ? 'true' : undefined}
+            aria-current={code === getLocale() ? 'true' : undefined}
           >
             {LOCALE_LABELS[code]}
           </button>

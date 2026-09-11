@@ -62,7 +62,7 @@ logic** (server functions) → **auth** (Better Auth) → **components** (Solid)
 ## Rules that are easy to get wrong
 
 **Never statically import server-only modules from anything a route reaches.**
-`src/routes/$lang.tsx` imports `lib/session.ts`, so everything reachable from
+`src/routes/_app.tsx` imports `lib/session.ts`, so everything reachable from
 there ends up in the browser graph. A static `import { auth }` once put the
 entire Better Auth server — kysely, sqlite and postgres adapters — into the
 client bundle: **136 KB gzipped of pure waste**. Import server modules
@@ -102,22 +102,27 @@ import { m } from '../paraglide/messages'
 m.auth_login_title()
 ```
 
-The locale is ambient, not passed. `src/start.ts` registers a request middleware
-that runs each request inside Paraglide's AsyncLocalStorage scope, so `getLocale()`
-resolves per request on the server — SSR serves concurrent requests in different
-languages and that isolation is what keeps them from leaking into each other. On
+The locale is ambient, not passed. `src/server.ts` wraps the whole handler in
+`paraglideMiddleware`, so every request runs inside an AsyncLocalStorage scope and
+`getLocale()` resolves per request — SSR serves concurrent requests in different
+languages, and that isolation is what keeps them from leaking into each other. On
 the client the locale comes from the URL.
 
 Configuration lives in `src/i18n/paraglide-options.ts`, shared by `vite.config.ts`
 and `vitest.config.ts`. Two things there are deliberate: the strategy is
 **`url` first**, so a link to `/ht/atik` renders Creole even if the reader's
-cookie says French; and the cookie is named `lang`, matching `src/i18n/detect.ts`,
-because two cookies would let the middleware and the app disagree.
+cookie says French; and both locales carry a prefix, so neither language is the
+unnamed default.
 
-The request middleware passes the **original** request to `next()`, not the
-de-localized one Paraglide offers. TanStack Router owns URL localization here —
-routes live under `/$lang` — so rewriting `/fr/atik` to `/atik` would hand the
-router a path it cannot match.
+**There is no `$lang` route parameter.** Routes are written once at their plain
+path (`/auth/login`) and the router translates, via `rewrite` in
+`src/router.tsx`: `input` strips the prefix before matching, `output` puts it
+back when generating links. Every `<Link>` is localized automatically and no
+component threads a language through.
+
+`src/server.ts` forwards the **original** request, not the de-localized one
+Paraglide offers, because the router already de-localizes — letting both rewrite
+would strip the prefix twice.
 
 Message keys are the old dotted paths with underscores: `auth.login.title`
 becomes `auth_login_title`. For a message chosen at runtime (an error code, say),
@@ -162,7 +167,7 @@ a missing key is a startup failure, on purpose.
 
 **Every dependency is pinned to an exact version — no `^`, no `~`, no
 `latest`.** We run TanStack Start 2 RC and Solid 2 RC deliberately (see
-`docs/STACK-REVIEW.md`), and on release candidates a floating range means a
+`docs/DECISIONS.md`), and on release candidates a floating range means a
 breaking change lands unannounced. Upgrade deliberately, as its own commit.
 
 `.npmrc` sets `legacy-peer-deps=true` for one specific reason, documented in the

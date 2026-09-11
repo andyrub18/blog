@@ -4,12 +4,12 @@ import LogoutButton from '../../components/auth/LogoutButton'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import { m } from '../../paraglide/messages'
 
-export const Route = createFileRoute('/$lang/')({
+export const Route = createFileRoute('/_app/')({
   component: Home,
 })
 
 function Home() {
-  // Loaded server-side in the /$lang route, so it is correct on first paint.
+  // Loaded server-side in the /_app layout, so it is correct on first paint.
   const context = Route.useRouteContext()
 
   return (

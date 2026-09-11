@@ -1,6 +1,5 @@
 import { useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
-import { useLocale } from '../../i18n/context'
 import { type SignInErrorCode, signInWithPassword } from '../../lib/auth-actions'
 import { isValidEmail, isValidPassword } from '../../lib/validation'
 import { m } from '../../paraglide/messages'
@@ -25,7 +24,6 @@ const INPUT_CLASS =
 
 export default function LoginForm() {
   const router = useRouter()
-  const locale = useLocale()
 
   const [submitting, setSubmitting] = createSignal(false)
   const [serverError, setServerError] = createSignal<string | null>(null)
@@ -71,7 +69,7 @@ export default function LoginForm() {
         setServerError(message())
         return
       }
-      await router.navigate({ to: '/$lang', params: { lang: locale() } })
+      await router.navigate({ to: '/' })
     } catch {
       setServerError(m.auth_login_errors_unexpected())
     } finally {

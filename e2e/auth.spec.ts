@@ -63,10 +63,7 @@ test.describe('login form', () => {
 test.describe('reader registration', () => {
   test('validates every required field before submitting', async ({ page }) => {
     await page.goto('/fr/auth/register/reader')
-    await page
-      .getByRole('button', { name: /s.inscrire|créer/i })
-      .first()
-      .click()
+    await page.getByRole('button', { name: /Créer mon compte/i }).click()
     await expect(page.locator('[aria-invalid="true"]')).not.toHaveCount(0)
   })
 })

@@ -21,9 +21,9 @@ export const paraglideOptions: ParaglideVitePluginOptions = {
   strategy: ['url', 'cookie', 'preferredLanguage', 'baseLocale'],
 
   /**
-   * Reuse the app's existing `lang` cookie rather than Paraglide's default
-   * `PARAGLIDE_LOCALE`. Two cookies would let the middleware and
-   * `src/i18n/detect.ts` disagree about the reader's language.
+   * Paraglide is the only thing that reads or writes the locale cookie, so the
+   * name is ours to choose. `lang` is kept because it is what was already set
+   * in readers' browsers.
    */
   cookieName: 'lang',
 

@@ -20,7 +20,8 @@
     "db:migrate": "dotenv -e .env.local -- drizzle-kit migrate",
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
     "db:studio": "dotenv -e .env.local -- drizzle-kit studio",
-    "db:seed": "dotenv -e .env.local -- tsx scripts/seed-super-admin.ts"
+    "db:seed": "dotenv -e .env.local -- tsx scripts/seed-super-admin.ts",
+    "email:test": "dotenv -e .env.local -- tsx scripts/send-test-email.ts"
   },
   "dependencies": {
     "@inlang/paraglide-js": "2.25.1",

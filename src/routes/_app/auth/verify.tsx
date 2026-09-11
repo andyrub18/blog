@@ -6,7 +6,7 @@ import { m } from '../../../paraglide/messages'
 
 type Status = 'pending' | 'success' | 'failure'
 
-export const Route = createFileRoute('/$lang/auth/verify')({
+export const Route = createFileRoute('/_app/auth/verify')({
   validateSearch: (search: Record<string, unknown>) => ({
     token: typeof search.token === 'string' ? search.token : undefined,
   }),
@@ -14,7 +14,6 @@ export const Route = createFileRoute('/$lang/auth/verify')({
 })
 
 function VerifyPage() {
-  const params = Route.useParams()
   const search = Route.useSearch()
   const [status, setStatus] = createSignal<Status>('pending')
 
@@ -48,8 +47,7 @@ function VerifyPage() {
           <Show when={status() === 'success'}>
             <p class="text-sm text-neutral-700">{m.auth_verify_success()}</p>
             <Link
-              to="/$lang/auth/login"
-              params={{ lang: params().lang }}
+              to="/auth/login"
               class="inline-flex h-11 items-center justify-center rounded-md bg-[#00209F] text-white text-sm font-semibold hover:opacity-95 px-4"
             >
               {m.auth_verify_goLogin()}
@@ -58,8 +56,7 @@ function VerifyPage() {
           <Show when={status() === 'failure'}>
             <p class="text-sm text-[#D21034]">{m.auth_verify_failure()}</p>
             <Link
-              to="/$lang/auth/login"
-              params={{ lang: params().lang }}
+              to="/auth/login"
               class="font-medium text-[#00209F] hover:underline text-sm"
             >
               {m.auth_verify_goLogin()}

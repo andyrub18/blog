@@ -4,12 +4,11 @@ import {
   HeadContent,
   Outlet,
   Scripts,
-  useLocation,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { Loading } from 'solid-js'
 
-import { DEFAULT_LOCALE, isLocale } from '../i18n'
+import { getLocale } from '../paraglide/runtime'
 import styleCss from '../styles.css?url'
 
 export const Route = createRootRouteWithContext()({
@@ -25,22 +24,15 @@ export const Route = createRootRouteWithContext()({
 })
 
 function RootComponent() {
-  const location = useLocation()
-
   /**
-   * The document language, taken from the `/$lang` path prefix.
+   * The document language.
    *
    * This matters more here than on a monolingual site: screen readers pick
    * pronunciation from it, and search engines use it to decide which audience a
    * page serves. Getting it wrong means a Creole page announced in French.
    */
-  const lang = () => {
-    const first = location().pathname.split('/').filter(Boolean)[0]
-    return isLocale(first) ? first : DEFAULT_LOCALE
-  }
-
   return (
-    <html lang={lang()}>
+    <html lang={getLocale()}>
       <head>
         <HydrationScript />
         <HeadContent />

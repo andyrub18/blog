@@ -20,25 +20,25 @@ export async function getSession() {
   return session as { user: SessionUser; session: { id: string; userId: string } } | null
 }
 
-export async function requireUser(lang = 'fr'): Promise<SessionUser> {
+export async function requireUser(): Promise<SessionUser> {
   const session = await getSession()
   if (!session?.user) {
-    throw redirect({ to: '/$lang/auth/login', params: { lang } })
+    throw redirect({ to: '/auth/login' })
   }
   return session.user
 }
 
-export async function requireRole(roles: Array<Role>, lang = 'fr'): Promise<SessionUser> {
-  const user = await requireUser(lang)
+export async function requireRole(roles: Array<Role>): Promise<SessionUser> {
+  const user = await requireUser()
   if (!roles.includes(user.role)) {
-    throw redirect({ to: '/$lang', params: { lang } })
+    throw redirect({ to: '/' })
   }
   return user
 }
 
-export async function redirectIfAuthenticated(lang = 'fr'): Promise<void> {
+export async function redirectIfAuthenticated(): Promise<void> {
   const session = await getSession()
   if (session?.user) {
-    throw redirect({ to: '/$lang', params: { lang } })
+    throw redirect({ to: '/' })
   }
 }

@@ -1,22 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
-import { createServerFn } from '@tanstack/solid-start'
-import LanguageSwitcher from '../../../components/LanguageSwitcher'
-import { m } from '../../../paraglide/messages'
+import LanguageSwitcher from '../../../../components/LanguageSwitcher'
+import { m } from '../../../../paraglide/messages'
 
-const ensureGuest = createServerFn({ method: 'GET' })
-  .inputValidator((data: { lang: string }) => data)
-  .handler(async ({ data }) => {
-    const { redirectIfAuthenticated } = await import('../../../lib/session.server')
-    await redirectIfAuthenticated(data.lang)
-  })
-
-export const Route = createFileRoute('/$lang/auth/register')({
-  beforeLoad: ({ params }) => ensureGuest({ data: { lang: params.lang } }),
+export const Route = createFileRoute('/_app/auth/register/')({
   component: RegisterChooser,
 })
 
 function RegisterChooser() {
-  const params = Route.useParams()
   return (
     <main class="min-h-screen flex items-center justify-center bg-linear-to-br from-neutral-50 via-white to-neutral-100 px-4 py-12">
       <div class="w-full max-w-2xl">
@@ -36,23 +26,17 @@ function RegisterChooser() {
             title={m.auth_register_readerTitle()}
             description={m.auth_register_readerDescription()}
             cta={m.auth_register_readerCta()}
-            to="/$lang/auth/register/reader"
-            lang={params().lang}
+            to="/auth/register/reader"
           />
           <Card
             title={m.auth_register_memberTitle()}
             description={m.auth_register_memberDescription()}
             cta={m.auth_register_memberCta()}
-            to="/$lang/auth/register/member"
-            lang={params().lang}
+            to="/auth/register/member"
           />
         </div>
         <p class="mt-8 text-center text-sm text-neutral-600">
-          <Link
-            to="/$lang/auth/login"
-            params={{ lang: params().lang }}
-            class="font-medium text-[#00209F] hover:underline"
-          >
+          <Link to="/auth/login" class="font-medium text-[#00209F] hover:underline">
             {m.auth_register_backToLogin()}
           </Link>
         </p>
@@ -65,8 +49,7 @@ function Card(props: {
   title: string
   description: string
   cta: string
-  to: '/$lang/auth/register/reader' | '/$lang/auth/register/member'
-  lang: string
+  to: '/auth/register/reader' | '/auth/register/member'
 }) {
   return (
     <div class="bg-white border border-neutral-200 rounded-xl shadow-sm p-6 flex flex-col gap-3">
@@ -74,7 +57,6 @@ function Card(props: {
       <p class="text-sm text-neutral-600 flex-1">{props.description}</p>
       <Link
         to={props.to}
-        params={{ lang: props.lang }}
         class="inline-flex h-10 items-center justify-center rounded-md bg-[#00209F] text-white text-sm font-semibold hover:opacity-95 px-4"
       >
         {props.cta}

@@ -1,7 +1,6 @@
 import type { JSX } from '@solidjs/web'
 import { useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
-import { useLocale } from '../../i18n/context'
 import { type SignUpErrorCode, signUpMember } from '../../lib/auth-actions'
 import { m } from '../../paraglide/messages'
 
@@ -38,7 +37,6 @@ type FieldErrors = Partial<
 
 export default function RegisterMemberForm() {
   const router = useRouter()
-  const locale = useLocale()
   const [submitting, setSubmitting] = createSignal(false)
   const [serverError, setServerError] = createSignal<string | null>(null)
   const [errors, setErrors] = createSignal<FieldErrors>({})
@@ -107,9 +105,7 @@ export default function RegisterMemberForm() {
           <p class="text-sm text-neutral-700">{m.auth_register_success_memberHint()}</p>
           <button
             type="button"
-            onClick={() =>
-              router.navigate({ to: '/$lang/auth/login', params: { lang: locale() } })
-            }
+            onClick={() => router.navigate({ to: '/auth/login' })}
             class="h-11 px-4 rounded-md bg-[#00209F] text-white text-sm font-semibold hover:opacity-95"
           >
             {m.auth_verify_goLogin()}
@@ -164,10 +160,7 @@ export default function RegisterMemberForm() {
             name="essay"
             rows={4}
             class="px-3 py-2 rounded-md border border-neutral-300 bg-white text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
-            placeholder={m.auth_register_common_essayPlaceholder(
-              {},
-              { locale: locale() },
-            )}
+            placeholder={m.auth_register_common_essayPlaceholder()}
           />
         </Field>
 

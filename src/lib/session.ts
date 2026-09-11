@@ -15,7 +15,7 @@ export type SessionUser = {
  * Session for the router context. Runs on the server during SSR so the first
  * paint already knows who is signed in, and over the wire on client navigations.
  *
- * This module is imported by `routes/$lang.tsx` and is therefore CLIENT code.
+ * This module is imported by `routes/_app.tsx` and is therefore CLIENT code.
  * Everything that touches Better Auth lives in `session.server.ts`, which must
  * only ever be reached through a dynamic import inside a server boundary — a
  * static import would pull the whole auth server, with its kysely, sqlite and
