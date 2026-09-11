@@ -1,5 +1,11 @@
 import handler from '@tanstack/solid-start/server-entry'
+import { assertCaptchaConfigured } from './lib/captcha'
 import { paraglideMiddleware } from './paraglide/server.js'
+
+// Fail at boot, not at the first signup. A silently disabled bot defence looks
+// identical to a working one right up until the registration table fills with
+// junk. Same reasoning as the mailer's production guard.
+assertCaptchaConfigured()
 
 /**
  * Server entry.

@@ -163,6 +163,25 @@ Three rules:
 Locally, leaving `RESEND_API_KEY` unset prints mail to the console. In production
 a missing key is a startup failure, on purpose.
 
+## Rate limiting and captcha
+
+**The important thing to know:** Better Auth's rate limiter and captcha plugin
+hook `onRequest`, so they only protect traffic that reaches `/api/auth/*`.
+Sign-in and sign-up go through server functions that call `auth.api.*`
+in-process and never touch that path. Their protection lives in `guard()` in
+`auth-actions.ts`, and any new auth-adjacent server function needs to call it
+too — nothing else will.
+
+Counters are in Postgres (`auth_throttle`), not memory: an in-memory counter
+resets on deploy and is per-instance, so an attacker gets a fresh budget from
+each. `rate_limit` is a separate table owned by Better Auth; its shape is
+dictated by the library, so do not tidy it.
+
+Captcha verification **fails closed**. If Cloudflare is unreachable, registration
+is blocked rather than waved through. Locally, leaving `TURNSTILE_SECRET_KEY`
+unset disables the check entirely; in production its absence is a startup
+failure, same as the mailer.
+
 ## Dependency policy
 
 **Every dependency is pinned to an exact version — no `^`, no `~`, no

@@ -1,4 +1,4 @@
-import { useRouter } from '@tanstack/solid-router'
+import { useRouteContext, useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
 import { type SignUpErrorCode, signUpReader } from '../../lib/auth-actions'
 import {
@@ -8,10 +8,13 @@ import {
   isValidPassword,
 } from '../../lib/validation'
 import { m } from '../../paraglide/messages'
+import Turnstile from './Turnstile'
 
 type MessageFn = () => string
 
 const ERROR_MESSAGE: Record<SignUpErrorCode, MessageFn> = {
+  RATE_LIMITED: m.auth_register_errors_rateLimited,
+  CAPTCHA_FAILED: m.auth_register_errors_captchaFailed,
   INVALID_EMAIL: m.auth_login_errors_emailInvalid,
   INVALID_PASSWORD: m.auth_login_errors_passwordTooShort,
   INVALID_NAME: m.auth_register_errors_nameInvalid,
@@ -32,6 +35,7 @@ const INPUT_CLASS =
 
 export default function RegisterReaderForm() {
   const router = useRouter()
+  const context = useRouteContext({ from: '/_app' })
   const [submitting, setSubmitting] = createSignal(false)
   const [serverError, setServerError] = createSignal<string | null>(null)
   const [errors, setErrors] = createSignal<FieldErrors>({})
@@ -72,6 +76,7 @@ export default function RegisterReaderForm() {
           password: String(fd.get('password') ?? ''),
           dateOfBirth: String(fd.get('dateOfBirth') ?? ''),
           essay: String(fd.get('essay') ?? ''),
+          captchaToken: String(fd.get('captchaToken') ?? '') || undefined,
         },
       })
       if (!result.ok) {
@@ -152,6 +157,8 @@ export default function RegisterReaderForm() {
             {(message) => <span class="text-xs text-[#D21034]">{message()}</span>}
           </Show>
         </label>
+
+        <Turnstile siteKey={context().config.turnstileSiteKey} />
 
         <button
           type="submit"

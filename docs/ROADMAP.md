@@ -64,7 +64,13 @@ auth, uploads, or anything that reads a dossier.
 
 From `SECURITY.md`, in order:
 
-1. Rate limiting on the auth endpoints, and a CAPTCHA on registration.
-2. A verified sending domain in Resend, with SPF, DKIM and DMARC — until then
-   the account is sandboxed and can only mail its own owner.
-3. Retire the mock Google sign-in path.
+1. **A verified sending domain in Resend**, with SPF, DKIM and DMARC. Until then
+   the account is sandboxed and can only mail its own owner, so nobody else can
+   complete registration.
+2. **Turnstile keys** in the deployment environment. The code refuses to start
+   without them in production, which is the intent, but it does mean the deploy
+   fails until they are set.
+3. **Retire the mock Google sign-in path.**
+
+Rate limiting and bot defence landed with the enrollment groundwork — see
+`SECURITY.md` P0 items 2 and 3.

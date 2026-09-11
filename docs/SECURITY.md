@@ -31,9 +31,23 @@ forget — a legitimate senior member account that has been compromised or turne
    activated, and it would look like slow mail rather than absent mail.
    Delivery failures are raised rather than swallowed, because Better Auth
    reports signup as successful either way.
-2. **Rate limiting.** Better Auth ships rate limiting; enable it and add stricter custom
-   rules on sign-in, sign-up, verification and password reset. Add per-IP limits on uploads.
-3. **Bot defence on registration** — Turnstile or hCaptcha, both privacy-respecting.
+2. ~~**Rate limiting.**~~ **DONE, in two layers — and the second is the one that
+   matters.** Better Auth's limiter and its captcha plugin both hook `onRequest`,
+   so they only cover traffic arriving at `/api/auth/*`. Sign-in and sign-up run
+   through server functions calling `auth.api.*` in-process and never touch that
+   path, so those protections would never have fired for them. Better Auth's
+   limiter is enabled with strict per-path rules for what it does cover;
+   `guard()` in `auth-actions.ts` covers the rest, backed by the `auth_throttle`
+   table. Per-IP everywhere, plus a per-email failure counter on sign-in —
+   credential stuffing against one targeted member arrives from many addresses.
+   Counters live in Postgres, not memory, so they survive a deploy and are
+   shared across instances.
+3. ~~**Bot defence on registration**~~ **DONE.** Cloudflare Turnstile, verified
+   server-side in `lib/captcha.ts`. Chosen over reCAPTCHA because it does not
+   profile the visitor: asking Haitians to pass through Google's tracking to
+   prove they are human is the wrong trade for this movement. Verification
+   **fails closed** — a Cloudflare outage blocks registration rather than opening
+   it — and a missing secret is a startup failure in production.
 4. **Fix the orphaned-account bug** in `signUpMember` (see `phases/01-ENROLLMENT.md`).
 5. **Remove the mock Google path before launch.** `mockGoogleSignIn` returning
    `NOT_IMPLEMENTED` is safe today; a half-finished OAuth path shipped to production is not.

@@ -43,6 +43,31 @@ export const auth = betterAuth({
       }
     },
   },
+  /**
+   * Rate limiting for traffic that actually reaches `/api/auth/*` — the
+   * verification callback, OAuth callbacks, anything the client calls directly.
+   *
+   * It does NOT cover sign-in or sign-up: those run through server functions
+   * that call `auth.api.*` in-process and never touch this path. Their
+   * throttling lives in `guard()` in `auth-actions.ts`.
+   *
+   * Stored in the database so limits survive a deploy and are shared across
+   * instances; in memory an attacker gets a fresh budget from each.
+   */
+  rateLimit: {
+    enabled: true,
+    storage: 'database',
+    window: 60,
+    max: 60,
+    customRules: {
+      '/verify-email': { window: 60 * 15, max: 10 },
+      '/send-verification-email': { window: 60 * 60, max: 5 },
+      '/forget-password': { window: 60 * 60, max: 5 },
+      '/reset-password': { window: 60 * 15, max: 10 },
+      '/sign-in/email': { window: 60 * 15, max: 10 },
+      '/sign-up/email': { window: 60 * 60, max: 5 },
+    },
+  },
   // Must stay last: it reads the headers every other plugin has written.
   plugins: [tanstackStartCookies()],
   user: {

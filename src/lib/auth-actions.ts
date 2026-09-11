@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/solid-start'
+import type { RateLimitAction, RateLimitRule } from './rate-limit'
 import {
   EMAIL_RE,
   isValidEssay,
@@ -9,6 +10,7 @@ import {
 } from './validation'
 
 export type SignInErrorCode =
+  | 'RATE_LIMITED'
   | 'INVALID_EMAIL_OR_PASSWORD'
   | 'INVALID_EMAIL'
   | 'INVALID_PASSWORD'
@@ -23,6 +25,8 @@ export type SignInResult =
   | { ok: false; code: SignInErrorCode }
 
 export type SignUpErrorCode =
+  | 'RATE_LIMITED'
+  | 'CAPTCHA_FAILED'
   | 'INVALID_EMAIL'
   | 'INVALID_PASSWORD'
   | 'INVALID_NAME'
@@ -38,6 +42,46 @@ export type SignUpResult =
   | { ok: true; userId: string; needsVerification: boolean }
   | { ok: false; code: SignUpErrorCode }
 
+/**
+ * Throttle and bot-check a request before it reaches Better Auth.
+ *
+ * Better Auth's own rate limiting and captcha plugin hook `onRequest`, so they
+ * only cover traffic that arrives at `/api/auth/*`. These flows call
+ * `auth.api.*` directly from a server function, which never touches that path —
+ * so the protection has to live here or it does not exist at all.
+ */
+async function guard(input: {
+  action: RateLimitAction
+  captchaToken?: string | null
+  extraKey?: string
+  extraRule?: RateLimitRule
+}): Promise<
+  { ok: true; ip: string } | { ok: false; code: 'RATE_LIMITED' | 'CAPTCHA_FAILED' }
+> {
+  const [{ getRequest }, { consume, clientIp, RULES: R }] = await Promise.all([
+    import('@tanstack/solid-start/server'),
+    import('./rate-limit'),
+  ])
+  const headers = getRequest().headers
+  const ip = clientIp(headers)
+
+  const byIp = await consume(`${input.action}:ip:${ip}`, R[input.action])
+  if (!byIp.allowed) return { ok: false, code: 'RATE_LIMITED' }
+
+  if (input.extraKey && input.extraRule) {
+    const extra = await consume(input.extraKey, input.extraRule)
+    if (!extra.allowed) return { ok: false, code: 'RATE_LIMITED' }
+  }
+
+  if (input.captchaToken !== undefined) {
+    const { verifyCaptcha } = await import('./captcha')
+    const result = await verifyCaptcha(input.captchaToken, ip)
+    if (!result.ok) return { ok: false, code: 'CAPTCHA_FAILED' }
+  }
+
+  return { ok: true, ip }
+}
+
 export const signInWithPassword = createServerFn({ method: 'POST' })
   .inputValidator((data: { email: string; password: string }) => {
     if (!data || typeof data.email !== 'string' || typeof data.password !== 'string') {
@@ -49,6 +93,19 @@ export const signInWithPassword = createServerFn({ method: 'POST' })
     return { email, password: data.password }
   })
   .handler(async ({ data }): Promise<SignInResult> => {
+    const { RULES } = await import('./rate-limit')
+    // Per-email as well as per-IP: credential stuffing against one targeted
+    // member is exactly the threat here, and it arrives from many addresses.
+    // Only failures count, and a success clears it, so this cannot be used to
+    // lock a member out of their own account by guessing at them.
+    const emailKey = `sign-in:email:${data.email}`
+    const gate = await guard({
+      action: 'signIn',
+      extraKey: emailKey,
+      extraRule: RULES.signInPerEmail,
+    })
+    if (!gate.ok) return { ok: false, code: gate.code as 'RATE_LIMITED' }
+
     const [{ getRequest }, { APIError }, { auth }] = await Promise.all([
       import('@tanstack/solid-start/server'),
       import('better-auth/api'),
@@ -59,6 +116,8 @@ export const signInWithPassword = createServerFn({ method: 'POST' })
         body: { email: data.email, password: data.password },
         headers: getRequest().headers,
       })
+      const { reset } = await import('./rate-limit')
+      await reset(emailKey)
       return {
         ok: true,
         user: {
@@ -85,6 +144,7 @@ export const signUpReader = createServerFn({ method: 'POST' })
       password: string
       dateOfBirth: string
       essay: string
+      captchaToken?: string
     }) => {
       if (!data || typeof data !== 'object') throw new Error('Invalid payload.')
       const name = (data.name ?? '').trim()
@@ -103,10 +163,17 @@ export const signUpReader = createServerFn({ method: 'POST' })
         password: data.password,
         dateOfBirth: dob.toISOString(),
         essay,
+        captchaToken: data.captchaToken,
       }
     },
   )
   .handler(async ({ data }): Promise<SignUpResult> => {
+    const gate = await guard({
+      action: 'signUp',
+      captchaToken: data.captchaToken ?? null,
+    })
+    if (!gate.ok) return { ok: false, code: gate.code }
+
     return await runSignUp({
       name: data.name,
       email: data.email,
@@ -148,6 +215,7 @@ export const signUpMember = createServerFn({ method: 'POST' })
       cv: file('cv'),
       vision: file('vision'),
       contribution: file('contribution'),
+      captchaToken: get('captchaToken') || undefined,
     }
   })
   .handler(async ({ data }): Promise<SignUpResult> => {
@@ -160,6 +228,12 @@ export const signUpMember = createServerFn({ method: 'POST' })
     const { db } = await import('./db')
     const { memberApplication } = await import('./db/schema')
     const { randomUUID } = await import('node:crypto')
+
+    const gate = await guard({
+      action: 'signUp',
+      captchaToken: data.captchaToken ?? null,
+    })
+    if (!gate.ok) return { ok: false, code: gate.code }
 
     // Validate and hold every file in memory BEFORE creating the account.
     // Creating the user first meant a failed upload left a stranded account
@@ -238,6 +312,10 @@ export const resendVerificationEmail = createServerFn({ method: 'POST' })
     return { email }
   })
   .handler(async ({ data }): Promise<{ ok: boolean }> => {
+    // Unthrottled, this is a free way to mail-bomb any address on demand.
+    const gate = await guard({ action: 'resendVerification' })
+    if (!gate.ok) return { ok: false }
+
     const [{ getRequest }, { auth }] = await Promise.all([
       import('@tanstack/solid-start/server'),
       import('./auth'),

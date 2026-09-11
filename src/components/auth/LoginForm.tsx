@@ -7,6 +7,7 @@ import { m } from '../../paraglide/messages'
 type MessageFn = () => string
 
 const ERROR_MESSAGE: Record<SignInErrorCode, MessageFn> = {
+  RATE_LIMITED: m.auth_login_errors_rateLimited,
   INVALID_EMAIL_OR_PASSWORD: m.auth_login_errors_invalidCredentials,
   INVALID_EMAIL: m.auth_login_errors_emailInvalid,
   INVALID_PASSWORD: m.auth_login_errors_passwordTooShort,

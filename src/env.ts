@@ -27,4 +27,15 @@ export const env = {
   get EMAIL_FROM() {
     return process.env.EMAIL_FROM
   },
+  /**
+   * Cloudflare Turnstile. The site key is public and reaches the browser; the
+   * secret key must not. Both absent in development disables the captcha;
+   * `assertCaptchaConfigured()` refuses that in production.
+   */
+  get TURNSTILE_SITE_KEY() {
+    return process.env.TURNSTILE_SITE_KEY
+  },
+  get TURNSTILE_SECRET_KEY() {
+    return process.env.TURNSTILE_SECRET_KEY
+  },
 }

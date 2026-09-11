@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet } from '@tanstack/solid-router'
+import { fetchPublicConfig } from '../lib/public-config'
 import { fetchSessionUser } from '../lib/session'
 
 /**
@@ -10,7 +11,10 @@ import { fetchSessionUser } from '../lib/session'
  * written once at their plain path.
  */
 export const Route = createFileRoute('/_app')({
-  beforeLoad: async () => ({ user: await fetchSessionUser() }),
+  beforeLoad: async () => {
+    const [user, config] = await Promise.all([fetchSessionUser(), fetchPublicConfig()])
+    return { user, config }
+  },
   component: AppLayout,
 })
 
