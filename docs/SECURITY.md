@@ -23,9 +23,14 @@ forget — a legitimate senior member account that has been compromised or turne
 
 ## P0 — Before a single real user registers
 
-1. **Real transactional email.** `src/lib/auth.ts` currently `console.log`s the verification
-   link. Until a real provider is wired in, email verification is decorative and anyone can
-   register any address.
+1. ~~**Real transactional email.**~~ **DONE.** Resend is wired in via
+   `src/lib/email/`. Verification mail is sent in the recipient's own language,
+   resolved from the request scope. Without `RESEND_API_KEY` and `EMAIL_FROM`
+   the mailer prints to the console in development and **refuses to start in
+   production** — a silent no-op there would mean no account could ever be
+   activated, and it would look like slow mail rather than absent mail.
+   Delivery failures are raised rather than swallowed, because Better Auth
+   reports signup as successful either way.
 2. **Rate limiting.** Better Auth ships rate limiting; enable it and add stricter custom
    rules on sign-in, sign-up, verification and password reset. Add per-IP limits on uploads.
 3. **Bot defence on registration** — Turnstile or hCaptcha, both privacy-respecting.

@@ -22,7 +22,25 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
-      console.log(`[auth] Email verification link for ${user.email}: ${url}`)
+      const [{ getMailer }, { renderVerificationEmail }, { resolveRequestLocale }] =
+        await Promise.all([
+          import('./email/mailer'),
+          import('./email/templates'),
+          import('./email/locale'),
+        ])
+      const locale = resolveRequestLocale()
+      const message = renderVerificationEmail({
+        name: user.name,
+        url,
+        locale,
+      })
+      const result = await getMailer().send({ to: user.email, ...message })
+      if (!result.ok) {
+        // Surface it: Better Auth reports signup as successful either way, and
+        // a silently undelivered verification email looks to the applicant like
+        // the account simply never worked.
+        throw new Error(`Could not send verification email: ${result.error}`)
+      }
     },
   },
   // Must stay last: it reads the headers every other plugin has written.

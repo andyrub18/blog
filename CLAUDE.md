@@ -139,6 +139,25 @@ unless `E2E_DATABASE` is set, so the suite is green in CI without a database.
 Test the rule, not the implementation. The upload tests assert that a ZIP
 labelled `application/pdf` is rejected; that is the actual security property.
 
+## Email
+
+Transactional mail goes through `src/lib/email/`. Templates are pure functions
+returning `{ subject, html, text }`; the transport is chosen once from the
+environment. Locale comes from the request scope, so people get mail in the
+language they were using.
+
+Three rules:
+
+- **Escape anything user-supplied** before putting it in the HTML body. Display
+  names come from public registration.
+- **Never log the message body or a verification URL.** That link grants account
+  access and logs are read by more people than the inbox.
+- **Keep the copy in `messages/*.json`**, not inline, so the i18n parity test
+  catches a missing translation.
+
+Locally, leaving `RESEND_API_KEY` unset prints mail to the console. In production
+a missing key is a startup failure, on purpose.
+
 ## Dependency policy
 
 **Every dependency is pinned to an exact version — no `^`, no `~`, no

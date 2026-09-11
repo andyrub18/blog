@@ -16,4 +16,15 @@ export const env = {
   get BETTER_AUTH_URL() {
     return process.env.BETTER_AUTH_URL ?? 'http://localhost:3000'
   },
+  /**
+   * Resend credentials. Optional in development — without them the mailer
+   * prints to the console (see `lib/email/mailer.ts`) — but `getMailer()`
+   * refuses to start in production unless both are present.
+   */
+  get RESEND_API_KEY() {
+    return process.env.RESEND_API_KEY
+  },
+  get EMAIL_FROM() {
+    return process.env.EMAIL_FROM
+  },
 }

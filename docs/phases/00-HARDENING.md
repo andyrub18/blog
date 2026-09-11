@@ -116,10 +116,28 @@ The i18n test is the one to keep: it fails if any message key is missing,
 orphaned, blank, or has mismatched placeholders in any locale — the failure mode
 where a Creole reader is silently served French.
 
+## Transactional email
+
+Resend, wired through `src/lib/email/`:
+
+- `templates.ts` — pure render functions returning `{ subject, html, text }`,
+  so they are directly testable. The body is deliberately plain: no images, no
+  web fonts, no tracking pixel. Readers on metered Haitian mobile data should not
+  pay for decoration, and mail that loads no remote resources cannot be used to
+  confirm that an address is live.
+- `mailer.ts` — Resend transport, with a console transport for local development
+  and a hard failure in production if credentials are missing.
+- `locale.ts` — reads the locale from Paraglide's request scope, so a Creole
+  reader is not sent a French verification email.
+
+Email copy lives in `messages/*.json` like every other string, which means the
+existing i18n parity test fails if a Creole translation is forgotten.
+
+Display names are escaped before interpolation: they come from public
+registration and are untrusted.
+
 ## Not done in this phase
 
-- Real transactional email. **This is the top P0 in `../SECURITY.md`** and must
-  land before any real user registers; verification is currently a console log.
 - Rate limiting, CAPTCHA on registration.
 - The role rename to `senior_member` (D2) — phase 1.5, needs a migration.
 - Raising the password minimum and essay minimum, and moving to birth year — all
