@@ -1,7 +1,7 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { tanstackStartCookies } from 'better-auth/tanstack-start/solid'
 import { env } from '../env'
+import { tanstackStartCookies } from './auth-cookies'
 import { db } from './db'
 import * as schema from './db/schema'
 
@@ -22,11 +22,11 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
-      console.log(
-        `[auth] Email verification link for ${user.email}: ${url}`,
-      )
+      console.log(`[auth] Email verification link for ${user.email}: ${url}`)
     },
   },
+  // Must stay last: it reads the headers every other plugin has written.
+  plugins: [tanstackStartCookies()],
   user: {
     additionalFields: {
       role: {
@@ -52,6 +52,4 @@ export const auth = betterAuth({
       },
     },
   },
-  plugins: [tanstackStartCookies()],
 })
-

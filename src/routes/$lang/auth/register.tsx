@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
-import { useI18n } from '../../../i18n/context'
+import { m } from '../../../paraglide/messages'
 
 const ensureGuest = createServerFn({ method: 'GET' })
   .inputValidator((data: { lang: string }) => data)
   .handler(async ({ data }) => {
-    const { redirectIfAuthenticated } = await import('../../../lib/session')
+    const { redirectIfAuthenticated } = await import('../../../lib/session.server')
     await redirectIfAuthenticated(data.lang)
   })
 
@@ -16,7 +16,6 @@ export const Route = createFileRoute('/$lang/auth/register')({
 })
 
 function RegisterChooser() {
-  const { tx: t } = useI18n()
   const params = Route.useParams()
   return (
     <main class="min-h-screen flex items-center justify-center bg-linear-to-br from-neutral-50 via-white to-neutral-100 px-4 py-12">
@@ -26,24 +25,24 @@ function RegisterChooser() {
         </div>
         <div class="flex flex-col items-center gap-3 mb-8">
           <h1 class="text-2xl font-bold text-neutral-900 text-center">
-            {t('auth.register.chooserTitle')}
+            {m.auth_register_chooserTitle()}
           </h1>
           <p class="text-sm text-neutral-600 text-center max-w-md">
-            {t('auth.register.chooserSubtitle')}
+            {m.auth_register_chooserSubtitle()}
           </p>
         </div>
         <div class="grid gap-4 sm:grid-cols-2">
           <Card
-            title={t('auth.register.readerTitle')}
-            description={t('auth.register.readerDescription')}
-            cta={t('auth.register.readerCta')}
+            title={m.auth_register_readerTitle()}
+            description={m.auth_register_readerDescription()}
+            cta={m.auth_register_readerCta()}
             to="/$lang/auth/register/reader"
             lang={params().lang}
           />
           <Card
-            title={t('auth.register.memberTitle')}
-            description={t('auth.register.memberDescription')}
-            cta={t('auth.register.memberCta')}
+            title={m.auth_register_memberTitle()}
+            description={m.auth_register_memberDescription()}
+            cta={m.auth_register_memberCta()}
             to="/$lang/auth/register/member"
             lang={params().lang}
           />
@@ -54,7 +53,7 @@ function RegisterChooser() {
             params={{ lang: params().lang }}
             class="font-medium text-[#00209F] hover:underline"
           >
-            {t('auth.register.backToLogin')}
+            {m.auth_register_backToLogin()}
           </Link>
         </p>
       </div>

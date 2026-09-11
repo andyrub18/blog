@@ -2,12 +2,12 @@ import { createFileRoute, Link } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import LoginForm from '../../../components/auth/LoginForm'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
-import { useI18n } from '../../../i18n/context'
+import { m } from '../../../paraglide/messages'
 
 const ensureGuest = createServerFn({ method: 'GET' })
   .inputValidator((data: { lang: string }) => data)
   .handler(async ({ data }) => {
-    const { redirectIfAuthenticated } = await import('../../../lib/session')
+    const { redirectIfAuthenticated } = await import('../../../lib/session.server')
     await redirectIfAuthenticated(data.lang)
   })
 
@@ -17,7 +17,6 @@ export const Route = createFileRoute('/$lang/auth/login')({
 })
 
 function LoginPage() {
-  const { t } = useI18n()
   const params = Route.useParams()
   return (
     <main class="min-h-screen flex items-center justify-center bg-linear-to-br from-neutral-50 via-white to-neutral-100 px-4 py-12">
@@ -29,14 +28,14 @@ function LoginPage() {
         <div class="flex flex-col items-center gap-3 mb-8">
           <img
             src="/kleLogo.jpeg"
-            alt={t('common.appName')}
+            alt={m.common_appName()}
             class="h-20 w-20 rounded-full object-cover ring-4 ring-white shadow-md"
           />
           <h1 class="text-2xl font-bold text-neutral-900 text-center">
-            {t('auth.login.title')}
+            {m.auth_login_title()}
           </h1>
           <p class="text-sm text-neutral-600 text-center max-w-xs">
-            {t('auth.login.subtitle')}
+            {m.auth_login_subtitle()}
           </p>
         </div>
 
@@ -45,13 +44,13 @@ function LoginPage() {
         </div>
 
         <p class="mt-6 text-center text-sm text-neutral-600">
-          {t('auth.login.noAccount')}{' '}
+          {m.auth_login_noAccount()}{' '}
           <Link
             to="/$lang/auth/register"
             params={{ lang: params().lang }}
             class="font-medium text-[#00209F] hover:underline"
           >
-            {t('auth.login.register')}
+            {m.auth_login_register()}
           </Link>
         </p>
 

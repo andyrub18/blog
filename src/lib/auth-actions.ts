@@ -1,4 +1,12 @@
 import { createServerFn } from '@tanstack/solid-start'
+import {
+  EMAIL_RE,
+  isValidEssay,
+  isValidName,
+  isValidPassword,
+  meetsMinimumAge,
+  parseDateOfBirth,
+} from './validation'
 
 export type SignInErrorCode =
   | 'INVALID_EMAIL_OR_PASSWORD'
@@ -29,17 +37,6 @@ export type SignUpErrorCode =
 export type SignUpResult =
   | { ok: true; userId: string; needsVerification: boolean }
   | { ok: false; code: SignUpErrorCode }
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const MIN_AGE_YEARS = 13
-const MIN_ESSAY_CHARS = 50
-
-function isAdult(dob: Date): boolean {
-  const now = new Date()
-  const age = now.getFullYear() - dob.getFullYear() -
-    (now < new Date(now.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0)
-  return age >= MIN_AGE_YEARS
-}
 
 export const signInWithPassword = createServerFn({ method: 'POST' })
   .inputValidator((data: { email: string; password: string }) => {
@@ -93,15 +90,13 @@ export const signUpReader = createServerFn({ method: 'POST' })
       const name = (data.name ?? '').trim()
       const email = (data.email ?? '').trim().toLowerCase()
       const essay = (data.essay ?? '').trim()
-      if (name.length < 2) throw new Error('INVALID_NAME')
+      if (!isValidName(name)) throw new Error('INVALID_NAME')
       if (!EMAIL_RE.test(email)) throw new Error('INVALID_EMAIL')
-      if (typeof data.password !== 'string' || data.password.length < 8) {
-        throw new Error('INVALID_PASSWORD')
-      }
-      const dob = data.dateOfBirth ? new Date(data.dateOfBirth) : null
-      if (!dob || Number.isNaN(dob.getTime())) throw new Error('INVALID_DATE_OF_BIRTH')
-      if (!isAdult(dob)) throw new Error('TOO_YOUNG')
-      if (essay.length < MIN_ESSAY_CHARS) throw new Error('INVALID_ESSAY')
+      if (!isValidPassword(data.password)) throw new Error('INVALID_PASSWORD')
+      const dob = parseDateOfBirth(data.dateOfBirth)
+      if (!dob) throw new Error('INVALID_DATE_OF_BIRTH')
+      if (!meetsMinimumAge(dob)) throw new Error('TOO_YOUNG')
+      if (!isValidEssay(essay)) throw new Error('INVALID_ESSAY')
       return {
         name,
         email,
@@ -137,13 +132,13 @@ export const signUpMember = createServerFn({ method: 'POST' })
     const password = get('password')
     const essay = get('essay').trim()
     const dobRaw = get('dateOfBirth')
-    if (name.length < 2) throw new Error('INVALID_NAME')
+    if (!isValidName(name)) throw new Error('INVALID_NAME')
     if (!EMAIL_RE.test(email)) throw new Error('INVALID_EMAIL')
-    if (password.length < 8) throw new Error('INVALID_PASSWORD')
-    const dob = dobRaw ? new Date(dobRaw) : null
-    if (!dob || Number.isNaN(dob.getTime())) throw new Error('INVALID_DATE_OF_BIRTH')
-    if (!isAdult(dob)) throw new Error('TOO_YOUNG')
-    if (essay.length < MIN_ESSAY_CHARS) throw new Error('INVALID_ESSAY')
+    if (!isValidPassword(password)) throw new Error('INVALID_PASSWORD')
+    const dob = parseDateOfBirth(dobRaw)
+    if (!dob) throw new Error('INVALID_DATE_OF_BIRTH')
+    if (!meetsMinimumAge(dob)) throw new Error('TOO_YOUNG')
+    if (!isValidEssay(essay)) throw new Error('INVALID_ESSAY')
     return {
       name,
       email,
@@ -156,10 +151,35 @@ export const signUpMember = createServerFn({ method: 'POST' })
     }
   })
   .handler(async ({ data }): Promise<SignUpResult> => {
-    const { saveMemberApplicationPdf, UploadError } = await import('./uploads')
+    const {
+      stageApplicationPdf,
+      commitApplicationPdf,
+      discardApplicationUploads,
+      UploadError,
+    } = await import('./uploads')
     const { db } = await import('./db')
     const { memberApplication } = await import('./db/schema')
     const { randomUUID } = await import('node:crypto')
+
+    // Validate and hold every file in memory BEFORE creating the account.
+    // Creating the user first meant a failed upload left a stranded account
+    // with no application, which could never be completed or re-applied for.
+    let staged: Array<Awaited<ReturnType<typeof stageApplicationPdf>>>
+    try {
+      staged = [
+        await stageApplicationPdf('cv', data.cv),
+        await stageApplicationPdf('vision', data.vision),
+        await stageApplicationPdf('contribution', data.contribution),
+      ]
+    } catch (err) {
+      if (err instanceof UploadError) {
+        return {
+          ok: false,
+          code: err.code === 'FILE_TOO_LARGE' ? 'PDF_TOO_LARGE' : 'INVALID_PDF',
+        }
+      }
+      return { ok: false, code: 'UNEXPECTED' }
+    }
 
     const result = await runSignUp({
       name: data.name,
@@ -170,17 +190,11 @@ export const signUpMember = createServerFn({ method: 'POST' })
     })
     if (!result.ok) return result
 
+    // The account now exists. If anything below fails we must undo it, or the
+    // applicant is stuck with an account they cannot attach an application to.
     try {
-      const cvPath = await saveMemberApplicationPdf(result.userId, 'cv', data.cv)
-      const visionEssayPath = await saveMemberApplicationPdf(
-        result.userId,
-        'vision',
-        data.vision,
-      )
-      const contributionEssayPath = await saveMemberApplicationPdf(
-        result.userId,
-        'contribution',
-        data.contribution,
+      const [cvPath, visionEssayPath, contributionEssayPath] = await Promise.all(
+        staged.map((file) => commitApplicationPdf(result.userId, file)),
       )
       await db.insert(memberApplication).values({
         id: randomUUID(),
@@ -190,13 +204,8 @@ export const signUpMember = createServerFn({ method: 'POST' })
         contributionEssayPath,
       })
       return result
-    } catch (err) {
-      if (err instanceof UploadError) {
-        return {
-          ok: false,
-          code: err.code === 'FILE_TOO_LARGE' ? 'PDF_TOO_LARGE' : 'INVALID_PDF',
-        }
-      }
+    } catch {
+      await rollbackFailedApplication(result.userId, discardApplicationUploads)
       return { ok: false, code: 'UNEXPECTED' }
     }
   })
@@ -243,6 +252,30 @@ export const resendVerificationEmail = createServerFn({ method: 'POST' })
       return { ok: false }
     }
   })
+
+/**
+ * Undo a member signup whose application could not be stored.
+ *
+ * Better Auth creates the user outside our database transaction, so true
+ * atomicity is not available. The next best thing is a compensating delete so
+ * the applicant can simply try again with the same email address.
+ */
+async function rollbackFailedApplication(
+  userId: string,
+  discardUploads: (userId: string) => Promise<void>,
+): Promise<void> {
+  try {
+    await discardUploads(userId)
+    const [{ db }, { user }, { eq }] = await Promise.all([
+      import('./db'),
+      import('./db/schema'),
+      import('drizzle-orm'),
+    ])
+    await db.delete(user).where(eq(user.id, userId))
+  } catch {
+    // Nothing further we can do here; the audit log is the backstop.
+  }
+}
 
 async function runSignUp(input: {
   name: string
@@ -297,6 +330,3 @@ const KNOWN_SIGNIN_CODES: ReadonlySet<SignInErrorCode> = new Set([
 function isKnownSignInCode(value: unknown): value is SignInErrorCode {
   return typeof value === 'string' && KNOWN_SIGNIN_CODES.has(value as SignInErrorCode)
 }
-
-
-

@@ -1,14 +1,15 @@
+import { HydrationScript } from '@solidjs/web'
 import {
+  createRootRouteWithContext,
   HeadContent,
   Outlet,
   Scripts,
-  createRootRouteWithContext,
+  useLocation,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+import { Loading } from 'solid-js'
 
-import { HydrationScript } from 'solid-js/web'
-import { Suspense } from 'solid-js'
-
+import { DEFAULT_LOCALE, isLocale } from '../i18n'
 import styleCss from '../styles.css?url'
 
 export const Route = createRootRouteWithContext()({
@@ -24,17 +25,31 @@ export const Route = createRootRouteWithContext()({
 })
 
 function RootComponent() {
+  const location = useLocation()
+
+  /**
+   * The document language, taken from the `/$lang` path prefix.
+   *
+   * This matters more here than on a monolingual site: screen readers pick
+   * pronunciation from it, and search engines use it to decide which audience a
+   * page serves. Getting it wrong means a Creole page announced in French.
+   */
+  const lang = () => {
+    const first = location().pathname.split('/').filter(Boolean)[0]
+    return isLocale(first) ? first : DEFAULT_LOCALE
+  }
+
   return (
-    <html>
+    <html lang={lang()}>
       <head>
         <HydrationScript />
         <HeadContent />
       </head>
       <body>
-        <Suspense>
+        <Loading>
           <Outlet />
           <TanStackRouterDevtools />
-        </Suspense>
+        </Loading>
         <Scripts />
       </body>
     </html>

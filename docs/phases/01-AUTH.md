@@ -1,12 +1,18 @@
 # First phase: Authentication
 
 For the first phase, we'll lay out our authentication. This is a role based authorization control system.
-The roles we have are as follow:
+> **Superseded in part.** The role names below are the original draft. The
+> settled vocabulary is in `../DECISIONS.md` (D2): `core_member` becomes
+> `senior_member`, matching the manifesto's *membres séniors*. The rename lands
+> in phase 1.5, before articles exist. Enrollment and promotion are specified in
+> `02-ENROLLMENT.md`.
 
-- Super admin: The dev, the conceptor of the system
-- Core member: A core member of the organization that can validate documents to publish, can remove other writers document, can comment before publication for correction, can remove comment on forum, can block another member for misconduct, can register a member or another core member
-- Member: A member of the organization that can write articles and can comment on the forums
-- Reader: A reader can register himself with minimal KYC. They can only read article and comment on the forum
+The roles are:
+
+- **Super admin** (`super_admin`): the developer and operator of the system.
+- **Senior member** (`senior_member`, Manm senyò): validates articles for publication, removes submissions, comments before publication for correction, moderates the forum, blocks accounts for misconduct, and reviews membership applications.
+- **Member** (`member`, Manm): proposes articles and reviews when assigned.
+- **Reader** (`reader`, Lektè): registers with minimal KYC; reads everything and participates in the forum.
 
 ## Library
 

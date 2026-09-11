@@ -1,17 +1,18 @@
-import { For } from 'solid-js'
 import { useLocation, useRouter } from '@tanstack/solid-router'
-import { LOCALES, type Locale } from '../i18n'
-import { useI18n } from '../i18n/context'
+import { For } from 'solid-js'
+import { LOCALE_LABELS, LOCALES, type Locale } from '../i18n'
+import { useLocale } from '../i18n/context'
 import { setLocaleCookie } from '../i18n/detect'
+import { m } from '../paraglide/messages'
 
 export default function LanguageSwitcher() {
-  const { locale, t } = useI18n()
+  const locale = useLocale()
   const router = useRouter()
   const location = useLocation()
 
   function pathWithoutLocale() {
     const segments = location().pathname.split('/').filter(Boolean)
-    return '/' + segments.slice(1).join('/')
+    return `/${segments.slice(1).join('/')}`
   }
 
   async function handleChange(next: Locale) {
@@ -23,10 +24,9 @@ export default function LanguageSwitcher() {
   }
 
   return (
-    <div
+    <fieldset
       class="inline-flex items-center gap-1 rounded-md border border-neutral-200 bg-white p-0.5 text-xs"
-      role="group"
-      aria-label={t('common.switchLanguage')}
+      aria-label={m.common_switchLanguage()}
     >
       <For each={LOCALES}>
         {(code) => (
@@ -40,10 +40,10 @@ export default function LanguageSwitcher() {
             }
             aria-current={code === locale() ? 'true' : undefined}
           >
-            {t(`common.languages.${code}` as 'common.languages.fr')}
+            {LOCALE_LABELS[code]}
           </button>
         )}
       </For>
-    </div>
+    </fieldset>
   )
 }

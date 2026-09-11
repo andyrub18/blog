@@ -1,11 +1,12 @@
-import { createSignal, Show } from 'solid-js'
 import { useRouter } from '@tanstack/solid-router'
+import { createSignal, Show } from 'solid-js'
+import { useLocale } from '../../i18n/context'
 import { signOut } from '../../lib/auth-actions'
-import { useI18n } from '../../i18n/context'
+import { m } from '../../paraglide/messages'
 
 export default function LogoutButton(props: { class?: string }) {
   const router = useRouter()
-  const { tx: t, locale } = useI18n()
+  const locale = useLocale()
   const [loading, setLoading] = createSignal(false)
 
   async function onClick() {
@@ -29,8 +30,8 @@ export default function LogoutButton(props: { class?: string }) {
         'h-9 px-4 text-sm font-medium border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60'
       }
     >
-      <Show when={loading()} fallback={t('common.logout')}>
-        {t('auth.login.submitting')}
+      <Show when={loading()} fallback={m.common_logout()}>
+        {m.auth_login_submitting()}
       </Show>
     </button>
   )

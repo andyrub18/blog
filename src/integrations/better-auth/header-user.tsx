@@ -1,42 +1,34 @@
+import { useRouteContext } from '@tanstack/solid-router'
 import { Show } from 'solid-js'
-import { authClient } from '../../lib/auth-client'
+import LogoutButton from '../../components/auth/LogoutButton'
 
+/**
+ * Header identity chip. The session comes from the `/$lang` route context,
+ * which is resolved on the server, so there is no loading skeleton and no
+ * flash of signed-out state on first paint.
+ */
 export default function BetterAuthHeader() {
-  const session = authClient.useSession()
+  const context = useRouteContext({ from: '/$lang' })
 
   return (
-    <Show
-      when={!session().isPending}
-      fallback={
-        <div class="h-8 w-8 bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
-      }
-    >
-      <Show when={session().data?.user}>
-        {(user) => (
-          <div class="flex items-center gap-2">
-            <Show
-              when={user().image}
-              fallback={
-                <div class="h-8 w-8 bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-                  <span class="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                    {user().name?.charAt(0).toUpperCase() || 'U'}
-                  </span>
-                </div>
-              }
-            >
-              {(image) => <img src={image()} alt="" class="h-8 w-8" />}
-            </Show>
-            <button
-              onClick={() => {
-                void authClient.signOut()
-              }}
-              class="flex-1 h-9 px-4 text-sm font-medium bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-            >
-              Sign out
-            </button>
-          </div>
-        )}
-      </Show>
+    <Show when={context().user}>
+      {(user) => (
+        <div class="flex items-center gap-2">
+          <Show
+            when={user().image}
+            fallback={
+              <div class="flex h-8 w-8 items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+                <span class="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                  {user().name?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </div>
+            }
+          >
+            {(image) => <img src={image()} alt="" class="h-8 w-8" />}
+          </Show>
+          <LogoutButton />
+        </div>
+      )}
     </Show>
   )
 }

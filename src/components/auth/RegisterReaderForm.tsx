@@ -1,70 +1,102 @@
-import { createSignal, Show } from 'solid-js'
-import { createForm } from '@tanstack/solid-form'
 import { useRouter } from '@tanstack/solid-router'
-import { signUpReader, type SignUpErrorCode } from '../../lib/auth-actions'
-import { useI18n } from '../../i18n/context'
+import { createSignal, Show } from 'solid-js'
+import { useLocale } from '../../i18n/context'
+import { type SignUpErrorCode, signUpReader } from '../../lib/auth-actions'
+import {
+  isValidEmail,
+  isValidEssay,
+  isValidName,
+  isValidPassword,
+} from '../../lib/validation'
+import { m } from '../../paraglide/messages'
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+type MessageFn = () => string
 
-const ERROR_KEY: Record<SignUpErrorCode, string> = {
-  INVALID_EMAIL: 'auth.login.errors.emailInvalid',
-  INVALID_PASSWORD: 'auth.login.errors.passwordTooShort',
-  INVALID_NAME: 'auth.register.errors.nameInvalid',
-  INVALID_DATE_OF_BIRTH: 'auth.register.errors.dobInvalid',
-  TOO_YOUNG: 'auth.register.errors.tooYoung',
-  INVALID_ESSAY: 'auth.register.errors.essayTooShort',
-  INVALID_PDF: 'auth.register.errors.invalidPdf',
-  PDF_TOO_LARGE: 'auth.register.errors.pdfTooLarge',
-  EMAIL_ALREADY_EXISTS: 'auth.register.errors.emailExists',
-  UNEXPECTED: 'auth.register.errors.unexpected',
+const ERROR_MESSAGE: Record<SignUpErrorCode, MessageFn> = {
+  INVALID_EMAIL: m.auth_login_errors_emailInvalid,
+  INVALID_PASSWORD: m.auth_login_errors_passwordTooShort,
+  INVALID_NAME: m.auth_register_errors_nameInvalid,
+  INVALID_DATE_OF_BIRTH: m.auth_register_errors_dobInvalid,
+  TOO_YOUNG: m.auth_register_errors_tooYoung,
+  INVALID_ESSAY: m.auth_register_errors_essayTooShort,
+  INVALID_PDF: m.auth_register_errors_invalidPdf,
+  PDF_TOO_LARGE: m.auth_register_errors_pdfTooLarge,
+  EMAIL_ALREADY_EXISTS: m.auth_register_errors_emailExists,
+  UNEXPECTED: m.auth_register_errors_unexpected,
 }
 
-type Values = {
-  name: string
-  email: string
-  password: string
-  dateOfBirth: string
-  essay: string
-}
+type Field = 'name' | 'email' | 'password' | 'dateOfBirth' | 'essay'
+type FieldErrors = Partial<Record<Field, string>>
+
+const INPUT_CLASS =
+  'h-11 px-3 rounded-md border border-neutral-300 bg-white text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20'
 
 export default function RegisterReaderForm() {
   const router = useRouter()
-  const { tx: t, locale } = useI18n()
+  const locale = useLocale()
+  const [submitting, setSubmitting] = createSignal(false)
   const [serverError, setServerError] = createSignal<string | null>(null)
+  const [errors, setErrors] = createSignal<FieldErrors>({})
   const [success, setSuccess] = createSignal(false)
 
-  const form = createForm(() => ({
-    defaultValues: {
-      name: '',
-      email: '',
-      password: '',
-      dateOfBirth: '',
-      essay: '',
-    } as Values,
-    onSubmit: async ({ value }) => {
-      setServerError(null)
-      try {
-        const result = await signUpReader({ data: value })
-        if (!result.ok) {
-          setServerError(t(ERROR_KEY[result.code] as 'auth.register.errors.unexpected'))
-          return
-        }
-        setSuccess(true)
-        router.invalidate()
-      } catch {
-        setServerError(t('auth.register.errors.unexpected'))
+  function validate(fd: FormData): FieldErrors {
+    const errs: FieldErrors = {}
+    const name = String(fd.get('name') ?? '')
+    const email = String(fd.get('email') ?? '')
+    const password = String(fd.get('password') ?? '')
+    const dateOfBirth = String(fd.get('dateOfBirth') ?? '')
+    const essay = String(fd.get('essay') ?? '')
+    if (!isValidName(name)) errs.name = m.auth_register_errors_nameInvalid()
+    if (!isValidEmail(email)) errs.email = m.auth_login_errors_emailInvalid()
+    if (!isValidPassword(password)) {
+      errs.password = m.auth_login_errors_passwordTooShort()
+    }
+    if (!dateOfBirth) errs.dateOfBirth = m.auth_register_errors_dobRequired()
+    if (!isValidEssay(essay)) errs.essay = m.auth_register_errors_essayTooShort()
+    return errs
+  }
+
+  async function onSubmit(e: SubmitEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const fd = new FormData(e.currentTarget as HTMLFormElement)
+    const errs = validate(fd)
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) return
+
+    setSubmitting(true)
+    setServerError(null)
+    try {
+      const result = await signUpReader({
+        data: {
+          name: String(fd.get('name') ?? ''),
+          email: String(fd.get('email') ?? ''),
+          password: String(fd.get('password') ?? ''),
+          dateOfBirth: String(fd.get('dateOfBirth') ?? ''),
+          essay: String(fd.get('essay') ?? ''),
+        },
+      })
+      if (!result.ok) {
+        setServerError(ERROR_MESSAGE[result.code]())
+        return
       }
-    },
-  }))
+      setSuccess(true)
+      router.invalidate()
+    } catch {
+      setServerError(m.auth_register_errors_unexpected())
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <Show
       when={!success()}
       fallback={
         <SuccessPanel
-          title={t('auth.register.success.title')}
-          hint={t('auth.register.success.verifyHint')}
-          loginCta={t('auth.verify.goLogin')}
+          title={m.auth_register_success_title()}
+          hint={m.auth_register_success_verifyHint()}
+          loginCta={m.auth_verify_goLogin()}
           onLogin={() =>
             router.navigate({ to: '/$lang/auth/login', params: { lang: locale() } })
           }
@@ -73,141 +105,74 @@ export default function RegisterReaderForm() {
     >
       <form
         class="flex flex-col gap-4"
-        onSubmit={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          void form.handleSubmit()
-        }}
+        onSubmit={(e) => void onSubmit(e)}
         novalidate
+        aria-describedby="register-status"
       >
-        <form.Field
+        <TextInput
           name="name"
-          validators={{
-            onChange: ({ value }) =>
-              !value || value.trim().length < 2
-                ? t('auth.register.errors.nameInvalid')
-                : undefined,
-          }}
-        >
-          {(field) => (
-            <TextInput
-              field={field()}
-              type="text"
-              autocomplete="name"
-              label={t('auth.register.common.name')}
-              placeholder={t('auth.register.common.namePlaceholder')}
-            />
-          )}
-        </form.Field>
-
-        <form.Field
+          type="text"
+          autocomplete="name"
+          label={m.auth_register_common_name()}
+          placeholder={m.auth_register_common_namePlaceholder()}
+          error={errors().name}
+        />
+        <TextInput
           name="email"
-          validators={{
-            onChange: ({ value }) =>
-              !value
-                ? t('auth.login.errors.emailRequired')
-                : !EMAIL_RE.test(value)
-                  ? t('auth.login.errors.emailInvalid')
-                  : undefined,
-          }}
-        >
-          {(field) => (
-            <TextInput
-              field={field()}
-              type="email"
-              autocomplete="email"
-              label={t('auth.login.email')}
-              placeholder={t('auth.login.emailPlaceholder')}
-            />
-          )}
-        </form.Field>
-
-        <form.Field
+          type="email"
+          autocomplete="email"
+          label={m.auth_login_email()}
+          placeholder={m.auth_login_emailPlaceholder()}
+          error={errors().email}
+        />
+        <TextInput
           name="password"
-          validators={{
-            onChange: ({ value }) =>
-              !value
-                ? t('auth.login.errors.passwordRequired')
-                : value.length < 8
-                  ? t('auth.login.errors.passwordTooShort')
-                  : undefined,
-          }}
-        >
-          {(field) => (
-            <TextInput
-              field={field()}
-              type="password"
-              autocomplete="new-password"
-              label={t('auth.login.password')}
-              placeholder={t('auth.login.passwordPlaceholder')}
-            />
-          )}
-        </form.Field>
-
-        <form.Field
+          type="password"
+          autocomplete="new-password"
+          label={m.auth_login_password()}
+          placeholder={m.auth_login_passwordPlaceholder()}
+          error={errors().password}
+        />
+        <TextInput
           name="dateOfBirth"
-          validators={{
-            onChange: ({ value }) =>
-              !value ? t('auth.register.errors.dobRequired') : undefined,
-          }}
-        >
-          {(field) => (
-            <TextInput
-              field={field()}
-              type="date"
-              label={t('auth.register.common.dateOfBirth')}
-            />
-          )}
-        </form.Field>
+          type="date"
+          label={m.auth_register_common_dateOfBirth()}
+          error={errors().dateOfBirth}
+        />
 
-        <form.Field
-          name="essay"
-          validators={{
-            onChange: ({ value }) =>
-              !value || value.trim().length < 50
-                ? t('auth.register.errors.essayTooShort')
-                : undefined,
-          }}
-        >
-          {(field) => (
-            <label class="flex flex-col gap-1 text-sm">
-              <span class="font-medium text-neutral-800">
-                {t('auth.register.common.essay')}
-              </span>
-              <textarea
-                id={field().name}
-                name={field().name}
-                rows={5}
-                value={field().state.value}
-                onBlur={field().handleBlur}
-                onInput={(e) => field().handleChange(e.currentTarget.value)}
-                class="px-3 py-2 rounded-md border border-neutral-300 bg-white text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
-                placeholder={t('auth.register.common.essayPlaceholder')}
-              />
-              <FieldError field={field()} />
-            </label>
-          )}
-        </form.Field>
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium text-neutral-800">
+            {m.auth_register_common_essay()}
+          </span>
+          <textarea
+            id="essay"
+            name="essay"
+            rows="5"
+            class="rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+            placeholder={m.auth_register_common_essayPlaceholder(
+              {},
+              { locale: locale() },
+            )}
+            aria-invalid={errors().essay ? 'true' : undefined}
+          />
+          <Show when={errors().essay}>
+            {(message) => <span class="text-xs text-[#D21034]">{message()}</span>}
+          </Show>
+        </label>
 
-        <form.Subscribe
-          selector={(s) => ({ canSubmit: s.canSubmit, isSubmitting: s.isSubmitting })}
+        <button
+          type="submit"
+          disabled={submitting()}
+          class="h-11 rounded-md bg-linear-to-r from-[#00209F] to-[#D21034] text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-95 disabled:opacity-60"
         >
-          {(state) => (
-            <button
-              type="submit"
-              disabled={!state().canSubmit}
-              class="h-11 rounded-md bg-linear-to-r from-[#00209F] to-[#D21034] text-white text-sm font-semibold shadow-sm hover:opacity-95 disabled:opacity-60 transition-opacity"
-            >
-              {state().isSubmitting
-                ? t('auth.register.common.submitting')
-                : t('auth.register.common.submit')}
-            </button>
-          )}
-        </form.Subscribe>
+          {submitting()
+            ? m.auth_register_common_submitting()
+            : m.auth_register_common_submit()}
+        </button>
 
-        <div aria-live="polite" class="min-h-5 text-sm">
+        <div id="register-status" aria-live="polite" class="min-h-5 text-sm">
           <Show when={serverError()}>
-            <p class="text-[#D21034]">{serverError()}</p>
+            {(message) => <p class="text-[#D21034]">{message()}</p>}
           </Show>
         </div>
       </form>
@@ -216,49 +181,29 @@ export default function RegisterReaderForm() {
 }
 
 function TextInput(props: {
-  field: {
-    name: string
-    state: { value: string; meta: { isTouched: boolean; errors: Array<unknown> } }
-    handleBlur: () => void
-    handleChange: (value: string) => void
-  }
+  name: string
   type: string
   label: string
   placeholder?: string
   autocomplete?: string
+  error?: string
 }) {
   return (
     <label class="flex flex-col gap-1 text-sm">
       <span class="font-medium text-neutral-800">{props.label}</span>
       <input
-        id={props.field.name}
-        name={props.field.name}
+        id={props.name}
+        name={props.name}
         type={props.type}
         autocomplete={props.autocomplete}
-        value={props.field.state.value}
-        onBlur={props.field.handleBlur}
-        onInput={(e) => props.field.handleChange(e.currentTarget.value)}
-        class="h-11 px-3 rounded-md border border-neutral-300 bg-white text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+        class={INPUT_CLASS}
         placeholder={props.placeholder}
+        aria-invalid={props.error ? 'true' : undefined}
       />
-      <FieldError field={props.field} />
+      <Show when={props.error}>
+        {(message) => <span class="text-xs text-[#D21034]">{message()}</span>}
+      </Show>
     </label>
-  )
-}
-
-function FieldError(props: {
-  field: { state: { meta: { isTouched: boolean; errors: Array<unknown> } } }
-}) {
-  return (
-    <Show
-      when={
-        props.field.state.meta.isTouched && props.field.state.meta.errors.length
-      }
-    >
-      <span class="text-xs text-[#D21034]">
-        {String(props.field.state.meta.errors[0])}
-      </span>
-    </Show>
   )
 }
 
@@ -275,7 +220,7 @@ function SuccessPanel(props: {
       <button
         type="button"
         onClick={props.onLogin}
-        class="h-11 px-4 rounded-md bg-[#00209F] text-white text-sm font-semibold hover:opacity-95"
+        class="h-11 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95"
       >
         {props.loginCta}
       </button>

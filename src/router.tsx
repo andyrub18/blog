@@ -1,7 +1,6 @@
 import { createRouter as createTanStackRouter } from '@tanstack/solid-router'
-import { routeTree } from './routeTree.gen'
-
 import { getContext } from './integrations/tanstack-query/provider'
+import { routeTree } from './routeTree.gen'
 
 export function getRouter() {
   const router = createTanStackRouter({

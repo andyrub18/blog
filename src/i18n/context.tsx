@@ -1,34 +1,22 @@
-import { createContext, useContext, type ParentComponent } from 'solid-js'
-import { resolveTemplate, translator } from '@solid-primitives/i18n'
-import { getFlatDictionary, type FlatDict, type Locale } from './index'
+import { createContext, type ParentProps, useContext } from 'solid-js'
+import type { Locale } from './index'
 
-type Translate = ReturnType<typeof translator<FlatDict>>
+/**
+ * Carries the active locale down the tree.
+ *
+ * Messages themselves are NOT held here. They are imported directly from the
+ * Paraglide-generated module and called with an explicit `{ locale }`, which
+ * keeps them tree-shakable and avoids any request-shared global locale state
+ * during SSR (two requests in different languages must never interfere).
+ */
+const LocaleContext = createContext<() => Locale>()
 
-type I18nValue = {
-  locale: () => Locale
-  t: Translate
-  tx: (key: Parameters<Translate>[0]) => string
+export function I18nProvider(props: ParentProps<{ locale: Locale }>) {
+  return <LocaleContext value={() => props.locale}>{props.children}</LocaleContext>
 }
 
-const I18nContext = createContext<I18nValue>()
-
-export const I18nProvider: ParentComponent<{ locale: Locale }> = (props) => {
-  const dict = () => getFlatDictionary(props.locale)
-  const t = translator(dict, resolveTemplate)
-  const tx: I18nValue['tx'] = (key) => {
-    const v = t(key as Parameters<Translate>[0])
-    return typeof v === 'string' ? v : ''
-  }
-  const value: I18nValue = {
-    locale: () => props.locale,
-    t,
-    tx,
-  }
-  return <I18nContext.Provider value={value}>{props.children}</I18nContext.Provider>
-}
-
-export function useI18n(): I18nValue {
-  const ctx = useContext(I18nContext)
-  if (!ctx) throw new Error('useI18n must be used within an I18nProvider')
+export function useLocale(): () => Locale {
+  const ctx = useContext(LocaleContext)
+  if (!ctx) throw new Error('useLocale must be used within an I18nProvider')
   return ctx
 }

@@ -1,4 +1,4 @@
-import { redirect } from '@tanstack/solid-router'
+import { createServerFn } from '@tanstack/solid-start'
 import type { Role } from './db/schema'
 
 export type SessionUser = {
@@ -11,42 +11,20 @@ export type SessionUser = {
   image?: string | null
 }
 
-export async function getSession() {
-  const [{ getRequest }, { auth }] = await Promise.all([
-    import('@tanstack/solid-start/server'),
-    import('./auth'),
-  ])
-  const session = await auth.api.getSession({
-    headers: getRequest().headers,
-  })
-  return session as
-    | { user: SessionUser; session: { id: string; userId: string } }
-    | null
-}
-
-export async function requireUser(lang = 'fr'): Promise<SessionUser> {
-  const session = await getSession()
-  if (!session?.user) {
-    throw redirect({ to: '/$lang/auth/login', params: { lang } })
-  }
-  return session.user
-}
-
-export async function requireRole(
-  roles: Array<Role>,
-  lang = 'fr',
-): Promise<SessionUser> {
-  const user = await requireUser(lang)
-  if (!roles.includes(user.role)) {
-    throw redirect({ to: '/$lang', params: { lang } })
-  }
-  return user
-}
-
-export async function redirectIfAuthenticated(lang = 'fr'): Promise<void> {
-  const session = await getSession()
-  if (session?.user) {
-    throw redirect({ to: '/$lang', params: { lang } })
-  }
-}
-
+/**
+ * Session for the router context. Runs on the server during SSR so the first
+ * paint already knows who is signed in, and over the wire on client navigations.
+ *
+ * This module is imported by `routes/$lang.tsx` and is therefore CLIENT code.
+ * Everything that touches Better Auth lives in `session.server.ts`, which must
+ * only ever be reached through a dynamic import inside a server boundary — a
+ * static import would pull the whole auth server, with its kysely, sqlite and
+ * postgres adapters, into the browser bundle (measured: ~136 KB gzipped).
+ */
+export const fetchSessionUser = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<SessionUser | null> => {
+    const { getSession } = await import('./session.server')
+    const session = await getSession()
+    return session?.user ?? null
+  },
+)

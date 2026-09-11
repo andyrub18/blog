@@ -9,24 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LangRouteImport } from './routes/$lang'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LangRouteImport } from './routes/$lang'
 import { Route as LangIndexRouteImport } from './routes/$lang/index'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as LangAuthVerifyRouteImport } from './routes/$lang/auth/verify'
-import { Route as LangAuthRegisterRouteImport } from './routes/$lang/auth/register'
 import { Route as LangAuthLoginRouteImport } from './routes/$lang/auth/login'
-import { Route as LangAuthRegisterReaderRouteImport } from './routes/$lang/auth/register/reader'
+import { Route as LangAuthRegisterRouteImport } from './routes/$lang/auth/register'
+import { Route as LangAuthVerifyRouteImport } from './routes/$lang/auth/verify'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as LangAuthRegisterMemberRouteImport } from './routes/$lang/auth/register/member'
+import { Route as LangAuthRegisterReaderRouteImport } from './routes/$lang/auth/register/reader'
 
-const LangRoute = LangRouteImport.update({
-  id: '/$lang',
-  path: '/$lang',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LangRoute = LangRouteImport.update({
+  id: '/$lang',
+  path: '/$lang',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LangIndexRoute = LangIndexRouteImport.update({
@@ -34,14 +34,9 @@ const LangIndexRoute = LangIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LangRoute,
 } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LangAuthVerifyRoute = LangAuthVerifyRouteImport.update({
-  id: '/auth/verify',
-  path: '/auth/verify',
+const LangAuthLoginRoute = LangAuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
   getParentRoute: () => LangRoute,
 } as any)
 const LangAuthRegisterRoute = LangAuthRegisterRouteImport.update({
@@ -49,19 +44,24 @@ const LangAuthRegisterRoute = LangAuthRegisterRouteImport.update({
   path: '/auth/register',
   getParentRoute: () => LangRoute,
 } as any)
-const LangAuthLoginRoute = LangAuthLoginRouteImport.update({
-  id: '/auth/login',
-  path: '/auth/login',
+const LangAuthVerifyRoute = LangAuthVerifyRouteImport.update({
+  id: '/auth/verify',
+  path: '/auth/verify',
   getParentRoute: () => LangRoute,
 } as any)
-const LangAuthRegisterReaderRoute = LangAuthRegisterReaderRouteImport.update({
-  id: '/reader',
-  path: '/reader',
-  getParentRoute: () => LangAuthRegisterRoute,
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LangAuthRegisterMemberRoute = LangAuthRegisterMemberRouteImport.update({
   id: '/member',
   path: '/member',
+  getParentRoute: () => LangAuthRegisterRoute,
+} as any)
+const LangAuthRegisterReaderRoute = LangAuthRegisterReaderRouteImport.update({
+  id: '/reader',
+  path: '/reader',
   getParentRoute: () => LangAuthRegisterRoute,
 } as any)
 
@@ -141,18 +141,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/$lang': {
-      id: '/$lang'
-      path: '/$lang'
-      fullPath: '/$lang'
-      preLoaderRoute: typeof LangRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$lang': {
+      id: '/$lang'
+      path: '/$lang'
+      fullPath: '/$lang'
+      preLoaderRoute: typeof LangRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$lang/': {
@@ -162,18 +162,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof LangIndexRouteImport
       parentRoute: typeof LangRoute
     }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/$lang/auth/verify': {
-      id: '/$lang/auth/verify'
-      path: '/auth/verify'
-      fullPath: '/$lang/auth/verify'
-      preLoaderRoute: typeof LangAuthVerifyRouteImport
+    '/$lang/auth/login': {
+      id: '/$lang/auth/login'
+      path: '/auth/login'
+      fullPath: '/$lang/auth/login'
+      preLoaderRoute: typeof LangAuthLoginRouteImport
       parentRoute: typeof LangRoute
     }
     '/$lang/auth/register': {
@@ -183,25 +176,32 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof LangAuthRegisterRouteImport
       parentRoute: typeof LangRoute
     }
-    '/$lang/auth/login': {
-      id: '/$lang/auth/login'
-      path: '/auth/login'
-      fullPath: '/$lang/auth/login'
-      preLoaderRoute: typeof LangAuthLoginRouteImport
+    '/$lang/auth/verify': {
+      id: '/$lang/auth/verify'
+      path: '/auth/verify'
+      fullPath: '/$lang/auth/verify'
+      preLoaderRoute: typeof LangAuthVerifyRouteImport
       parentRoute: typeof LangRoute
     }
-    '/$lang/auth/register/reader': {
-      id: '/$lang/auth/register/reader'
-      path: '/reader'
-      fullPath: '/$lang/auth/register/reader'
-      preLoaderRoute: typeof LangAuthRegisterReaderRouteImport
-      parentRoute: typeof LangAuthRegisterRoute
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/$lang/auth/register/member': {
       id: '/$lang/auth/register/member'
       path: '/member'
       fullPath: '/$lang/auth/register/member'
       preLoaderRoute: typeof LangAuthRegisterMemberRouteImport
+      parentRoute: typeof LangAuthRegisterRoute
+    }
+    '/$lang/auth/register/reader': {
+      id: '/$lang/auth/register/reader'
+      path: '/reader'
+      fullPath: '/$lang/auth/register/reader'
+      preLoaderRoute: typeof LangAuthRegisterReaderRouteImport
       parentRoute: typeof LangAuthRegisterRoute
     }
   }
@@ -246,10 +246,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/solid-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/solid-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

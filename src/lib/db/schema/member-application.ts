@@ -1,11 +1,7 @@
 import { pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 import { user } from './auth'
 
-export const MEMBER_APPLICATION_STATUSES = [
-  'pending',
-  'approved',
-  'rejected',
-] as const
+export const MEMBER_APPLICATION_STATUSES = ['pending', 'approved', 'rejected'] as const
 export type MemberApplicationStatus = (typeof MEMBER_APPLICATION_STATUSES)[number]
 
 export const memberApplication = pgTable('member_application', {
