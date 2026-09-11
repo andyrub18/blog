@@ -25,7 +25,7 @@
     "test:db": "vitest run --project=db"
   },
   "dependencies": {
-    "@inlang/paraglide-js": "2.25.1",
+    "@inlang/paraglide-js": "2.23.2",
     "@solidjs/web": "2.0.0-rc.8",
     "@tailwindcss/vite": "4.3.3",
     "@tanstack/solid-query": "6.0.0-rc.3",

@@ -30,6 +30,15 @@ function Home() {
             <p class="mt-4 text-sm text-neutral-600">
               {user().email} · {user().role}
             </p>
+            {/* Reviewers need a way into the queue. */}
+            <Show when={user().role === 'senior_member' || user().role === 'super_admin'}>
+              <Link
+                to="/review"
+                class="mt-4 mr-2 inline-flex h-10 items-center justify-center rounded-md border border-neutral-300 px-4 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+              >
+                {m.review_nav()}
+              </Link>
+            </Show>
             {/* The promotion path: read and take part first, then apply. */}
             <Show when={user().role === 'reader'}>
               <Link

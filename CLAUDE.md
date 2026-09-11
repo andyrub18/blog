@@ -77,6 +77,14 @@ If the build fails with `[import-protection] Import denied in client
 environment`, this is what happened. `createServerOnlyFn` is the escape hatch
 when the code must live in a shared module.
 
+**Reading a dossier is logged, always.** `lib/dossier.ts` writes an
+`access_event` for every file read, and `fetchApplication` logs opening an
+application. These are CVs and political essays belonging to people organising in
+Haiti; the only honest basis for telling a member their file is not circulating
+is being able to say who opened it and when. Never add a read path that skips
+the log. Dossiers are also served as attachments, never inline — a PDF rendered
+in the browser can carry active content.
+
 **Authorise inside every server function, not only in route guards.** A route
 guard is UX. A `createServerFn` is a public HTTP endpoint and must re-check the
 caller's role itself, every time.

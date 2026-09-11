@@ -15,7 +15,10 @@ import { Route as AppApplyRouteImport } from './routes/_app/apply'
 import { Route as AppAuthLoginRouteImport } from './routes/_app/auth/login'
 import { Route as AppAuthRegisterRouteImport } from './routes/_app/auth/register'
 import { Route as AppAuthVerifyRouteImport } from './routes/_app/auth/verify'
+import { Route as AppReviewIndexRouteImport } from './routes/_app/review/index'
+import { Route as AppReviewApplicationIdRouteImport } from './routes/_app/review/$applicationId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiDossierSplatRouteImport } from './routes/api/dossier/$'
 import { Route as AppAuthRegisterIndexRouteImport } from './routes/_app/auth/register/index'
 import { Route as AppAuthRegisterMemberRouteImport } from './routes/_app/auth/register/member'
 import { Route as AppAuthRegisterReaderRouteImport } from './routes/_app/auth/register/reader'
@@ -49,9 +52,24 @@ const AppAuthVerifyRoute = AppAuthVerifyRouteImport.update({
   path: '/auth/verify',
   getParentRoute: () => AppRoute,
 } as any)
+const AppReviewIndexRoute = AppReviewIndexRouteImport.update({
+  id: '/review/',
+  path: '/review/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReviewApplicationIdRoute = AppReviewApplicationIdRouteImport.update({
+  id: '/review/$applicationId',
+  path: '/review/$applicationId',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDossierSplatRoute = ApiDossierSplatRouteImport.update({
+  id: '/api/dossier/$',
+  path: '/api/dossier/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppAuthRegisterIndexRoute = AppAuthRegisterIndexRouteImport.update({
@@ -76,7 +94,10 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AppAuthLoginRoute
   '/auth/register': typeof AppAuthRegisterRouteWithChildren
   '/auth/verify': typeof AppAuthVerifyRoute
+  '/review/$applicationId': typeof AppReviewApplicationIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dossier/$': typeof ApiDossierSplatRoute
+  '/review/': typeof AppReviewIndexRoute
   '/auth/register/member': typeof AppAuthRegisterMemberRoute
   '/auth/register/reader': typeof AppAuthRegisterReaderRoute
   '/auth/register/': typeof AppAuthRegisterIndexRoute
@@ -86,7 +107,10 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/auth/login': typeof AppAuthLoginRoute
   '/auth/verify': typeof AppAuthVerifyRoute
+  '/review/$applicationId': typeof AppReviewApplicationIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dossier/$': typeof ApiDossierSplatRoute
+  '/review': typeof AppReviewIndexRoute
   '/auth/register/member': typeof AppAuthRegisterMemberRoute
   '/auth/register/reader': typeof AppAuthRegisterReaderRoute
   '/auth/register': typeof AppAuthRegisterIndexRoute
@@ -99,7 +123,10 @@ export interface FileRoutesById {
   '/_app/auth/login': typeof AppAuthLoginRoute
   '/_app/auth/register': typeof AppAuthRegisterRouteWithChildren
   '/_app/auth/verify': typeof AppAuthVerifyRoute
+  '/_app/review/$applicationId': typeof AppReviewApplicationIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dossier/$': typeof ApiDossierSplatRoute
+  '/_app/review/': typeof AppReviewIndexRoute
   '/_app/auth/register/member': typeof AppAuthRegisterMemberRoute
   '/_app/auth/register/reader': typeof AppAuthRegisterReaderRoute
   '/_app/auth/register/': typeof AppAuthRegisterIndexRoute
@@ -112,7 +139,10 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/verify'
+    | '/review/$applicationId'
     | '/api/auth/$'
+    | '/api/dossier/$'
+    | '/review/'
     | '/auth/register/member'
     | '/auth/register/reader'
     | '/auth/register/'
@@ -122,7 +152,10 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/login'
     | '/auth/verify'
+    | '/review/$applicationId'
     | '/api/auth/$'
+    | '/api/dossier/$'
+    | '/review'
     | '/auth/register/member'
     | '/auth/register/reader'
     | '/auth/register'
@@ -134,7 +167,10 @@ export interface FileRouteTypes {
     | '/_app/auth/login'
     | '/_app/auth/register'
     | '/_app/auth/verify'
+    | '/_app/review/$applicationId'
     | '/api/auth/$'
+    | '/api/dossier/$'
+    | '/_app/review/'
     | '/_app/auth/register/member'
     | '/_app/auth/register/reader'
     | '/_app/auth/register/'
@@ -143,6 +179,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiDossierSplatRoute: typeof ApiDossierSplatRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -189,11 +226,32 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AppAuthVerifyRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/review/': {
+      id: '/_app/review/'
+      path: '/review'
+      fullPath: '/review/'
+      preLoaderRoute: typeof AppReviewIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/review/$applicationId': {
+      id: '/_app/review/$applicationId'
+      path: '/review/$applicationId'
+      fullPath: '/review/$applicationId'
+      preLoaderRoute: typeof AppReviewApplicationIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dossier/$': {
+      id: '/api/dossier/$'
+      path: '/api/dossier/$'
+      fullPath: '/api/dossier/$'
+      preLoaderRoute: typeof ApiDossierSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/auth/register/': {
@@ -242,6 +300,8 @@ interface AppRouteChildren {
   AppAuthLoginRoute: typeof AppAuthLoginRoute
   AppAuthRegisterRoute: typeof AppAuthRegisterRouteWithChildren
   AppAuthVerifyRoute: typeof AppAuthVerifyRoute
+  AppReviewApplicationIdRoute: typeof AppReviewApplicationIdRoute
+  AppReviewIndexRoute: typeof AppReviewIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -250,6 +310,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppAuthLoginRoute: AppAuthLoginRoute,
   AppAuthRegisterRoute: AppAuthRegisterRouteWithChildren,
   AppAuthVerifyRoute: AppAuthVerifyRoute,
+  AppReviewApplicationIdRoute: AppReviewApplicationIdRoute,
+  AppReviewIndexRoute: AppReviewIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -257,6 +319,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiDossierSplatRoute: ApiDossierSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

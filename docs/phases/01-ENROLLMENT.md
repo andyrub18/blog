@@ -1,10 +1,15 @@
 # Phase 1 — Enrollment and promotion
 
-> **Status: partially built.** The schema (role rename, probation fields, audit
-> tables), the reader-to-member promotion path (`/apply`), and the eligibility
-> rules are implemented and covered by Postgres integration tests. Still to
-> build: the senior-member review queue, probation confirmation, promotion by
-> qualified majority, invitations, and blocking.
+> **Status: mostly built.** Implemented and covered by Postgres integration
+> tests: the schema (role rename, probation fields, audit tables), the
+> reader-to-member promotion path (`/apply`), the eligibility rules, and the
+> senior-member review queue with approve / reject / request-more-information,
+> promotion on approval, the six-month probation clock, and an authorised,
+> access-logged dossier download.
+>
+> Still to build: probation confirmation decisions, promotion to senior member by
+> qualified majority, invitations (cooptation), and blocking. The UI is
+> deliberately plain for now.
 
 The membership ladder in the app must be the membership ladder in the manifesto, using the
 same words in all four languages. Otherwise people carry a translation table in their heads
