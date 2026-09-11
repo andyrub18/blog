@@ -22,6 +22,13 @@
       "when": 1789156626238,
       "tag": "0002_rate_limiting",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789158219265,
+      "tag": "0003_enrollment",
+      "breakpoints": true
     }
   ]
 }

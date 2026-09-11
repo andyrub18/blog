@@ -13,6 +13,12 @@ export const MIN_PASSWORD_LENGTH = 8
 export const MIN_NAME_LENGTH = 2
 export const MIN_ESSAY_CHARS = 50
 
+/**
+ * The contribution plan is what the six-month probation review is measured
+ * against, so it has to say something concrete enough to evaluate.
+ */
+export const MIN_CONTRIBUTION_PLAN_CHARS = 200
+
 /** Minimum age to hold any account. Not adulthood — a safeguarding floor. */
 export const MIN_ACCOUNT_AGE_YEARS = 13
 

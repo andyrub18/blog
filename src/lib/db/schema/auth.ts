@@ -1,7 +1,26 @@
 import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 
-export const ROLES = ['super_admin', 'core_member', 'member', 'reader'] as const
+/**
+ * The membership ladder, in the manifesto's own vocabulary (DECISIONS.md, D2).
+ *
+ * `senior_member` is *manm senyò* — the admission committee. `member` is *manm*,
+ * admitted by dossier. `reader` is *lektè*. Using the movement's words here
+ * means nobody has to keep a translation table in their head.
+ */
+export const ROLES = ['super_admin', 'senior_member', 'member', 'reader'] as const
 export type Role = (typeof ROLES)[number]
+
+/** Ascending authority, for "at least this role" checks. */
+export const ROLE_RANK: Record<Role, number> = {
+  reader: 0,
+  member: 1,
+  senior_member: 2,
+  super_admin: 3,
+}
+
+export function hasAtLeastRole(role: Role, minimum: Role): boolean {
+  return ROLE_RANK[role] >= ROLE_RANK[minimum]
+}
 
 export const MEMBER_STATUSES = ['active', 'pending', 'rejected', 'blocked'] as const
 export type MemberStatus = (typeof MEMBER_STATUSES)[number]
@@ -16,6 +35,16 @@ export const user = pgTable('user', {
   memberStatus: text('member_status').$type<MemberStatus>().notNull().default('active'),
   dateOfBirth: timestamp('date_of_birth', { mode: 'date' }),
   essay: text('essay'),
+  /** Set when a member is admitted; the probation clock starts here. */
+  memberSince: timestamp('member_since', { withTimezone: true }),
+  /**
+   * End of the manifesto's six-month probation. While this is in the future the
+   * member is admitted but not yet confirmed; the circle evaluates them against
+   * their contribution plan when it passes.
+   */
+  probationUntil: timestamp('probation_until', { withTimezone: true }),
+  /** Senior member who vouched, when the account arrived by cooptation. */
+  sponsoredBy: text('sponsored_by'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })

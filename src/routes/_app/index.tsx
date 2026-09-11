@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/solid-router'
+import { createFileRoute, Link } from '@tanstack/solid-router'
 import { Show } from 'solid-js'
 import LogoutButton from '../../components/auth/LogoutButton'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
@@ -26,9 +26,20 @@ function Home() {
       <p class="text-lg text-neutral-700">{m.auth_login_subtitle()}</p>
       <Show when={context().user}>
         {(user) => (
-          <p class="mt-4 text-sm text-neutral-600">
-            {user().email} · {user().role}
-          </p>
+          <>
+            <p class="mt-4 text-sm text-neutral-600">
+              {user().email} · {user().role}
+            </p>
+            {/* The promotion path: read and take part first, then apply. */}
+            <Show when={user().role === 'reader'}>
+              <Link
+                to="/apply"
+                class="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95"
+              >
+                {m.apply_cta()}
+              </Link>
+            </Show>
+          </>
         )}
       </Show>
     </div>

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppApplyRouteImport } from './routes/_app/apply'
 import { Route as AppAuthLoginRouteImport } from './routes/_app/auth/login'
 import { Route as AppAuthRegisterRouteImport } from './routes/_app/auth/register'
 import { Route as AppAuthVerifyRouteImport } from './routes/_app/auth/verify'
@@ -26,6 +27,11 @@ const AppRoute = AppRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppApplyRoute = AppApplyRouteImport.update({
+  id: '/apply',
+  path: '/apply',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAuthLoginRoute = AppAuthLoginRouteImport.update({
@@ -66,6 +72,7 @@ const AppAuthRegisterReaderRoute = AppAuthRegisterReaderRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/apply': typeof AppApplyRoute
   '/auth/login': typeof AppAuthLoginRoute
   '/auth/register': typeof AppAuthRegisterRouteWithChildren
   '/auth/verify': typeof AppAuthVerifyRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/auth/register/': typeof AppAuthRegisterIndexRoute
 }
 export interface FileRoutesByTo {
+  '/apply': typeof AppApplyRoute
   '/': typeof AppIndexRoute
   '/auth/login': typeof AppAuthLoginRoute
   '/auth/verify': typeof AppAuthVerifyRoute
@@ -86,6 +94,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/_app/apply': typeof AppApplyRoute
   '/_app/': typeof AppIndexRoute
   '/_app/auth/login': typeof AppAuthLoginRoute
   '/_app/auth/register': typeof AppAuthRegisterRouteWithChildren
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/apply'
     | '/auth/login'
     | '/auth/register'
     | '/auth/verify'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/auth/register/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/apply'
     | '/'
     | '/auth/login'
     | '/auth/verify'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/_app/apply'
     | '/_app/'
     | '/_app/auth/login'
     | '/_app/auth/register'
@@ -147,6 +159,13 @@ declare module '@tanstack/solid-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/apply': {
+      id: '/_app/apply'
+      path: '/apply'
+      fullPath: '/apply'
+      preLoaderRoute: typeof AppApplyRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/auth/login': {
@@ -218,6 +237,7 @@ const AppAuthRegisterRouteWithChildren = AppAuthRegisterRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppApplyRoute: typeof AppApplyRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAuthLoginRoute: typeof AppAuthLoginRoute
   AppAuthRegisterRoute: typeof AppAuthRegisterRouteWithChildren
@@ -225,6 +245,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppApplyRoute: AppApplyRoute,
   AppIndexRoute: AppIndexRoute,
   AppAuthLoginRoute: AppAuthLoginRoute,
   AppAuthRegisterRoute: AppAuthRegisterRouteWithChildren,

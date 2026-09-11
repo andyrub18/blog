@@ -1,4 +1,4 @@
-# Phase 4 — Document handling
+# Phase 3 — Document handling
 
 There are two upload paths in this application and they have opposite security postures.
 Keeping them separate is the whole design.

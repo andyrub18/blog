@@ -5,6 +5,7 @@ import {
   isValidEssay,
   isValidName,
   isValidPassword,
+  MIN_CONTRIBUTION_PLAN_CHARS,
   meetsMinimumAge,
   parseDateOfBirth,
 } from './validation'
@@ -41,6 +42,21 @@ export type SignUpErrorCode =
 export type SignUpResult =
   | { ok: true; userId: string; needsVerification: boolean }
   | { ok: false; code: SignUpErrorCode }
+
+export type ApplyErrorCode =
+  | 'NOT_SIGNED_IN'
+  | 'ALREADY_MEMBER'
+  | 'APPLICATION_OPEN'
+  | 'EMAIL_UNVERIFIED'
+  | 'INVALID_PLAN'
+  | 'INVALID_PDF'
+  | 'PDF_TOO_LARGE'
+  | 'RATE_LIMITED'
+  | 'UNEXPECTED'
+
+export type ApplyResult =
+  | { ok: true; applicationId: string }
+  | { ok: false; code: ApplyErrorCode }
 
 /**
  * Throttle and bot-check a request before it reaches Better Auth.
@@ -409,3 +425,91 @@ const KNOWN_SIGNIN_CODES: ReadonlySet<SignInErrorCode> = new Set([
 function isKnownSignInCode(value: unknown): value is SignInErrorCode {
   return typeof value === 'string' && KNOWN_SIGNIN_CODES.has(value as SignInErrorCode)
 }
+
+/**
+ * Apply for membership from an account that already exists.
+ *
+ * The promotion path a reader takes after taking part for a while. Distinct
+ * from `signUpMember`, which creates an account and an application together —
+ * calling that as an existing reader fails with EMAIL_ALREADY_EXISTS, because
+ * Better Auth will not create a second account for the same address.
+ *
+ * No captcha, for the same reason the member registration form has none: three
+ * PDFs and a human review are a better filter than a challenge. The applicant is
+ * also already signed in and email-verified, which is stronger evidence still.
+ */
+export const applyForMembership = createServerFn({ method: 'POST' })
+  .inputValidator((formData: FormData) => {
+    if (!(formData instanceof FormData)) throw new Error('Invalid payload.')
+    const file = (k: string) => {
+      const v = formData.get(k)
+      return v instanceof File ? v : null
+    }
+    const plan = String(formData.get('contributionPlan') ?? '').trim()
+    if (plan.length < MIN_CONTRIBUTION_PLAN_CHARS) throw new Error('INVALID_PLAN')
+    return {
+      contributionPlan: plan,
+      cv: file('cv'),
+      vision: file('vision'),
+      contribution: file('contribution'),
+    }
+  })
+  .handler(async ({ data }): Promise<ApplyResult> => {
+    const gate = await guard({ action: 'signUp' })
+    if (!gate.ok) return { ok: false, code: 'RATE_LIMITED' }
+
+    const { getSession } = await import('./session.server')
+    const session = await getSession()
+    if (!session?.user) return { ok: false, code: 'NOT_SIGNED_IN' }
+
+    const { checkEligibility, createApplication } = await import('./enrollment')
+    const eligibility = await checkEligibility({
+      id: session.user.id,
+      role: session.user.role,
+      emailVerified: session.user.emailVerified,
+    })
+    if (!eligibility.eligible) return { ok: false, code: eligibility.reason }
+
+    const {
+      stageApplicationPdf,
+      commitApplicationPdf,
+      discardApplicationUploads,
+      UploadError,
+    } = await import('./uploads')
+
+    // Validate every file before writing anything, exactly as the registration
+    // path does: a half-written application is worse than a refused one.
+    let staged: Array<Awaited<ReturnType<typeof stageApplicationPdf>>>
+    try {
+      staged = [
+        await stageApplicationPdf('cv', data.cv),
+        await stageApplicationPdf('vision', data.vision),
+        await stageApplicationPdf('contribution', data.contribution),
+      ]
+    } catch (err) {
+      if (err instanceof UploadError) {
+        return {
+          ok: false,
+          code: err.code === 'FILE_TOO_LARGE' ? 'PDF_TOO_LARGE' : 'INVALID_PDF',
+        }
+      }
+      return { ok: false, code: 'UNEXPECTED' }
+    }
+
+    try {
+      const [cvPath, visionEssayPath, contributionEssayPath] = await Promise.all(
+        staged.map((f) => commitApplicationPdf(session.user.id, f)),
+      )
+      const { id } = await createApplication({
+        userId: session.user.id,
+        cvPath,
+        visionEssayPath,
+        contributionEssayPath,
+        contributionPlan: data.contributionPlan,
+      })
+      return { ok: true, applicationId: id }
+    } catch {
+      await discardApplicationUploads(session.user.id)
+      return { ok: false, code: 'UNEXPECTED' }
+    }
+  })

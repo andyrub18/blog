@@ -1,4 +1,10 @@
-# Phase 2 — Enrollment and promotion
+# Phase 1 — Enrollment and promotion
+
+> **Status: partially built.** The schema (role rename, probation fields, audit
+> tables), the reader-to-member promotion path (`/apply`), and the eligibility
+> rules are implemented and covered by Postgres integration tests. Still to
+> build: the senior-member review queue, probation confirmation, promotion by
+> qualified majority, invitations, and blocking.
 
 The membership ladder in the app must be the membership ladder in the manifesto, using the
 same words in all four languages. Otherwise people carry a translation table in their heads
@@ -25,9 +31,10 @@ of truth for *what you can do right now*, and move everything about *how you got
 application and audit tables. A promotion is then just an application filed by an existing
 reader — the same machinery, not a second code path.
 
-One schema fix: `member_application.userId` is currently `UNIQUE`, which permanently blocks
-anyone who is rejected once. Replace it with a partial unique index so a user may have only
-one **open** application but a full history:
+One schema fix, **now applied** in `drizzle/0003_enrollment.sql`:
+`member_application.userId` carried a plain `UNIQUE` constraint, which permanently blocked
+anyone rejected once. It is replaced by a partial unique index, so a user may have only
+one **open** application but keeps a full history:
 
 ```sql
 CREATE UNIQUE INDEX one_open_application_per_user

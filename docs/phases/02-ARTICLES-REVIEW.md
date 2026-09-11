@@ -1,4 +1,4 @@
-# Phase 3 — Articles and the review workflow
+# Phase 2 — Articles and the review workflow
 
 Design this now even though it ships after articles, because the tables must exist before
 the first article does. Retrofitting a review process onto published content is painful.
