@@ -23,21 +23,24 @@ must have before that page is interactive.
 
 | Page | Client JS, gzipped |
 |---|---|
-| Shared entry, on every page | **94.5 KB** |
-| `/articles/{slug}` — the reading view | **97.3 KB** |
-| `/articles` | 96.7 KB |
-| `/` — the home page | 97.2 KB |
-| `/write/{id}` — the editor, before TipTap loads | 104.5 KB (author screen) |
+| Shared entry, on every page | **95.3 KB** |
+| `/articles/{slug}` — the reading view | **98.7 KB** |
+| `/articles` | 97.4 KB |
+| `/` — the home page | 98.0 KB |
+| `/articles/{slug}/discussion` — the forum | 102.6 KB (opened from an article) |
+| `/write/{id}` — the editor, before TipTap loads | 108.6 KB (author screen) |
 | TipTap itself, fetched only when the editor mounts | +126 KB, in two chunks |
 
-**The budget is met, with 2.7 KB of headroom.** It was not, for three phases:
+**The budget is met, with 1.3 KB of headroom.** It was not, for three phases:
 the reading view peaked at 103.8 KB after phase 3. Two things fixed it.
 
 **TanStack Query was in every page and nothing used it.** The scaffold put a
 `QueryClient` in the router context and it had been shipping to every reader
 ever since — 6.6 KB gzipped for a library with no call sites. Removed, along
-with the dependency (D17). When phase 5 needs it for forum polling it comes back
-scoped to the forum routes, not to the router context.
+with the dependency (D17). Phase 5 was expected to bring it back for forum
+polling, scoped to the forum route; it did not, and D20 records why — the loop
+the forum actually needs is forty lines of `setTimeout`, and it is not the loop
+Query's defaults would have given it.
 
 **Preloading was fetching everything twice.** `defaultPreloadStaleTime` was `0`
 with `defaultPreload: 'intent'`, so hovering a link ran the route's loader,
@@ -53,9 +56,16 @@ something, and D7 already weighed the largest piece of it.
 
 **The trend to watch:** every route's non-component module sits in the entry
 graph, so the entry grows with the number of routes whether or not anybody
-visits them — about 0.5 KB each. Phases 4 to 6 will add several. Splitting
-loaders out of the entry was tried and reverted: it moved 0.3 KB out of the
-entry and added 0.3 KB back to the page, plus a round trip on navigation.
+visits them — about 0.5 KB each. Phase 5's single new route cost the entry
+0.8 KB, paid by every reader including the ones who never open a discussion.
+Splitting loaders out of the entry was tried and reverted: it moved 0.3 KB out
+of the entry and added 0.3 KB back to the page, plus a round trip on navigation.
+
+**And watch the measurement itself.** Phase 5 found that `npm run budget`
+matched route files by prefix, so `articles/$slug` also matched
+`articles/$slug_/discussion`: it reported the reading view at 105.3 KB and over
+budget when it was at 99.1 KB and under. A gauge that is wrong in the alarming
+direction gets believed, and then something gets cut for nothing.
 
 Run `/budget` or `npm run budget` after any dependency change.
 
@@ -84,7 +94,7 @@ minimal hydration there, and spend interactivity on the forum and the editor.
 | **2 · Articles** | `article` + `article_translation` + visibility, TipTap editor, reading view | **Done** — `phases/02-ARTICLES-REVIEW.md` |
 | **3 · Review** | Submissions, assigned contradictors, qualified-majority decisions | **Done** — `phases/02-ARTICLES-REVIEW.md` |
 | **4 · Import** | DOCX pipeline | **Done** — `phases/03-DOCUMENT-IMPORT.md` |
-| **5 · Forum** | Threads on articles | |
+| **5 · Forum** | Threads on articles, moderated after the fact | **Done** — `phases/04-FORUM.md` |
 | **6 · `en` + `es`** | Two locale files and the fallback experience | |
 
 Phase 1 comes before articles because the role rename is cheap now and expensive
@@ -92,10 +102,10 @@ once articles exist and carry authorship.
 
 ## Two standing rules
 
-**Do not build WebSockets in phase 5.** TanStack Query polling with optimistic
-updates is adequate at KLE's scale. Server-Sent Events over Postgres
-`LISTEN/NOTIFY` is the next step if it is not. WebSocket infrastructure is a
-deployment burden we have not earned.
+**Do not build WebSockets in phase 5.** Kept: the forum polls. Server-Sent
+Events over Postgres `LISTEN/NOTIFY` is the next step if that stops being
+enough. WebSocket infrastructure is a deployment burden we have not earned. (The
+polling is hand-written rather than TanStack Query's — D20.)
 
 **Security is not a phase.** It is a property of every phase. The threat model
 and the prioritised controls live in `SECURITY.md`; read it before touching

@@ -63,6 +63,16 @@ export const RULES = {
    * makes in an afternoon of rewriting.
    */
   docxImport: { limit: 20, windowSeconds: 60 * 60 },
+  /**
+   * Also keyed to the account, for the same reason as `docxImport` above.
+   *
+   * One address in Haiti is routinely one cybercafé or one office behind NAT,
+   * so an IP-keyed forum limit would let a single flooder silence everybody
+   * sharing their connection — and the poster is signed in, so there is a
+   * better key available. Fifteen posts in ten minutes is faster than anyone
+   * argues in good faith and far short of what a flood needs.
+   */
+  forumPost: { limit: 15, windowSeconds: 10 * 60 },
 } as const satisfies Record<string, RateLimitRule>
 
 export type RateLimitAction = keyof typeof RULES

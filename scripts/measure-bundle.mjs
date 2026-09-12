@@ -67,31 +67,55 @@ function weigh(keys) {
 }
 
 const entry = Object.keys(manifest).filter((k) => manifest[k].isEntry)
-const routeKey = (path) => Object.keys(manifest).filter((k) => k.startsWith(path))
 
 /**
- * `reader: true` means the page is held to the budget.
+ * The manifest keys for one route file.
  *
- * The editor is an author's screen — somebody who has been admitted by dossier,
- * on a connection they chose to write from. The budget is about the reader who
- * arrives on mobile data having heard about KLE, so measuring the write route
- * here is useful without it being a failure.
+ * A route appears as `…/$slug.tsx` and again as `…/$slug.tsx?tsr-split=component`
+ * — the split the router does so a route's component is fetched rather than
+ * bundled into the entry. Matching that query is why this is not a plain lookup.
+ *
+ * It is anchored on `.tsx` rather than being a bare prefix, which it once was:
+ * a bare prefix also matched `$slug_/discussion.tsx`, and charged the reading
+ * view 6 KB for a page it only links to. A measurement that silently counts a
+ * neighbouring route is worse than no measurement, because it is believed.
+ */
+const routeKey = (path) =>
+  Object.keys(manifest).filter((k) => k === `${path}.tsx` || k.startsWith(`${path}.tsx?`))
+
+/**
+ * A third entry of `null` means the page is held to the budget; a string is the
+ * reason it is not, printed next to the number.
+ *
+ * Only two pages are exempt, and both are pages somebody opens on purpose
+ * rather than arrives on. The budget is about the reader who taps a link on
+ * mobile data having heard about KLE — measuring the others is still useful,
+ * which is why they are here at all rather than left unmeasured.
  */
 const PAGES = [
-  ['the shared entry, on every page', [], true],
-  ['/articles/{slug} — the reading view', routeKey('src/routes/_app/articles/$slug'), true],
-  ['/articles', routeKey('src/routes/_app/articles/index'), true],
-  ['/ — the home page', routeKey('src/routes/_app/index'), true],
-  ['/write/{id} — the editor, before TipTap', routeKey('src/routes/_app/write/$articleId'), false],
+  ['the shared entry, on every page', [], null],
+  ['/articles/{slug} — the reading view', routeKey('src/routes/_app/articles/$slug'), null],
+  ['/articles', routeKey('src/routes/_app/articles/index'), null],
+  ['/ — the home page', routeKey('src/routes/_app/index'), null],
+  [
+    '/articles/{slug}/discussion — the forum',
+    routeKey('src/routes/_app/articles/$slug_/discussion'),
+    '(opened from an article, and interactive: the thread itself is 6 KB)',
+  ],
+  [
+    '/write/{id} — the editor, before TipTap',
+    routeKey('src/routes/_app/write/$articleId'),
+    '(author screen)',
+  ],
 ]
 
 const article = weigh([...entry, ...routeKey('src/routes/_app/articles/$slug')])
 
 console.log('client JS, gzipped, per page (static imports only)\n')
-for (const [label, keys, reader] of PAGES) {
+for (const [label, keys, exemption] of PAGES) {
   const { bytes } = weigh([...entry, ...keys])
-  const note = !reader
-    ? '  (author screen, not held to the budget)'
+  const note = exemption
+    ? `  ${exemption}`
     : bytes / 1024 > BUDGET_KB
       ? '  ← over budget'
       : ''

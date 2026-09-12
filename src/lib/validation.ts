@@ -124,3 +124,65 @@ export function slugify(title: string): string {
     .slice(0, MAX_SLUG_CHARS)
     .replace(/-+$/g, '')
 }
+
+/**
+ * Forum posts.
+ *
+ * A post is plain text. It is not a document: the ProseMirror format exists so
+ * that an article can carry structure and diff between review rounds, and a
+ * reply needs neither. Keeping it text is also what lets the forum render
+ * without `innerHTML` anywhere — the component emits text nodes, so there is no
+ * escaping to get wrong on content written by whoever registered five minutes
+ * ago.
+ *
+ * The minimum is deliberately low. "Wi." is a complete answer in Creole, and a
+ * length floor borrowed from the membership essays would be a rule about how
+ * people are allowed to talk.
+ */
+export const MIN_FORUM_POST_CHARS = 2
+export const MAX_FORUM_POST_CHARS = 4000
+
+/**
+ * What is actually stored: newlines normalised, the ends trimmed, and runs of
+ * blank lines collapsed to one.
+ *
+ * The collapse is not tidiness. Without it a post of forty blank lines pushes
+ * every other reply off a phone screen, which is a denial of the page achieved
+ * with the Enter key and no rule broken.
+ */
+export function normalizeForumPost(value: string): string {
+  return value
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+export function isValidForumPost(value: string): boolean {
+  const length = normalizeForumPost(value).length
+  return length >= MIN_FORUM_POST_CHARS && length <= MAX_FORUM_POST_CHARS
+}
+
+/**
+ * A post split into paragraphs, on blank lines.
+ *
+ * Here rather than in the component so that the rule the server normalises by
+ * and the rule the browser renders by are the same function. Single newlines
+ * stay inside a paragraph and are rendered as line breaks by CSS, not by markup.
+ */
+export function forumParagraphs(value: string): Array<string> {
+  return normalizeForumPost(value)
+    .split('\n\n')
+    .filter((block) => block.length > 0)
+}
+
+/**
+ * A moderation reason, long enough to actually be one.
+ *
+ * Here rather than in `forum.ts` because both sides need it: the moderator's
+ * form checks it as they type, and `moderatePost` refuses without it. Importing
+ * the value from `forum.ts` would pull `node:crypto` and the database into the
+ * browser — the same trap as importing the review rules from
+ * `article-review.ts` instead of `deliberation.ts`.
+ */
+export const MIN_MODERATION_RATIONALE_CHARS = 20
