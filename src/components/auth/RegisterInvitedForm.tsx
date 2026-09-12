@@ -1,25 +1,36 @@
-import { useRouteContext, useRouter } from '@tanstack/solid-router'
+import { useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
-import { signUpReader } from '../../lib/auth-actions'
+import { signUpInvited } from '../../lib/auth-actions'
 import { SIGN_UP_ERROR_MESSAGE } from '../../lib/auth-messages'
 import {
-  isValidEmail,
   isValidEssay,
   isValidName,
   isValidPassword,
+  MIN_CONTRIBUTION_PLAN_CHARS,
 } from '../../lib/validation'
 import { m } from '../../paraglide/messages'
-import Turnstile from './Turnstile'
 
-type Field = 'name' | 'email' | 'password' | 'dateOfBirth' | 'essay'
+type Field = 'name' | 'password' | 'dateOfBirth' | 'essay' | 'contributionPlan'
 type FieldErrors = Partial<Record<Field, string>>
 
 const INPUT_CLASS =
   'h-11 px-3 rounded-md border border-neutral-300 bg-white text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20'
 
-export default function RegisterReaderForm() {
+/**
+ * The cooptation registration form.
+ *
+ * No email field and no captcha. The address is fixed by the invitation, and a
+ * token a senior member issued by hand to a named address is better evidence of
+ * a real person than any challenge. The contribution plan is the one thing the
+ * public dossier asks for that is kept: the six-month probation review has to
+ * have something to measure the new member against.
+ */
+export default function RegisterInvitedForm(props: {
+  token: string
+  email: string
+  sponsor: string | null
+}) {
   const router = useRouter()
-  const context = useRouteContext({ from: '/_app' })
   const [submitting, setSubmitting] = createSignal(false)
   const [serverError, setServerError] = createSignal<string | null>(null)
   const [errors, setErrors] = createSignal<FieldErrors>({})
@@ -27,18 +38,23 @@ export default function RegisterReaderForm() {
 
   function validate(fd: FormData): FieldErrors {
     const errs: FieldErrors = {}
-    const name = String(fd.get('name') ?? '')
-    const email = String(fd.get('email') ?? '')
-    const password = String(fd.get('password') ?? '')
-    const dateOfBirth = String(fd.get('dateOfBirth') ?? '')
-    const essay = String(fd.get('essay') ?? '')
-    if (!isValidName(name)) errs.name = m.auth_register_errors_nameInvalid()
-    if (!isValidEmail(email)) errs.email = m.auth_login_errors_emailInvalid()
-    if (!isValidPassword(password)) {
+    if (!isValidName(String(fd.get('name') ?? ''))) {
+      errs.name = m.auth_register_errors_nameInvalid()
+    }
+    if (!isValidPassword(String(fd.get('password') ?? ''))) {
       errs.password = m.auth_login_errors_passwordTooShort()
     }
-    if (!dateOfBirth) errs.dateOfBirth = m.auth_register_errors_dobRequired()
-    if (!isValidEssay(essay)) errs.essay = m.auth_register_errors_essayTooShort()
+    if (!String(fd.get('dateOfBirth') ?? '')) {
+      errs.dateOfBirth = m.auth_register_errors_dobRequired()
+    }
+    if (!isValidEssay(String(fd.get('essay') ?? ''))) {
+      errs.essay = m.auth_register_errors_essayTooShort()
+    }
+    if (
+      String(fd.get('contributionPlan') ?? '').trim().length < MIN_CONTRIBUTION_PLAN_CHARS
+    ) {
+      errs.contributionPlan = m.auth_register_errors_invalidPlan()
+    }
     return errs
   }
 
@@ -53,22 +69,25 @@ export default function RegisterReaderForm() {
     setSubmitting(true)
     setServerError(null)
     try {
-      const result = await signUpReader({
+      const result = await signUpInvited({
         data: {
+          token: props.token,
           name: String(fd.get('name') ?? ''),
-          email: String(fd.get('email') ?? ''),
           password: String(fd.get('password') ?? ''),
           dateOfBirth: String(fd.get('dateOfBirth') ?? ''),
           essay: String(fd.get('essay') ?? ''),
-          captchaToken: String(fd.get('captchaToken') ?? '') || undefined,
+          contributionPlan: String(fd.get('contributionPlan') ?? ''),
         },
       })
       if (!result.ok) {
         setServerError(SIGN_UP_ERROR_MESSAGE[result.code]())
         return
       }
+      // Deliberately no `router.invalidate()` here, unlike the other
+      // registration forms. Re-running this route's loader would re-check a
+      // token that has just been spent, and the new member would watch their
+      // confirmation be replaced by "invitation unusable".
       setSuccess(true)
-      router.invalidate()
     } catch {
       setServerError(m.auth_register_errors_unexpected())
     } finally {
@@ -80,12 +99,19 @@ export default function RegisterReaderForm() {
     <Show
       when={!success()}
       fallback={
-        <SuccessPanel
-          title={m.auth_register_success_title()}
-          hint={m.auth_register_success_verifyHint()}
-          loginCta={m.auth_verify_goLogin()}
-          onLogin={() => router.navigate({ to: '/auth/login' })}
-        />
+        <div class="flex flex-col items-center gap-4 text-center">
+          <h2 class="text-lg font-semibold text-neutral-900">
+            {m.auth_register_success_title()}
+          </h2>
+          <p class="text-sm text-neutral-700">{m.auth_register_success_verifyHint()}</p>
+          <button
+            type="button"
+            onClick={() => router.navigate({ to: '/auth/login' })}
+            class="h-11 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95"
+          >
+            {m.auth_verify_goLogin()}
+          </button>
+        </div>
       }
     >
       <form
@@ -94,28 +120,40 @@ export default function RegisterReaderForm() {
         novalidate
         aria-describedby="register-status"
       >
+        <Show when={props.sponsor}>
+          {(sponsor) => (
+            <p class="rounded-md bg-neutral-50 p-3 text-sm text-neutral-700">
+              {m.email_invite_intro({ sponsor: sponsor() })}
+            </p>
+          )}
+        </Show>
+
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium text-neutral-800">{m.auth_login_email()}</span>
+          {/* Read-only: the invitation decides the address. */}
+          <input
+            type="email"
+            value={props.email}
+            readonly
+            class={`${INPUT_CLASS} bg-neutral-100 text-neutral-600`}
+          />
+          <span class="text-xs text-neutral-500">
+            {m.auth_register_invited_emailFixed()}
+          </span>
+        </label>
+
         <TextInput
           name="name"
           type="text"
           autocomplete="name"
           label={m.auth_register_common_name()}
-          placeholder={m.auth_register_common_namePlaceholder()}
           error={errors().name}
-        />
-        <TextInput
-          name="email"
-          type="email"
-          autocomplete="email"
-          label={m.auth_login_email()}
-          placeholder={m.auth_login_emailPlaceholder()}
-          error={errors().email}
         />
         <TextInput
           name="password"
           type="password"
           autocomplete="new-password"
           label={m.auth_login_password()}
-          placeholder={m.auth_login_passwordPlaceholder()}
           error={errors().password}
         />
         <TextInput
@@ -132,9 +170,8 @@ export default function RegisterReaderForm() {
           <textarea
             id="essay"
             name="essay"
-            rows="5"
+            rows="4"
             class="rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
-            placeholder={m.auth_register_common_essayPlaceholder()}
             aria-invalid={errors().essay ? 'true' : undefined}
           />
           <Show when={errors().essay}>
@@ -142,7 +179,26 @@ export default function RegisterReaderForm() {
           </Show>
         </label>
 
-        <Turnstile siteKey={context().config.turnstileSiteKey} />
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium text-neutral-800">
+            {m.auth_register_invited_planLabel()}
+          </span>
+          <span class="text-xs text-neutral-500">
+            {m.auth_register_invited_planHint()}
+          </span>
+          <textarea
+            id="contributionPlan"
+            name="contributionPlan"
+            rows="5"
+            class="rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+            aria-invalid={errors().contributionPlan ? 'true' : undefined}
+          />
+          <Show when={errors().contributionPlan}>
+            {(message) => <span class="text-xs text-[#D21034]">{message()}</span>}
+          </Show>
+        </label>
+
+        <p class="text-xs text-neutral-500">{m.auth_register_invited_probationNote()}</p>
 
         <button
           type="submit"
@@ -151,7 +207,7 @@ export default function RegisterReaderForm() {
         >
           {submitting()
             ? m.auth_register_common_submitting()
-            : m.auth_register_common_submit()}
+            : m.auth_register_invited_submit()}
         </button>
 
         <div id="register-status" aria-live="polite" class="min-h-5 text-sm">
@@ -168,7 +224,6 @@ function TextInput(props: {
   name: string
   type: string
   label: string
-  placeholder?: string
   autocomplete?: string
   error?: string
 }) {
@@ -181,33 +236,11 @@ function TextInput(props: {
         type={props.type}
         autocomplete={props.autocomplete}
         class={INPUT_CLASS}
-        placeholder={props.placeholder}
         aria-invalid={props.error ? 'true' : undefined}
       />
       <Show when={props.error}>
         {(message) => <span class="text-xs text-[#D21034]">{message()}</span>}
       </Show>
     </label>
-  )
-}
-
-function SuccessPanel(props: {
-  title: string
-  hint: string
-  loginCta: string
-  onLogin: () => void
-}) {
-  return (
-    <div class="flex flex-col items-center gap-4 text-center">
-      <h2 class="text-lg font-semibold text-neutral-900">{props.title}</h2>
-      <p class="text-sm text-neutral-700">{props.hint}</p>
-      <button
-        type="button"
-        onClick={props.onLogin}
-        class="h-11 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95"
-      >
-        {props.loginCta}
-      </button>
-    </div>
   )
 }

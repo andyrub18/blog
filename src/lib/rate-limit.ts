@@ -35,10 +35,23 @@ export type RateLimitResult = {
  * below the cost of an enumerated member roster.
  */
 export const RULES = {
-  signIn: { limit: 10, windowSeconds: 15 * 60 },
+  /**
+   * Deliberately generous, and cleared by a successful sign-in.
+   *
+   * Many of KLE's readers reach the site from a shared connection — a
+   * cybercafé, an office, a mobile carrier behind NAT — so one address is one
+   * neighbourhood, not one person. A tight per-IP limit would lock all of them
+   * out together. The defence against credential stuffing is `signInPerEmail`
+   * below, which is keyed to the account actually under attack.
+   */
+  signIn: { limit: 30, windowSeconds: 15 * 60 },
   signInPerEmail: { limit: 10, windowSeconds: 60 * 60 },
   signUp: { limit: 5, windowSeconds: 60 * 60 },
   resendVerification: { limit: 5, windowSeconds: 60 * 60 },
+  // The invitation lookup is public by necessity — the holder has no account
+  // yet. A 32-byte token is not guessable, so this is not really brute-force
+  // defence; it stops the endpoint being used as a free probe.
+  inviteLookup: { limit: 30, windowSeconds: 15 * 60 },
 } as const satisfies Record<string, RateLimitRule>
 
 export type RateLimitAction = keyof typeof RULES

@@ -16,6 +16,7 @@ export const ROLE_CHANGE_REASONS = [
   'application_rejected',
   'probation_confirmed',
   'probation_reverted',
+  'invitation_accepted',
   'promoted',
   'demoted',
   'blocked',

@@ -42,7 +42,7 @@ export const fetchReviewQueue = createServerFn({ method: 'GET' }).handler(
 )
 
 export const fetchApplication = createServerFn({ method: 'GET' })
-  .inputValidator((data: { applicationId: string }) => {
+  .validator((data: { applicationId: string }) => {
     if (!data?.applicationId) throw new Error('applicationId is required')
     return { applicationId: data.applicationId }
   })

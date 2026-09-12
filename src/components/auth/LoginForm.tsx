@@ -1,22 +1,9 @@
 import { useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
-import { type SignInErrorCode, signInWithPassword } from '../../lib/auth-actions'
+import { signInWithPassword } from '../../lib/auth-actions'
+import { SIGN_IN_ERROR_MESSAGE } from '../../lib/auth-messages'
 import { isValidEmail, isValidPassword } from '../../lib/validation'
 import { m } from '../../paraglide/messages'
-
-type MessageFn = () => string
-
-const ERROR_MESSAGE: Record<SignInErrorCode, MessageFn> = {
-  RATE_LIMITED: m.auth_login_errors_rateLimited,
-  INVALID_EMAIL_OR_PASSWORD: m.auth_login_errors_invalidCredentials,
-  INVALID_EMAIL: m.auth_login_errors_emailInvalid,
-  INVALID_PASSWORD: m.auth_login_errors_passwordTooShort,
-  EMAIL_NOT_VERIFIED: m.auth_login_errors_emailNotVerified,
-  USER_NOT_FOUND: m.auth_login_errors_userNotFound,
-  CREDENTIAL_ACCOUNT_NOT_FOUND: m.auth_login_errors_accountNotFound,
-  FAILED_TO_CREATE_SESSION: m.auth_login_errors_sessionFailed,
-  UNEXPECTED: m.auth_login_errors_unexpected,
-}
 
 type FieldErrors = Partial<Record<'email' | 'password', string>>
 
@@ -66,7 +53,8 @@ export default function LoginForm() {
         },
       })
       if (!result.ok) {
-        const message = ERROR_MESSAGE[result.code] ?? m.auth_login_errors_unexpected
+        const message =
+          SIGN_IN_ERROR_MESSAGE[result.code] ?? m.auth_login_errors_unexpected
         setServerError(message())
         return
       }

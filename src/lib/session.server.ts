@@ -25,6 +25,13 @@ export async function requireUser(): Promise<SessionUser> {
   if (!session?.user) {
     throw redirect({ to: '/auth/login' })
   }
+  // Blocking deletes the person's sessions, so this should not normally be
+  // reachable. It is the backstop for the window between a status change and a
+  // cookie that has not yet been thrown away — the sign-in path explains the
+  // refusal properly, in their language.
+  if (session.user.memberStatus === 'blocked') {
+    throw redirect({ to: '/auth/login' })
+  }
   return session.user
 }
 

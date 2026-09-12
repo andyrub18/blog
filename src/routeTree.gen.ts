@@ -17,10 +17,14 @@ import { Route as AppAuthRegisterRouteImport } from './routes/_app/auth/register
 import { Route as AppAuthVerifyRouteImport } from './routes/_app/auth/verify'
 import { Route as AppReviewIndexRouteImport } from './routes/_app/review/index'
 import { Route as AppReviewApplicationIdRouteImport } from './routes/_app/review/$applicationId'
+import { Route as AppReviewInvitationsRouteImport } from './routes/_app/review/invitations'
+import { Route as AppReviewMembersRouteImport } from './routes/_app/review/members'
 import { Route as AppReviewProbationRouteImport } from './routes/_app/review/probation'
+import { Route as AppReviewPromotionsRouteImport } from './routes/_app/review/promotions'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDossierSplatRouteImport } from './routes/api/dossier/$'
 import { Route as AppAuthRegisterIndexRouteImport } from './routes/_app/auth/register/index'
+import { Route as AppAuthRegisterInvitedRouteImport } from './routes/_app/auth/register/invited'
 import { Route as AppAuthRegisterMemberRouteImport } from './routes/_app/auth/register/member'
 import { Route as AppAuthRegisterReaderRouteImport } from './routes/_app/auth/register/reader'
 
@@ -63,9 +67,24 @@ const AppReviewApplicationIdRoute = AppReviewApplicationIdRouteImport.update({
   path: '/review/$applicationId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppReviewInvitationsRoute = AppReviewInvitationsRouteImport.update({
+  id: '/review/invitations',
+  path: '/review/invitations',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReviewMembersRoute = AppReviewMembersRouteImport.update({
+  id: '/review/members',
+  path: '/review/members',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppReviewProbationRoute = AppReviewProbationRouteImport.update({
   id: '/review/probation',
   path: '/review/probation',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReviewPromotionsRoute = AppReviewPromotionsRouteImport.update({
+  id: '/review/promotions',
+  path: '/review/promotions',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -81,6 +100,11 @@ const ApiDossierSplatRoute = ApiDossierSplatRouteImport.update({
 const AppAuthRegisterIndexRoute = AppAuthRegisterIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppAuthRegisterRoute,
+} as any)
+const AppAuthRegisterInvitedRoute = AppAuthRegisterInvitedRouteImport.update({
+  id: '/invited',
+  path: '/invited',
   getParentRoute: () => AppAuthRegisterRoute,
 } as any)
 const AppAuthRegisterMemberRoute = AppAuthRegisterMemberRouteImport.update({
@@ -101,10 +125,14 @@ export interface FileRoutesByFullPath {
   '/auth/register': typeof AppAuthRegisterRouteWithChildren
   '/auth/verify': typeof AppAuthVerifyRoute
   '/review/$applicationId': typeof AppReviewApplicationIdRoute
+  '/review/invitations': typeof AppReviewInvitationsRoute
+  '/review/members': typeof AppReviewMembersRoute
   '/review/probation': typeof AppReviewProbationRoute
+  '/review/promotions': typeof AppReviewPromotionsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dossier/$': typeof ApiDossierSplatRoute
   '/review/': typeof AppReviewIndexRoute
+  '/auth/register/invited': typeof AppAuthRegisterInvitedRoute
   '/auth/register/member': typeof AppAuthRegisterMemberRoute
   '/auth/register/reader': typeof AppAuthRegisterReaderRoute
   '/auth/register/': typeof AppAuthRegisterIndexRoute
@@ -115,10 +143,14 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AppAuthLoginRoute
   '/auth/verify': typeof AppAuthVerifyRoute
   '/review/$applicationId': typeof AppReviewApplicationIdRoute
+  '/review/invitations': typeof AppReviewInvitationsRoute
+  '/review/members': typeof AppReviewMembersRoute
   '/review/probation': typeof AppReviewProbationRoute
+  '/review/promotions': typeof AppReviewPromotionsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dossier/$': typeof ApiDossierSplatRoute
   '/review': typeof AppReviewIndexRoute
+  '/auth/register/invited': typeof AppAuthRegisterInvitedRoute
   '/auth/register/member': typeof AppAuthRegisterMemberRoute
   '/auth/register/reader': typeof AppAuthRegisterReaderRoute
   '/auth/register': typeof AppAuthRegisterIndexRoute
@@ -132,10 +164,14 @@ export interface FileRoutesById {
   '/_app/auth/register': typeof AppAuthRegisterRouteWithChildren
   '/_app/auth/verify': typeof AppAuthVerifyRoute
   '/_app/review/$applicationId': typeof AppReviewApplicationIdRoute
+  '/_app/review/invitations': typeof AppReviewInvitationsRoute
+  '/_app/review/members': typeof AppReviewMembersRoute
   '/_app/review/probation': typeof AppReviewProbationRoute
+  '/_app/review/promotions': typeof AppReviewPromotionsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dossier/$': typeof ApiDossierSplatRoute
   '/_app/review/': typeof AppReviewIndexRoute
+  '/_app/auth/register/invited': typeof AppAuthRegisterInvitedRoute
   '/_app/auth/register/member': typeof AppAuthRegisterMemberRoute
   '/_app/auth/register/reader': typeof AppAuthRegisterReaderRoute
   '/_app/auth/register/': typeof AppAuthRegisterIndexRoute
@@ -149,10 +185,14 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/verify'
     | '/review/$applicationId'
+    | '/review/invitations'
+    | '/review/members'
     | '/review/probation'
+    | '/review/promotions'
     | '/api/auth/$'
     | '/api/dossier/$'
     | '/review/'
+    | '/auth/register/invited'
     | '/auth/register/member'
     | '/auth/register/reader'
     | '/auth/register/'
@@ -163,10 +203,14 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/verify'
     | '/review/$applicationId'
+    | '/review/invitations'
+    | '/review/members'
     | '/review/probation'
+    | '/review/promotions'
     | '/api/auth/$'
     | '/api/dossier/$'
     | '/review'
+    | '/auth/register/invited'
     | '/auth/register/member'
     | '/auth/register/reader'
     | '/auth/register'
@@ -179,10 +223,14 @@ export interface FileRouteTypes {
     | '/_app/auth/register'
     | '/_app/auth/verify'
     | '/_app/review/$applicationId'
+    | '/_app/review/invitations'
+    | '/_app/review/members'
     | '/_app/review/probation'
+    | '/_app/review/promotions'
     | '/api/auth/$'
     | '/api/dossier/$'
     | '/_app/review/'
+    | '/_app/auth/register/invited'
     | '/_app/auth/register/member'
     | '/_app/auth/register/reader'
     | '/_app/auth/register/'
@@ -252,11 +300,32 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AppReviewApplicationIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/review/invitations': {
+      id: '/_app/review/invitations'
+      path: '/review/invitations'
+      fullPath: '/review/invitations'
+      preLoaderRoute: typeof AppReviewInvitationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/review/members': {
+      id: '/_app/review/members'
+      path: '/review/members'
+      fullPath: '/review/members'
+      preLoaderRoute: typeof AppReviewMembersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/review/probation': {
       id: '/_app/review/probation'
       path: '/review/probation'
       fullPath: '/review/probation'
       preLoaderRoute: typeof AppReviewProbationRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/review/promotions': {
+      id: '/_app/review/promotions'
+      path: '/review/promotions'
+      fullPath: '/review/promotions'
+      preLoaderRoute: typeof AppReviewPromotionsRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/auth/$': {
@@ -280,6 +349,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AppAuthRegisterIndexRouteImport
       parentRoute: typeof AppAuthRegisterRoute
     }
+    '/_app/auth/register/invited': {
+      id: '/_app/auth/register/invited'
+      path: '/invited'
+      fullPath: '/auth/register/invited'
+      preLoaderRoute: typeof AppAuthRegisterInvitedRouteImport
+      parentRoute: typeof AppAuthRegisterRoute
+    }
     '/_app/auth/register/member': {
       id: '/_app/auth/register/member'
       path: '/member'
@@ -298,12 +374,14 @@ declare module '@tanstack/solid-router' {
 }
 
 interface AppAuthRegisterRouteChildren {
+  AppAuthRegisterInvitedRoute: typeof AppAuthRegisterInvitedRoute
   AppAuthRegisterMemberRoute: typeof AppAuthRegisterMemberRoute
   AppAuthRegisterReaderRoute: typeof AppAuthRegisterReaderRoute
   AppAuthRegisterIndexRoute: typeof AppAuthRegisterIndexRoute
 }
 
 const AppAuthRegisterRouteChildren: AppAuthRegisterRouteChildren = {
+  AppAuthRegisterInvitedRoute: AppAuthRegisterInvitedRoute,
   AppAuthRegisterMemberRoute: AppAuthRegisterMemberRoute,
   AppAuthRegisterReaderRoute: AppAuthRegisterReaderRoute,
   AppAuthRegisterIndexRoute: AppAuthRegisterIndexRoute,
@@ -320,7 +398,10 @@ interface AppRouteChildren {
   AppAuthRegisterRoute: typeof AppAuthRegisterRouteWithChildren
   AppAuthVerifyRoute: typeof AppAuthVerifyRoute
   AppReviewApplicationIdRoute: typeof AppReviewApplicationIdRoute
+  AppReviewInvitationsRoute: typeof AppReviewInvitationsRoute
+  AppReviewMembersRoute: typeof AppReviewMembersRoute
   AppReviewProbationRoute: typeof AppReviewProbationRoute
+  AppReviewPromotionsRoute: typeof AppReviewPromotionsRoute
   AppReviewIndexRoute: typeof AppReviewIndexRoute
 }
 
@@ -331,7 +412,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppAuthRegisterRoute: AppAuthRegisterRouteWithChildren,
   AppAuthVerifyRoute: AppAuthVerifyRoute,
   AppReviewApplicationIdRoute: AppReviewApplicationIdRoute,
+  AppReviewInvitationsRoute: AppReviewInvitationsRoute,
+  AppReviewMembersRoute: AppReviewMembersRoute,
   AppReviewProbationRoute: AppReviewProbationRoute,
+  AppReviewPromotionsRoute: AppReviewPromotionsRoute,
   AppReviewIndexRoute: AppReviewIndexRoute,
 }
 

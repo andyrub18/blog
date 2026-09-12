@@ -12,6 +12,7 @@ import {
 
 export type SignInErrorCode =
   | 'RATE_LIMITED'
+  | 'ACCOUNT_BLOCKED'
   | 'INVALID_EMAIL_OR_PASSWORD'
   | 'INVALID_EMAIL'
   | 'INVALID_PASSWORD'
@@ -28,6 +29,11 @@ export type SignInResult =
 export type SignUpErrorCode =
   | 'RATE_LIMITED'
   | 'CAPTCHA_FAILED'
+  | 'INVITATION_NOT_FOUND'
+  | 'INVITATION_EXPIRED'
+  | 'INVITATION_ALREADY_USED'
+  | 'INVITATION_REVOKED'
+  | 'INVALID_PLAN'
   | 'INVALID_EMAIL'
   | 'INVALID_PASSWORD'
   | 'INVALID_NAME'
@@ -132,8 +138,20 @@ export const signInWithPassword = createServerFn({ method: 'POST' })
         body: { email: data.email, password: data.password },
         headers: getRequest().headers,
       })
+
+      // Say so plainly rather than failing as a bad password. Someone who has
+      // been blocked is owed the reason, and letting them think they mistyped
+      // their password would have them reset it over and over.
+      if ((result.user as { memberStatus?: string }).memberStatus === 'blocked') {
+        await auth.api.signOut({ headers: getRequest().headers })
+        return { ok: false, code: 'ACCOUNT_BLOCKED' }
+      }
+
+      // Clear both counters: only failed attempts should count against anyone.
+      // Leaving the per-IP counter consumed would mean a household or a
+      // cybercafé signing in normally could exhaust it between them.
       const { reset } = await import('./rate-limit')
-      await reset(emailKey)
+      await Promise.all([reset(emailKey), reset(`signIn:ip:${gate.ip}`)])
       return {
         ok: true,
         user: {
@@ -301,6 +319,157 @@ export const signUpMember = createServerFn({ method: 'POST' })
     }
   })
 
+/**
+ * Create an account from an invitation — the manifesto's *cooptation*.
+ *
+ * What this skips is the committee review: the sponsoring senior member's
+ * judgement replaces it, and their name is on the record. What it deliberately
+ * keeps is everything that protects the movement afterwards — email
+ * verification, the contribution plan the probation review needs, the six-month
+ * probation itself, and the audit row naming the sponsor.
+ *
+ * No captcha, and not for the usual reason: a valid invitation token is a
+ * stronger proof of humanity than any challenge, because a senior member issued
+ * it by hand to an address they chose. Rate limiting still applies.
+ *
+ * The email address comes from the invitation, never from the form. Taking it
+ * from the form would turn one invitation into an account in any name at all.
+ */
+export const signUpInvited = createServerFn({ method: 'POST' })
+  .inputValidator(
+    (data: {
+      token: string
+      name: string
+      password: string
+      dateOfBirth: string
+      essay: string
+      contributionPlan: string
+    }) => {
+      if (!data || typeof data !== 'object') throw new Error('Invalid payload.')
+      const name = (data.name ?? '').trim()
+      const essay = (data.essay ?? '').trim()
+      const plan = (data.contributionPlan ?? '').trim()
+      const token = (data.token ?? '').trim()
+      if (!token) throw new Error('INVITATION_NOT_FOUND')
+      if (!isValidName(name)) throw new Error('INVALID_NAME')
+      if (!isValidPassword(data.password)) throw new Error('INVALID_PASSWORD')
+      const dob = parseDateOfBirth(data.dateOfBirth)
+      if (!dob) throw new Error('INVALID_DATE_OF_BIRTH')
+      if (!meetsMinimumAge(dob)) throw new Error('TOO_YOUNG')
+      if (!isValidEssay(essay)) throw new Error('INVALID_ESSAY')
+      if (plan.length < MIN_CONTRIBUTION_PLAN_CHARS) throw new Error('INVALID_PLAN')
+      return {
+        token,
+        name,
+        password: data.password,
+        dateOfBirth: dob.toISOString(),
+        essay,
+        contributionPlan: plan,
+      }
+    },
+  )
+  .handler(async ({ data }): Promise<SignUpResult> => {
+    const gate = await guard({ action: 'signUp' })
+    if (!gate.ok) return { ok: false, code: gate.code }
+
+    const { checkInvitation, consumeInvitation } = await import('./invitation')
+    const checked = await checkInvitation(data.token)
+    if (!checked.ok) {
+      return { ok: false, code: INVITATION_CODE[checked.code] ?? 'INVITATION_NOT_FOUND' }
+    }
+    const invite = checked.invitation
+
+    const result = await runSignUp({
+      name: data.name,
+      email: invite.email,
+      password: data.password,
+      dateOfBirth: data.dateOfBirth,
+      essay: data.essay,
+    })
+    if (!result.ok) return result
+
+    // Dynamic, like every other server-only import here: a static one would
+    // pull the driver and the schema into the browser bundle.
+    const [{ db }, schema, { randomUUID }, { probationEnd }, { eq }] = await Promise.all([
+      import('./db'),
+      import('./db/schema'),
+      import('node:crypto'),
+      import('./review'),
+      import('drizzle-orm'),
+    ])
+
+    try {
+      const now = new Date()
+      await db.transaction(async (tx) => {
+        // Conditional on the invitation still being unused, so two people
+        // opening the same link at once cannot both end up with an account.
+        const claimed = await consumeInvitation(tx, {
+          invitationId: invite.id,
+          userId: result.userId,
+          now,
+        })
+        if (!claimed) throw new Error('INVITATION_ALREADY_USED')
+
+        const applicationId = randomUUID()
+        await tx.insert(schema.memberApplication).values({
+          id: applicationId,
+          userId: result.userId,
+          contributionPlan: data.contributionPlan,
+          status: 'approved',
+          origin: 'invitation',
+          decisionRationale: invite.note,
+          reviewedBy: invite.invitedBy,
+          reviewedAt: now,
+        })
+        await tx.insert(schema.applicationEvent).values({
+          id: randomUUID(),
+          applicationId,
+          fromStatus: null,
+          toStatus: 'approved',
+          rationale: invite.note,
+          actorId: invite.invitedBy,
+        })
+
+        await tx
+          .update(schema.user)
+          .set({
+            role: 'member',
+            memberSince: now,
+            probationUntil: probationEnd(now),
+            sponsoredBy: invite.invitedBy,
+            updatedAt: now,
+          })
+          .where(eq(schema.user.id, result.userId))
+
+        await tx.insert(schema.roleChange).values({
+          id: randomUUID(),
+          subjectUserId: result.userId,
+          fromRole: 'reader',
+          toRole: 'member',
+          reason: 'invitation_accepted',
+          rationale: invite.note,
+          // The sponsor, not the new member: if this turns out badly the
+          // movement can see who vouched, which is what cooptation costs.
+          actorId: invite.invitedBy,
+        })
+      })
+      return result
+    } catch (err) {
+      await rollbackFailedApplication(result.userId, async () => {})
+      if (err instanceof Error && err.message === 'INVITATION_ALREADY_USED') {
+        return { ok: false, code: 'INVITATION_ALREADY_USED' }
+      }
+      return { ok: false, code: 'UNEXPECTED' }
+    }
+  })
+
+const INVITATION_CODE: Record<string, SignUpErrorCode> = {
+  NOT_FOUND: 'INVITATION_NOT_FOUND',
+  EXPIRED: 'INVITATION_EXPIRED',
+  ALREADY_USED: 'INVITATION_ALREADY_USED',
+  REVOKED: 'INVITATION_REVOKED',
+}
+
 export const signOut = createServerFn({ method: 'POST' }).handler(
   async (): Promise<{ ok: boolean }> => {
     const [{ getRequest }, { auth }] = await Promise.all([
@@ -412,6 +581,7 @@ async function runSignUp(input: {
 }
 
 const KNOWN_SIGNIN_CODES: ReadonlySet<SignInErrorCode> = new Set([
+  'ACCOUNT_BLOCKED',
   'INVALID_EMAIL_OR_PASSWORD',
   'INVALID_EMAIL',
   'INVALID_PASSWORD',

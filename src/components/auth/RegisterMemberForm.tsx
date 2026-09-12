@@ -1,27 +1,11 @@
 import type { JSX } from '@solidjs/web'
 import { useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
-import { type SignUpErrorCode, signUpMember } from '../../lib/auth-actions'
+import { signUpMember } from '../../lib/auth-actions'
+import { SIGN_UP_ERROR_MESSAGE } from '../../lib/auth-messages'
 import { m } from '../../paraglide/messages'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-type MessageFn = () => string
-
-const ERROR_MESSAGE: Record<SignUpErrorCode, MessageFn> = {
-  RATE_LIMITED: m.auth_register_errors_rateLimited,
-  CAPTCHA_FAILED: m.auth_register_errors_captchaFailed,
-  INVALID_EMAIL: m.auth_login_errors_emailInvalid,
-  INVALID_PASSWORD: m.auth_login_errors_passwordTooShort,
-  INVALID_NAME: m.auth_register_errors_nameInvalid,
-  INVALID_DATE_OF_BIRTH: m.auth_register_errors_dobInvalid,
-  TOO_YOUNG: m.auth_register_errors_tooYoung,
-  INVALID_ESSAY: m.auth_register_errors_essayTooShort,
-  INVALID_PDF: m.auth_register_errors_invalidPdf,
-  PDF_TOO_LARGE: m.auth_register_errors_pdfTooLarge,
-  EMAIL_ALREADY_EXISTS: m.auth_register_errors_emailExists,
-  UNEXPECTED: m.auth_register_errors_unexpected,
-}
 
 type FieldErrors = Partial<
   Record<
@@ -83,7 +67,7 @@ export default function RegisterMemberForm() {
       const fd = new FormData(form)
       const result = await signUpMember({ data: fd })
       if (!result.ok) {
-        setServerError(ERROR_MESSAGE[result.code]())
+        setServerError(SIGN_UP_ERROR_MESSAGE[result.code]())
         return
       }
       setSuccess(true)

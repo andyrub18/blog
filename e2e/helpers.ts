@@ -13,6 +13,13 @@ export const ACCOUNTS = {
   newcomer: 'newcomer@kle.test',
   /** Member admitted seven months ago; their probation is due for a decision. */
   probationer: 'probationer@kle.test',
+  /** Two more senior members, so three approvals — the floor — are reachable. */
+  senior2: 'senior2@kle.test',
+  senior3: 'senior3@kle.test',
+  /** Member past their probation: the only kind who may be nominated. */
+  confirmed: 'confirmed@kle.test',
+  /** Reserved for the blocking test, so it does not lock another test out. */
+  blockable: 'blockable@kle.test',
 } as const
 
 /**

@@ -1,15 +1,15 @@
 # Phase 1 — Enrollment and promotion
 
-> **Status: mostly built.** Implemented and covered by Postgres integration
-> tests: the schema (role rename, probation fields, audit tables), the
-> reader-to-member promotion path (`/apply`), the eligibility rules, the
-> senior-member review queue with approve / reject / request-more-information,
-> promotion on approval, the six-month probation clock, an authorised,
-> access-logged dossier download, and the confirmation decision that closes
-> probation.
+> **Status: built.** Every flow below is implemented and covered by Postgres
+> integration tests and end-to-end tests against a real database: the schema,
+> the reader-to-member promotion path (`/apply`), the eligibility rules, the
+> senior-member review queue, promotion on approval, the six-month probation
+> clock and its confirmation decision, the access-logged dossier download,
+> promotion to senior member by qualified majority, cooptation by invitation,
+> and blocking.
 >
-> Still to build: promotion to senior member by qualified majority, invitations
-> (cooptation), and blocking. The UI is deliberately plain for now.
+> The UI is deliberately plain, and progressive enhancement (forms that work
+> without JavaScript) is deferred to a later pass.
 
 The membership ladder in the app must be the membership ladder in the manifesto, using the
 same words in all four languages. Otherwise people carry a translation table in their heads
@@ -127,9 +127,30 @@ preserves the history, and it is required to carry a written reason.
 
 Not self-serve, and **not one person's click**. The manifesto rejects simple majority for
 consequential decisions; a promotion that grants access to every member's dossier is
-exactly that kind of decision. Require a qualified majority of existing senior members
-(suggested: at least three approvals and at least two-thirds of those who vote), recorded
-individually.
+exactly that kind of decision.
+
+**Built** as `senior_promotion` plus `senior_promotion_vote`, decided at `/review/promotions`.
+The rule is at least **three approvals** and at least **two thirds of the votes cast** —
+`evaluate()` in `src/lib/promotion.ts`, kept pure so the arithmetic is tested on its own.
+Four things are worth stating:
+
+- **The denominator is votes cast, not the electorate.** A senior member who does not vote
+  neither helps nor blocks. Counting silence as opposition would make a busy month into a
+  veto.
+- **Rejection waits for arithmetic, not for a deadline.** A nomination closes as rejected
+  only once it would fail even if every remaining senior member approved. Earlier than that
+  and we would be closing a vote against someone who could still have carried it.
+- **Every vote carries a written reason and a name.** A secret ballot would protect the
+  voters; naming them protects the person being voted on.
+- **The `role_change` row has no actor.** The circle promoted them, not whoever voted last.
+  It records the tally instead, and the individual votes remain the real account.
+
+Only a **confirmed** member may be nominated. Someone still inside their six months has not
+yet been measured against what they promised, and promoting them would skip the check the
+probation exists for.
+
+One consequence to know about: with fewer than three senior members a promotion cannot pass
+at all. That is correct — it is why the first cohort forms by cooptation.
 
 ## Flow E — Invitation (cooptation)
 
@@ -164,11 +185,52 @@ where that commitment would quietly fail.
 
 So: fewer forms, the same standards, and one named person accountable for the judgement.
 
+**Built.** A senior member issues an invitation at `/review/invitations`; the holder
+registers at `/auth/register/invited?token=…`. What is worth knowing about it:
+
+- **The database stores a SHA-256 of the token, never the token.** The raw value exists only
+  in the emailed link and is shown to the sponsor once. Stored in the clear, a leaked backup
+  would be a set of working membership grants, and anyone who could read the table could
+  mint an account in someone else's name.
+- **The email address comes from the invitation, not the form.** Taking it from the form
+  would turn one invitation into an account under any address at all.
+- **Spending it is a conditional update inside the transaction** that creates the account,
+  so two people opening the same link at once cannot both end up with one. Checking first
+  and writing after would leave precisely that window open.
+- **The sponsor is shown the link as well as emailed it.** Delivery to a Haitian inbox is
+  not something to take on faith, and an invitation nobody receives is one that quietly
+  never happened.
+
+The three dossier PDF columns became nullable for this flow alone — a sponsored member may
+defer their CV and vision essay, never their contribution plan. `member_application.origin`
+records which path an application came from, so a reviewer looking at a dossier with no CV
+can see why.
+
 ## Flow F — Blocking and demotion
 
-Senior members may block an account for misconduct. Blocking must be reversible, require a
-written rationale, and notify the person. Any role change — up or down — writes to the
-audit log.
+Senior members may block an account for misconduct. **Built** in `src/lib/moderation.ts`,
+from `/review/members`.
+
+`member_status` already existed in the schema and **nothing enforced it**: an account could
+be marked blocked and carry on as before. It is enforced now, in three places, because one
+of them is not enough:
+
+- Blocking **deletes the person's sessions** in the same transaction as the status change.
+  Otherwise they keep whatever access they had until their cookie happens to expire, which
+  for misconduct serious enough to block is exactly the window that matters.
+- **Sign-in refuses them** with a message that says they were blocked, rather than failing
+  as a wrong password — which would have them reset it over and over.
+- `requireUser` refuses a blocked account as a backstop.
+
+Three rules in the decision itself. **Only downwards:** a senior member may act on readers
+and members, and removing a senior member is a super admin's decision — one senior member
+who could block their peers could neutralise the admission committee alone. **Never on your
+own account.** And **blocking suspends, it does not demote**: the role is untouched, so
+unblocking restores exactly what the person had.
+
+Reversible, with a written reason, and the person is emailed the reason — a block nobody can
+contest is not accountable, and the manifesto's answer to a bad decision is that it can be
+seen and undone.
 
 ## Audit log (non-negotiable)
 

@@ -93,7 +93,8 @@ export async function getHistory(applicationId: string) {
     .orderBy(desc(applicationEvent.createdAt))
 }
 
-function probationEnd(from: Date): Date {
+/** The end of the manifesto's probation, counted from admission. */
+export function probationEnd(from: Date): Date {
   const end = new Date(from)
   end.setMonth(end.getMonth() + PROBATION_MONTHS)
   return end

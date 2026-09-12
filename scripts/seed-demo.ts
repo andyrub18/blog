@@ -16,8 +16,11 @@ import { db } from '../src/lib/db'
 import {
   applicationEvent,
   authThrottle,
+  invitation,
   memberApplication,
   roleChange,
+  seniorPromotion,
+  seniorPromotionVote,
   user as userTable,
   type Role,
 } from '../src/lib/db/schema'
@@ -26,6 +29,15 @@ const PASSWORD = 'demo-password-123'
 
 const ACCOUNTS = [
   { key: 'senior', name: 'Manm Senyò', email: 'senior@kle.test', role: 'senior_member' },
+  // Three senior members, because three approvals is the floor for a promotion.
+  // With fewer, the qualified majority can never be reached and the promotion
+  // flow cannot be exercised at all.
+  { key: 'senior2', name: 'Manm Senyò 2', email: 'senior2@kle.test', role: 'senior_member' },
+  { key: 'senior3', name: 'Manm Senyò 3', email: 'senior3@kle.test', role: 'senior_member' },
+  // Probation behind them: the only kind of member who may be nominated.
+  { key: 'confirmed', name: 'Manm Konfime', email: 'confirmed@kle.test', role: 'member' },
+  // Reserved for the blocking test, so it does not lock another test's account.
+  { key: 'blockable', name: 'Manm Regilye', email: 'blockable@kle.test', role: 'member' },
   { key: 'reader', name: 'Lektè', email: 'reader@kle.test', role: 'reader' },
   { key: 'applicant', name: 'Kandida', email: 'applicant@kle.test', role: 'reader' },
   // Admitted member whose six months are up: the probation queue's subject.
@@ -184,6 +196,19 @@ async function ensureProbationDue(userId: string): Promise<void> {
     .where(eq(userTable.id, userId))
 }
 
+/** A member whose six months are behind them, confirmed by the circle. */
+async function confirmMember(userId: string): Promise<void> {
+  const memberSince = new Date()
+  memberSince.setMonth(memberSince.getMonth() - 12)
+  const probationUntil = new Date(memberSince)
+  probationUntil.setMonth(probationUntil.getMonth() + 6)
+
+  await db
+    .update(userTable)
+    .set({ memberSince, probationUntil, probationConfirmedAt: probationUntil })
+    .where(eq(userTable.id, userId))
+}
+
 async function main() {
   if (process.env.NODE_ENV === 'production' && process.env.ALLOW_INSECURE_LOCAL !== 'true') {
     console.error(
@@ -202,6 +227,13 @@ async function main() {
   for (const account of ACCOUNTS) {
     ids[account.key] = await ensureAccount(account)
   }
+  // Governance state is cleared wholesale: a previous run's nomination would
+  // block a new one, and a spent invitation cannot be spent again.
+  await db.delete(seniorPromotionVote)
+  await db.delete(seniorPromotion)
+  await db.delete(invitation)
+  console.info('· cleared nominations and invitations')
+
   await resetApplication(ids.applicant, 'pending')
   console.info('· applicant has a pending application')
 
@@ -216,6 +248,13 @@ async function main() {
   await resetApplication(ids.probationer, 'approved')
   await ensureProbationDue(ids.probationer)
   console.info('· probationer is a member whose six months have elapsed')
+
+  for (const key of ['confirmed', 'blockable'] as const) {
+    await resetApplication(ids[key], 'approved')
+  }
+  await confirmMember(ids.confirmed)
+  await confirmMember(ids.blockable)
+  console.info('· confirmed and blockable are members past their probation')
 
   console.info(`\nDemo accounts (password: ${PASSWORD})`)
   for (const account of ACCOUNTS) {

@@ -23,12 +23,20 @@ function ReviewQueue() {
           <LanguageSwitcher />
         </div>
         <p class="mb-2 text-sm text-neutral-600">{m.review_subtitle()}</p>
-        <Link
-          to="/review/probation"
-          class="mb-6 inline-block text-sm text-[#00209F] hover:underline"
-        >
-          {m.probation_title()} →
-        </Link>
+        <div class="mb-6 flex flex-wrap gap-4 text-sm">
+          <Link to="/review/probation" class="text-[#00209F] hover:underline">
+            {m.probation_title()} →
+          </Link>
+          <Link to="/review/members" class="text-[#00209F] hover:underline">
+            {m.roster_title()} →
+          </Link>
+          <Link to="/review/promotions" class="text-[#00209F] hover:underline">
+            {m.promotions_title()} →
+          </Link>
+          <Link to="/review/invitations" class="text-[#00209F] hover:underline">
+            {m.invitations_title()} →
+          </Link>
+        </div>
 
         <Show
           when={queue().length > 0}

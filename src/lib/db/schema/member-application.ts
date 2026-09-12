@@ -2,6 +2,10 @@ import { sql } from 'drizzle-orm'
 import { pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 import { user } from './auth'
 
+/** How this application arrived: the public process, or a sponsor's invitation. */
+export const APPLICATION_ORIGINS = ['application', 'invitation'] as const
+export type ApplicationOrigin = (typeof APPLICATION_ORIGINS)[number]
+
 export const MEMBER_APPLICATION_STATUSES = [
   'pending',
   'under_review',
@@ -25,9 +29,19 @@ export const memberApplication = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    cvPath: text('cv_path').notNull(),
-    visionEssayPath: text('vision_essay_path').notNull(),
-    contributionEssayPath: text('contribution_essay_path').notNull(),
+    /**
+     * The three dossier PDFs.
+     *
+     * Nullable only because of cooptation. An invited member is vouched for by
+     * a senior member instead of being reviewed on a dossier, so their CV and
+     * vision essay may be deferred — but never their contribution plan, which
+     * is what the six-month probation review evaluates them against. The public
+     * application path always writes all three; `origin` says which path this
+     * row came from, so a reviewer looking at a dossier with no CV can see why.
+     */
+    cvPath: text('cv_path'),
+    visionEssayPath: text('vision_essay_path'),
+    contributionEssayPath: text('contribution_essay_path'),
     /**
      * The contribution plan as structured text, not only a PDF.
      *
@@ -37,6 +51,7 @@ export const memberApplication = pgTable(
      */
     contributionPlan: text('contribution_plan'),
     status: text('status').$type<MemberApplicationStatus>().notNull().default('pending'),
+    origin: text('origin').$type<ApplicationOrigin>().notNull().default('application'),
     /** Senior member's written reason, required for a decision. */
     decisionRationale: text('decision_rationale'),
     reviewedBy: text('reviewed_by').references(() => user.id, { onDelete: 'set null' }),

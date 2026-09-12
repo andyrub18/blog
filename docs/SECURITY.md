@@ -126,6 +126,15 @@ forget — a legitimate senior member account that has been compromised or turne
     header, `clientIp()` returns `unknown` and every caller shares a single
     rate-limit bucket — they throttle each other. It fails in the safe
     direction, but the site becomes unusable under real load.
+
+    Related, and settled in code: **the per-IP sign-in limit is deliberately
+    loose (30 per 15 minutes) and a successful sign-in clears it.** For this
+    audience one IP is routinely one neighbourhood — a cybercafé, an office, a
+    mobile carrier behind NAT — so a tight per-IP limit locks out everybody at
+    once. Counting successful sign-ins against the budget made it worse: a
+    household using the site normally could exhaust it between them. The
+    defence against credential stuffing is `signInPerEmail`, which is keyed to
+    the account actually under attack and is untouched by this.
 25. **Choose the hosting jurisdiction deliberately.** A managed provider in the EU or US
     gives better availability and security engineering than self-hosting in Haiti, at the
     cost of placing member data under a foreign legal regime. There is no free answer —
@@ -134,6 +143,31 @@ forget — a legitimate senior member account that has been compromised or turne
     a separate role.
 26. **Write the incident response plan before the incident**, including how members get
     notified. For this user population, fast honest notification is a safety measure.
+
+## Governance controls (phase 1, built)
+
+**Blocking is enforced in three places**, because one is not enough: the sessions are
+deleted with the status change, sign-in refuses the account by name, and `requireUser`
+refuses it as a backstop. A status column that nothing checks is not a control — which is
+what `member_status` was before this.
+
+**Blocking only acts downwards.** A senior member may block readers and members; removing a
+senior member is a super admin's decision. One senior member who could block their peers
+could neutralise the admission committee alone, and the manifesto puts consequential
+decisions in more than one pair of hands.
+
+**Promotion to senior member is a qualified-majority vote** — three approvals and two thirds
+of the votes cast, recorded voter by voter with a written reason. The role being granted is
+read access to every applicant's CV and essays, which is the most sensitive thing the
+system holds. No single account can grant it.
+
+**Invitation tokens are stored as a SHA-256 hash.** The raw token exists only in the emailed
+link. A leaked backup must not be a set of working membership grants. They are single-use,
+expire in seven days, revocable, and spent by a conditional update inside the transaction
+that creates the account, so the same link cannot produce two accounts.
+
+**The public invitation lookup is rate-limited.** A 32-byte token is not guessable, so this
+is not brute-force defence; it stops an unauthenticated endpoint being used as a free probe.
 
 ## Getting registration "top notch"
 

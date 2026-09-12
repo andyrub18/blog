@@ -1,4 +1,6 @@
 export * from './audit'
 export * from './auth'
+export * from './invitation'
 export * from './member-application'
+export * from './promotion'
 export * from './rate-limit'
