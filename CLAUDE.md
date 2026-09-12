@@ -62,6 +62,10 @@ logic** (server functions) → **auth** (Better Auth) → **components** (Solid)
   allowlist, the parser and the server-side HTML renderer. Pure, no IO. Test it.
 - `src/lib/articles.ts` — article business logic. `src/lib/article-actions.ts` —
   the server functions, each re-checking the caller.
+- `src/lib/deliberation.ts` — the review rules: quorum, the per-language
+  threshold, the five documentation fields. Pure, and therefore safe for a route
+  to import. `src/lib/article-review.ts` is the flow around them, and is
+  **server only** — it reaches `node:crypto` and the database.
 - `src/i18n/` — locale registry and the locale context.
 - `messages/<locale>.json` — translations, compiled by Paraglide.
 
@@ -132,10 +136,17 @@ right and stops answering clicks. Leave the textarea uncontrolled and read it in
 Every textarea in the codebase now follows this; `review/invitations.tsx` shows
 the shape to use when the field also has to be cleared programmatically.
 
-**An author cannot publish their own article, and publication is per language.**
-`publishTranslation` requires a senior member (D13), and it sets the status on
-the *translation* (D12) — publishing French while Creole is still a draft is the
-normal case, not an edge case.
+**Publication is a decision, not a button.** A language goes live because
+`decide()` in `article-review.ts` accepted it, per language (D12). There is no
+publish endpoint; `withdrawTranslation` only takes one down. If you find
+yourself adding a way for one person to publish, you are building the thing this
+platform exists to make unavoidable (D13, D15).
+
+**Import the review rules from `deliberation.ts`, never from
+`article-review.ts`.** A route that imports a *value* from the latter pulls
+`node:crypto` and the database into the browser: the page renders, hydration
+throws, and nothing on it responds. Types are fine either way — they compile
+away.
 
 **Dates of birth are compared in UTC.** An `<input type="date">` value parses as
 UTC midnight; reading it with local getters shifts it a day in any timezone

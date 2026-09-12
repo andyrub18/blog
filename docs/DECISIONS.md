@@ -120,10 +120,13 @@ correction with a retraction would make the audit trail lie about what happened.
 
 ## D13 — An author does not publish their own article
 
-`publishTranslation` requires a senior member. The manifesto does not let an
+**Superseded in part by D15:** nobody publishes their own article now, author or
+not. The reasoning below is why the constraint existed before the process did.
+
+`publishTranslation` required a senior member. The manifesto does not let an
 author decide that their own proposal has been accepted, and phase 3's
-submission workflow will put a documented proposal and assigned contradictors
-behind that judgement.
+submission workflow put a documented proposal and assigned contradictors behind
+that judgement.
 
 Recorded as a decision rather than a placeholder because the constraint had to
 exist from the first article, not from the day the workflow lands. A
@@ -143,3 +146,38 @@ client bundle to rebuild markup the server already had.
 The document is parsed against the allowlist on the way in *and* again on the
 way out. The row was sanitised when it was written, but the rules can tighten and
 a row could be changed by something other than `saveTranslation`.
+
+## D15 — Publication is a decision, and there is no publish endpoint
+
+Phase 3 removed the senior-member publish action entirely. A language of an
+article goes live because `decide()` found that it cleared the threshold, and
+there is no other code path that sets a translation to `published`.
+
+This is stricter than it needs to be for convenience and exactly as strict as it
+needs to be for the thing to mean anything. An endpoint that let one senior
+member publish would be a way around the whole deliberation, available to
+precisely the people the deliberation is meant to constrain — and it would be
+used, because it is faster.
+
+Withdrawing a language stays a single editorial act. A correction that needs
+three people and a week is a correction nobody makes. Putting it back means
+another round, because that is a publication decision again.
+
+## D16 — One language's threshold is an implementation choice, not the manifesto
+
+The manifesto sets the quorum for a deliberation: three assigned reviewers, at
+least one a contradictor. It does not say what a single language of a
+multilingual article needs on its own, and the platform cannot publish anything
+without an answer.
+
+The rule implemented is: a contradictor must have spoken on that language, at
+least two members must support it, and supports must reach two thirds of the
+votes cast on it. Requiring the full quorum of three per language was rejected
+because it would make a Creole translation unpublishable whenever only two of
+the assigned reviewers read Creole — quietly turning the movement's second
+language into its optional one.
+
+Recorded here because it is the one governance rule in this codebase that the
+implementation invented. **It should be confirmed or replaced by a decision from
+KLE**, and `MIN_LANGUAGE_SUPPORT` in `src/lib/deliberation.ts` is where it
+changes.

@@ -21,15 +21,17 @@ after phase 2, with the closure of static imports each route actually pulls:
 
 | Page | Client JS, gzipped |
 |---|---|
-| Shared entry (router, Solid, server-function client) | 96.7 KB before phase 2, **99.1 KB** after |
-| `/articles` | 101.2 KB |
-| `/articles/{slug}` — the reading view | **101.9 KB** |
-| `/write/{id}` before the editor loads | 104.7 KB |
+| Shared entry (router, Solid, server-function client) | 96.7 KB before phase 2, 99.1 KB after it, **101.0 KB** after phase 3 |
+| `/articles` | 103.1 KB |
+| `/articles/{slug}` — the reading view | **103.8 KB** |
+| `/write/{id}` before the editor loads | 107.0 KB |
 | TipTap, fetched only once the editor mounts | +126 KB, in two chunks |
 
-**The budget is currently exceeded by 1.9 KB on the reading view, and the cause
-is not the articles.** Phase 2 adds about 5 KB in total: 2.4 KB of route
-definitions into the shared entry and 2.8 KB for the reading route itself. The
+**The budget is currently exceeded by 3.8 KB on the reading view, and the cause
+is not the articles.** Phase 2 added about 5 KB and phase 3 another 1.9 KB, all
+of it route definitions landing in the shared entry — every route's non-component
+module is in the entry graph, so the entry grows with the number of routes
+whether or not a reader ever visits them. The
 entry was already 96.7 KB before any of it, of which roughly 74 KB is the
 framework floor — the router (30 KB), `@solidjs/web` (27 KB) and the
 server-function client (17 KB). Getting back under 100 KB means shrinking that
@@ -67,7 +69,7 @@ minimal hydration there, and spend interactivity on the forum and the editor.
 | **0 · Hardening** | Pinned dependencies, Solid 2, Paraglide, tests, transactional email | **Done** — `phases/00-HARDENING.md` |
 | **1 · Enrollment** | Role rename, applications, probation, promotion, cooptation, blocking, audit log | **Done** — `phases/01-ENROLLMENT.md` |
 | **2 · Articles** | `article` + `article_translation` + visibility, TipTap editor, reading view | **Done** — `phases/02-ARTICLES-REVIEW.md` |
-| **3 · Review** | Submissions, assigned contradictors, qualified-majority decisions | `phases/02-ARTICLES-REVIEW.md` |
+| **3 · Review** | Submissions, assigned contradictors, qualified-majority decisions | **Done** — `phases/02-ARTICLES-REVIEW.md` |
 | **4 · Import** | DOCX pipeline | `phases/03-DOCUMENT-IMPORT.md` |
 | **5 · Forum** | Threads on articles | |
 | **6 · `en` + `es`** | Two locale files and the fallback experience | |

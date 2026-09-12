@@ -1,11 +1,11 @@
 # Phase 2 — Articles and the review workflow
 
-> **Articles are built. The review workflow is designed, not built.** Phase 2
-> delivered the schema, the document format, authoring in every language, the
-> reading view and the language fallback. Everything from "The point" down to
-> the four-stage process below describes phase 3, whose tables exist and whose
-> code does not. What was built, and the three decisions taken while building
-> it, is at the end of this file.
+> **Both halves are built.** Phase 2 delivered the schema, the document format,
+> authoring in every language, the reading view and the language fallback.
+> Phase 3 built the deliberation: a documented submission, assigned
+> contradictors, per-language verdicts with written reasons, and a decision the
+> arithmetic takes rather than whoever is chairing. What each phase built, and
+> the decisions taken while building them, is at the end of this file.
 
 Design this now even though it ships after articles, because the tables must exist before
 the first article does. Retrofitting a review process onto published content is painful.
@@ -178,3 +178,84 @@ to clear the field on success, and it does it through a ref.
 - **Progressive enhancement.** The editor needs JavaScript, as it must; the reading view
   does not need any, and does not use any.
 - **Images, and anything that uploads into an article.** Waiting on D11.
+
+
+---
+
+## What phase 3 built
+
+Migration `drizzle/0007_article_review.sql` adds the three rules that make the
+phase-2 tables safe to write to: the languages a submission covers, one live
+submission per article and one decision per submission, and one verdict per
+reviewer *per language*.
+
+The arithmetic lives in `src/lib/deliberation.ts` — pure, no IO, no framework —
+and the flow that uses it in `src/lib/article-review.ts`. That split is not
+tidiness. The screens need to show a senior member the same quorum the server
+enforces, and a route that reaches the server module drags `node:crypto` and the
+database into the browser bundle. It was caught by the app failing to hydrate at
+all, which is the good outcome; the bad one is a build that works and ships the
+database client.
+
+### The rules, and where they come from
+
+**Quorum: three assigned reviewers, at least one a contradictor.** Checked when
+the debate opens rather than at the decision, so a panel that is too small is
+fixed before anyone spends an evening reading the article. Three stops a
+proposal being waved through by one friend. The contradictor is the part that
+makes it a deliberation rather than a vote, because somebody has been *named* to
+find what is wrong with it — by a senior member, never by volunteering.
+
+**An abstention is not opposition.** It is counted, reported, and kept out of
+the denominator. Counting it against a text would let a busy or undecided member
+block something without ever arguing against it — the same reasoning that makes
+the promotion denominator votes cast rather than the electorate.
+
+**A decision waits for every assigned reviewer to speak.** Otherwise the moment
+of the decision is itself a lever: whoever closed it could pick the tally they
+liked. The escape hatch is `unassignReviewer`, because without one a single
+member who stops answering their email would freeze a proposal for good, and the
+fix would be to relax the rule for everybody.
+
+**The senior member records the decision; they do not make it.** Which languages
+are accepted comes out of `evaluateLanguage` and no argument in the rationale
+changes it. The one judgement left to a person is what happens to the languages
+that did *not* pass — "come back with another round" and "the circle will not
+take this further" are genuinely different answers and arithmetic cannot tell
+them apart. A rejected proposal is `archived`, not `draft`: `draft` would put it
+back on the author's desk as though nothing had happened.
+
+**Publishing is no longer a button.** The senior-member publish endpoint that
+phase 2 shipped as a placeholder is gone — a language goes up because a decision
+accepted it. Withdrawing one stays a single editorial act, because a correction
+that needs three people and a week is a correction nobody makes; putting it back
+means another round.
+
+### One threshold KLE should confirm
+
+The manifesto sets the quorum for the deliberation as a whole. It does not say
+what **one language** of a multilingual article needs on its own, and the
+platform had to answer that to publish anything. The rule chosen is in
+`MIN_LANGUAGE_SUPPORT` and its comment: a contradictor must have spoken on that
+language, at least two members must support it, and supports must reach two
+thirds of the votes cast on it.
+
+Requiring the full quorum of three per language was the alternative, and it was
+rejected because it would make a Creole translation unpublishable whenever only
+two of the assigned reviewers read Creole — quietly turning the movement's
+second language into its optional one. **This is a governance rule invented by
+the implementation and it should be confirmed or replaced by a decision from
+KLE.**
+
+### Synthesis, and what is deliberately not built
+
+The manifesto's third stage is "synthesis and fusion — surviving proposals are
+refined and merged". This builds the **revision half only**: a new round
+supersedes the last and the argument history survives, which is what
+`article_submission.round` was always for. Merging two competing articles by
+different authors into one is not built, and is not a small feature — it needs a
+relationship between articles, joint authorship, and a way to diff and combine
+two documents. It is left open on purpose rather than settled in code.
+
+Also still missing, and inherited from phase 2: pseudonymous bylines (D3), and
+anything that uploads into an article (D11).
