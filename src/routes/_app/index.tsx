@@ -24,12 +24,31 @@ function Home() {
         </div>
       </div>
       <p class="text-lg text-neutral-700">{m.auth_login_subtitle()}</p>
+
+      {/* Reading the movement's articles never requires an account (D1), so
+          this link comes before anything about signing in. */}
+      <Link
+        to="/articles"
+        class="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95"
+      >
+        {m.articles_nav()}
+      </Link>
+
       <Show when={context().user}>
         {(user) => (
           <>
             <p class="mt-4 text-sm text-neutral-600">
               {user().email} · {user().role}
             </p>
+            {/* Members propose articles; that is what admission buys. */}
+            <Show when={user().role !== 'reader'}>
+              <Link
+                to="/write"
+                class="mt-4 mr-2 inline-flex h-10 items-center justify-center rounded-md border border-neutral-300 px-4 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+              >
+                {m.write_nav()}
+              </Link>
+            </Show>
             {/* Reviewers need a way into the queue. */}
             <Show when={user().role === 'senior_member' || user().role === 'super_admin'}>
               <Link

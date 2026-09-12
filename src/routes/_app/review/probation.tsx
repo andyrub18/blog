@@ -111,10 +111,16 @@ function ProbationQueue() {
                       <span class="text-xs text-neutral-500">
                         {m.probation_rationaleHint()}
                       </span>
+                      {/*
+                       * No `value` binding, deliberately. Solid's SSR writes a textarea's value
+                       * as a child text node while the client template has none, so the two sides
+                       * end up one node apart and hydration detaches everything after it in the
+                       * tree — rendered, visible and completely inert. The field is uncontrolled
+                       * and read through `onInput`. See CLAUDE.md.
+                       */}
                       <textarea
                         rows="3"
                         name={`rationale-${item.userId}`}
-                        value={rationales()[item.userId] ?? ''}
                         onInput={(e) =>
                           setRationales((prev) => ({
                             ...prev,

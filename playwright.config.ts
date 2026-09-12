@@ -33,7 +33,7 @@ export default defineConfig({
       // double the sign-ins — enough to trip our own per-IP rate limit, which
       // buckets every local caller together when no proxy sets
       // `x-forwarded-for`. Correctness of the flow is covered on chromium.
-      testIgnore: /(review|probation|governance)\.spec\.ts/,
+      testIgnore: /(review|probation|governance|write)\.spec\.ts/,
     },
   ],
   webServer: process.env.E2E_BASE_URL

@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppApplyRouteImport } from './routes/_app/apply'
+import { Route as AppArticlesIndexRouteImport } from './routes/_app/articles/index'
+import { Route as AppArticlesSlugRouteImport } from './routes/_app/articles/$slug'
 import { Route as AppAuthLoginRouteImport } from './routes/_app/auth/login'
 import { Route as AppAuthRegisterRouteImport } from './routes/_app/auth/register'
 import { Route as AppAuthVerifyRouteImport } from './routes/_app/auth/verify'
@@ -21,6 +23,8 @@ import { Route as AppReviewInvitationsRouteImport } from './routes/_app/review/i
 import { Route as AppReviewMembersRouteImport } from './routes/_app/review/members'
 import { Route as AppReviewProbationRouteImport } from './routes/_app/review/probation'
 import { Route as AppReviewPromotionsRouteImport } from './routes/_app/review/promotions'
+import { Route as AppWriteIndexRouteImport } from './routes/_app/write/index'
+import { Route as AppWriteArticleIdRouteImport } from './routes/_app/write/$articleId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDossierSplatRouteImport } from './routes/api/dossier/$'
 import { Route as AppAuthRegisterIndexRouteImport } from './routes/_app/auth/register/index'
@@ -40,6 +44,16 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppApplyRoute = AppApplyRouteImport.update({
   id: '/apply',
   path: '/apply',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppArticlesIndexRoute = AppArticlesIndexRouteImport.update({
+  id: '/articles/',
+  path: '/articles/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppArticlesSlugRoute = AppArticlesSlugRouteImport.update({
+  id: '/articles/$slug',
+  path: '/articles/$slug',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAuthLoginRoute = AppAuthLoginRouteImport.update({
@@ -87,6 +101,16 @@ const AppReviewPromotionsRoute = AppReviewPromotionsRouteImport.update({
   path: '/review/promotions',
   getParentRoute: () => AppRoute,
 } as any)
+const AppWriteIndexRoute = AppWriteIndexRouteImport.update({
+  id: '/write/',
+  path: '/write/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWriteArticleIdRoute = AppWriteArticleIdRouteImport.update({
+  id: '/write/$articleId',
+  path: '/write/$articleId',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -121,6 +145,7 @@ const AppAuthRegisterReaderRoute = AppAuthRegisterReaderRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/apply': typeof AppApplyRoute
+  '/articles/$slug': typeof AppArticlesSlugRoute
   '/auth/login': typeof AppAuthLoginRoute
   '/auth/register': typeof AppAuthRegisterRouteWithChildren
   '/auth/verify': typeof AppAuthVerifyRoute
@@ -129,9 +154,12 @@ export interface FileRoutesByFullPath {
   '/review/members': typeof AppReviewMembersRoute
   '/review/probation': typeof AppReviewProbationRoute
   '/review/promotions': typeof AppReviewPromotionsRoute
+  '/write/$articleId': typeof AppWriteArticleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dossier/$': typeof ApiDossierSplatRoute
+  '/articles/': typeof AppArticlesIndexRoute
   '/review/': typeof AppReviewIndexRoute
+  '/write/': typeof AppWriteIndexRoute
   '/auth/register/invited': typeof AppAuthRegisterInvitedRoute
   '/auth/register/member': typeof AppAuthRegisterMemberRoute
   '/auth/register/reader': typeof AppAuthRegisterReaderRoute
@@ -140,6 +168,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/apply': typeof AppApplyRoute
   '/': typeof AppIndexRoute
+  '/articles/$slug': typeof AppArticlesSlugRoute
   '/auth/login': typeof AppAuthLoginRoute
   '/auth/verify': typeof AppAuthVerifyRoute
   '/review/$applicationId': typeof AppReviewApplicationIdRoute
@@ -147,9 +176,12 @@ export interface FileRoutesByTo {
   '/review/members': typeof AppReviewMembersRoute
   '/review/probation': typeof AppReviewProbationRoute
   '/review/promotions': typeof AppReviewPromotionsRoute
+  '/write/$articleId': typeof AppWriteArticleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dossier/$': typeof ApiDossierSplatRoute
+  '/articles': typeof AppArticlesIndexRoute
   '/review': typeof AppReviewIndexRoute
+  '/write': typeof AppWriteIndexRoute
   '/auth/register/invited': typeof AppAuthRegisterInvitedRoute
   '/auth/register/member': typeof AppAuthRegisterMemberRoute
   '/auth/register/reader': typeof AppAuthRegisterReaderRoute
@@ -160,6 +192,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_app/apply': typeof AppApplyRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/articles/$slug': typeof AppArticlesSlugRoute
   '/_app/auth/login': typeof AppAuthLoginRoute
   '/_app/auth/register': typeof AppAuthRegisterRouteWithChildren
   '/_app/auth/verify': typeof AppAuthVerifyRoute
@@ -168,9 +201,12 @@ export interface FileRoutesById {
   '/_app/review/members': typeof AppReviewMembersRoute
   '/_app/review/probation': typeof AppReviewProbationRoute
   '/_app/review/promotions': typeof AppReviewPromotionsRoute
+  '/_app/write/$articleId': typeof AppWriteArticleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dossier/$': typeof ApiDossierSplatRoute
+  '/_app/articles/': typeof AppArticlesIndexRoute
   '/_app/review/': typeof AppReviewIndexRoute
+  '/_app/write/': typeof AppWriteIndexRoute
   '/_app/auth/register/invited': typeof AppAuthRegisterInvitedRoute
   '/_app/auth/register/member': typeof AppAuthRegisterMemberRoute
   '/_app/auth/register/reader': typeof AppAuthRegisterReaderRoute
@@ -181,6 +217,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/apply'
+    | '/articles/$slug'
     | '/auth/login'
     | '/auth/register'
     | '/auth/verify'
@@ -189,9 +226,12 @@ export interface FileRouteTypes {
     | '/review/members'
     | '/review/probation'
     | '/review/promotions'
+    | '/write/$articleId'
     | '/api/auth/$'
     | '/api/dossier/$'
+    | '/articles/'
     | '/review/'
+    | '/write/'
     | '/auth/register/invited'
     | '/auth/register/member'
     | '/auth/register/reader'
@@ -200,6 +240,7 @@ export interface FileRouteTypes {
   to:
     | '/apply'
     | '/'
+    | '/articles/$slug'
     | '/auth/login'
     | '/auth/verify'
     | '/review/$applicationId'
@@ -207,9 +248,12 @@ export interface FileRouteTypes {
     | '/review/members'
     | '/review/probation'
     | '/review/promotions'
+    | '/write/$articleId'
     | '/api/auth/$'
     | '/api/dossier/$'
+    | '/articles'
     | '/review'
+    | '/write'
     | '/auth/register/invited'
     | '/auth/register/member'
     | '/auth/register/reader'
@@ -219,6 +263,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/_app/apply'
     | '/_app/'
+    | '/_app/articles/$slug'
     | '/_app/auth/login'
     | '/_app/auth/register'
     | '/_app/auth/verify'
@@ -227,9 +272,12 @@ export interface FileRouteTypes {
     | '/_app/review/members'
     | '/_app/review/probation'
     | '/_app/review/promotions'
+    | '/_app/write/$articleId'
     | '/api/auth/$'
     | '/api/dossier/$'
+    | '/_app/articles/'
     | '/_app/review/'
+    | '/_app/write/'
     | '/_app/auth/register/invited'
     | '/_app/auth/register/member'
     | '/_app/auth/register/reader'
@@ -263,6 +311,20 @@ declare module '@tanstack/solid-router' {
       path: '/apply'
       fullPath: '/apply'
       preLoaderRoute: typeof AppApplyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/articles/': {
+      id: '/_app/articles/'
+      path: '/articles'
+      fullPath: '/articles/'
+      preLoaderRoute: typeof AppArticlesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/articles/$slug': {
+      id: '/_app/articles/$slug'
+      path: '/articles/$slug'
+      fullPath: '/articles/$slug'
+      preLoaderRoute: typeof AppArticlesSlugRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/auth/login': {
@@ -326,6 +388,20 @@ declare module '@tanstack/solid-router' {
       path: '/review/promotions'
       fullPath: '/review/promotions'
       preLoaderRoute: typeof AppReviewPromotionsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/write/': {
+      id: '/_app/write/'
+      path: '/write'
+      fullPath: '/write/'
+      preLoaderRoute: typeof AppWriteIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/write/$articleId': {
+      id: '/_app/write/$articleId'
+      path: '/write/$articleId'
+      fullPath: '/write/$articleId'
+      preLoaderRoute: typeof AppWriteArticleIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/auth/$': {
@@ -394,6 +470,7 @@ const AppAuthRegisterRouteWithChildren = AppAuthRegisterRoute._addFileChildren(
 interface AppRouteChildren {
   AppApplyRoute: typeof AppApplyRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppArticlesSlugRoute: typeof AppArticlesSlugRoute
   AppAuthLoginRoute: typeof AppAuthLoginRoute
   AppAuthRegisterRoute: typeof AppAuthRegisterRouteWithChildren
   AppAuthVerifyRoute: typeof AppAuthVerifyRoute
@@ -402,12 +479,16 @@ interface AppRouteChildren {
   AppReviewMembersRoute: typeof AppReviewMembersRoute
   AppReviewProbationRoute: typeof AppReviewProbationRoute
   AppReviewPromotionsRoute: typeof AppReviewPromotionsRoute
+  AppWriteArticleIdRoute: typeof AppWriteArticleIdRoute
+  AppArticlesIndexRoute: typeof AppArticlesIndexRoute
   AppReviewIndexRoute: typeof AppReviewIndexRoute
+  AppWriteIndexRoute: typeof AppWriteIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppApplyRoute: AppApplyRoute,
   AppIndexRoute: AppIndexRoute,
+  AppArticlesSlugRoute: AppArticlesSlugRoute,
   AppAuthLoginRoute: AppAuthLoginRoute,
   AppAuthRegisterRoute: AppAuthRegisterRouteWithChildren,
   AppAuthVerifyRoute: AppAuthVerifyRoute,
@@ -416,7 +497,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppReviewMembersRoute: AppReviewMembersRoute,
   AppReviewProbationRoute: AppReviewProbationRoute,
   AppReviewPromotionsRoute: AppReviewPromotionsRoute,
+  AppWriteArticleIdRoute: AppWriteArticleIdRoute,
+  AppArticlesIndexRoute: AppArticlesIndexRoute,
   AppReviewIndexRoute: AppReviewIndexRoute,
+  AppWriteIndexRoute: AppWriteIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

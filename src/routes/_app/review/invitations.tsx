@@ -18,6 +18,10 @@ function Invitations() {
   const invitations = Route.useLoaderData()
   const [email, setEmail] = createSignal('')
   const [note, setNote] = createSignal('')
+  // Held as a ref because the textarea below is uncontrolled: issuing an
+  // invitation has to clear the box, and with no `value` binding there is
+  // nothing else that would.
+  let noteField!: HTMLTextAreaElement
   const [busy, setBusy] = createSignal(false)
   const [error, setError] = createSignal<string | null>(null)
   const [issued, setIssued] = createSignal<{ url: string; email: string } | null>(null)
@@ -38,6 +42,7 @@ function Invitations() {
       setIssued({ url: result.url, email: result.email })
       setEmail('')
       setNote('')
+      noteField.value = ''
     } catch {
       setError(m.review_errors_unexpected())
     } finally {
@@ -98,10 +103,17 @@ function Invitations() {
           <label class="flex flex-col gap-1 text-sm">
             <span class="font-medium text-neutral-800">{m.invitations_noteLabel()}</span>
             <span class="text-xs text-neutral-500">{m.invitations_noteHint()}</span>
+            {/*
+             * No `value` binding, deliberately. Solid's SSR writes a textarea's
+             * value as a child text node while the client template has none, so
+             * the two sides end up one node apart and hydration detaches
+             * everything after it in the tree — rendered, visible and
+             * completely inert. See CLAUDE.md.
+             */}
             <textarea
+              ref={noteField}
               rows="3"
               name="note"
-              value={note()}
               onInput={(e) => setNote(e.currentTarget.value)}
               class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
             />
