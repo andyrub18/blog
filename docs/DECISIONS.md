@@ -181,3 +181,19 @@ Recorded here because it is the one governance rule in this codebase that the
 implementation invented. **It should be confirmed or replaced by a decision from
 KLE**, and `MIN_LANGUAGE_SUPPORT` in `src/lib/deliberation.ts` is where it
 changes.
+
+## D17 — No dependency ships before a feature needs it
+
+TanStack Query was added by the project scaffold, wired into the router context,
+and shipped to every reader for three phases without a single call site — 6.6 KB
+gzipped on a 100 KB budget, which is most of the headroom that had gone missing.
+
+The rule this leaves: a dependency earns its place when a feature needs it, not
+when a template suggests it, and the check is `npm run budget` rather than
+intuition. The roadmap plans Query for phase 5's forum polling; when that
+arrives it goes in scoped to the forum routes, not into the router context where
+it lands on every page including the ones with no queries at all.
+
+The same reasoning applies to anything else the scaffold left behind. An unused
+dependency is not free: it is bytes on a metered connection, a supply-chain
+surface, and a pinned release candidate somebody has to keep upgrading.

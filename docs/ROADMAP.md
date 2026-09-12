@@ -16,35 +16,48 @@ find .output/public/assets -name '*.js' | while read f; do gzip -c "$f" | wc -c;
   | awk '{s+=$1} END {printf "client JS gzipped: %.1f KB\n", s/1024}'
 ```
 
-The number that matters is per page, not the total across every route. Measured
-after phase 2, with the closure of static imports each route actually pulls:
+The number that matters is per page, not the total across every route. Measure
+it with `npm run build && npm run budget`, which walks Vite's manifest and sums
+the static import closure of the entry plus one route — the chunks a browser
+must have before that page is interactive.
 
 | Page | Client JS, gzipped |
 |---|---|
-| Shared entry (router, Solid, server-function client) | 96.7 KB before phase 2, 99.1 KB after it, **101.0 KB** after phase 3 |
-| `/articles` | 103.1 KB |
-| `/articles/{slug}` — the reading view | **103.8 KB** |
-| `/write/{id}` before the editor loads | 107.0 KB |
-| TipTap, fetched only once the editor mounts | +126 KB, in two chunks |
+| Shared entry, on every page | **94.5 KB** |
+| `/articles/{slug}` — the reading view | **97.3 KB** |
+| `/articles` | 96.7 KB |
+| `/` — the home page | 97.2 KB |
+| `/write/{id}` — the editor, before TipTap loads | 104.5 KB (author screen) |
+| TipTap itself, fetched only when the editor mounts | +126 KB, in two chunks |
 
-**The budget is currently exceeded by 3.8 KB on the reading view, and the cause
-is not the articles.** Phase 2 added about 5 KB and phase 3 another 1.9 KB, all
-of it route definitions landing in the shared entry — every route's non-component
-module is in the entry graph, so the entry grows with the number of routes
-whether or not a reader ever visits them. The
-entry was already 96.7 KB before any of it, of which roughly 74 KB is the
-framework floor — the router (30 KB), `@solidjs/web` (27 KB) and the
-server-function client (17 KB). Getting back under 100 KB means shrinking that
-shared entry, which is phase-0 work and should be taken as its own task rather
-than by trimming articles.
+**The budget is met, with 2.7 KB of headroom.** It was not, for three phases:
+the reading view peaked at 103.8 KB after phase 3. Two things fixed it.
 
-What did go right is the thing the budget was most at risk from. TipTap is 126 KB
-gzipped and lives in chunks of its own, reached only by the dynamic `import()`
-inside `components/editor/ArticleEditor.tsx`. An end-to-end test asserts that an
-article page requests no editor script at all, because this is exactly the kind
-of regression a refactor introduces silently.
+**TanStack Query was in every page and nothing used it.** The scaffold put a
+`QueryClient` in the router context and it had been shipping to every reader
+ever since — 6.6 KB gzipped for a library with no call sites. Removed, along
+with the dependency (D17). When phase 5 needs it for forum polling it comes back
+scoped to the forum routes, not to the router context.
 
-The `/budget` command in `.claude/commands/` reports the total.
+**Preloading was fetching everything twice.** `defaultPreloadStaleTime` was `0`
+with `defaultPreload: 'intent'`, so hovering a link ran the route's loader,
+the result was stale the instant it arrived, and clicking through fetched the
+same thing again. Not bundle bytes, but the same bill: server-function responses
+paid for twice by a reader paying per megabyte. Now 30 seconds, so the fetch a
+tap starts is the one the navigation uses.
+
+Roughly **81 KB of what remains is the framework floor** — the router (23 KB),
+`@solidjs/web` (26 KB), the server-function client (17 KB) and Paraglide's
+runtime (9 KB). Shrinking that means giving something up rather than tuning
+something, and D7 already weighed the largest piece of it.
+
+**The trend to watch:** every route's non-component module sits in the entry
+graph, so the entry grows with the number of routes whether or not anybody
+visits them — about 0.5 KB each. Phases 4 to 6 will add several. Splitting
+loaders out of the entry was tried and reverted: it moved 0.3 KB out of the
+entry and added 0.3 KB back to the page, plus a round trip on navigation.
+
+Run `/budget` or `npm run budget` after any dependency change.
 
 Four things decide whether the budget holds:
 

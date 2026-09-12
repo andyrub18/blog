@@ -19,13 +19,21 @@ before touching auth, uploads, or anything that reads a dossier.
 
 **2. First-load weight is a feature, not a nicety.** Readers arrive on slow,
 metered Haitian mobile data. The budget is **under 100 KB gzipped** of client
-JS for an article page. Measure before and after any dependency addition:
+JS for an article page, and it currently has about 2.7 KB of headroom. Measure
+before and after any dependency addition:
 
 ```bash
-npm run build
-find .output/public/assets -name '*.js' | while read f; do gzip -c "$f" | wc -c; done \
-  | awk '{s+=$1} END {printf "client JS gzipped: %.1f KB\n", s/1024}'
+npm run build && npm run budget
 ```
+
+That reports the static import closure per page, which is what the budget means.
+Totalling every file in `.output/public/assets` measures the whole site
+including the editor — a number no reader ever pays, and one that read 280 KB
+while an article page was 103 KB.
+
+A dependency ships when a feature needs it, not when a template suggests it
+(D17). An unused `QueryClient` sat in the router context for three phases and
+cost every reader 6.6 KB.
 
 ## Commands
 
