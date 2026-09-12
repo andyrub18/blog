@@ -166,9 +166,18 @@ Three layers — three Vitest projects plus Playwright:
   Every e2e test owns its own seeded account. The flow is stateful — an approved
   application leaves the queue, and a reader with an open application no longer
   sees the form — so sharing an account between tests makes them pass or fail on
-  the order they happened to run in. `db:seed:demo` also clears `auth_throttle`,
-  because repeated sign-ins trip the per-IP limit and one run would lock out the
-  next.
+  the order they happened to run in. `db:seed:demo` resets that state on every
+  run rather than skipping what already exists, so one run does not leave the
+  next with an empty queue. It also clears `auth_throttle`, because repeated
+  sign-ins trip the per-IP limit and one run would lock out the next.
+
+  **Call `waitForInteractive(page)` before the first click on a page.**
+  Server-rendered markup is visible and clickable before the bundle runs, and a
+  click sent in that window is silently lost — in dev the route's client module
+  may still be compiling, which is when this bites. The layout in
+  `src/routes/_app.tsx` sets `data-hydrated` on `<html>` once the client takes
+  over, and the helper waits for it. Without it the suite passes on a warm
+  server and fails on a cold one.
 
 Anything whose correctness lives in SQL belongs in the db project. The rate
 limiter is the example: its behaviour is an `INSERT … ON CONFLICT DO UPDATE` with
@@ -243,6 +252,23 @@ support.
 `src/lib/auth-cookies.ts` is a local reimplementation of
 `better-auth/tanstack-start/solid`, which breaks the Start 2 build. Delete it and
 go back upstream when that is fixed.
+
+**Solid 2 has no `onMount`.** It type-checks — the installed types still declare
+it — and then fails at runtime with `onMount is not a function`, taking the whole
+route render with it. Use an effect whose compute is constant so its apply step
+runs once on the client:
+
+```ts
+createEffect(
+  () => undefined,
+  () => {
+    /* client-only work */
+  },
+)
+```
+
+Anything placed in `__root.tsx`'s `shellComponent` will not run on the client at
+all: the shell is server-rendered only.
 
 ## Style
 

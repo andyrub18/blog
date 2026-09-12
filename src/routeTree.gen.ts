@@ -17,6 +17,7 @@ import { Route as AppAuthRegisterRouteImport } from './routes/_app/auth/register
 import { Route as AppAuthVerifyRouteImport } from './routes/_app/auth/verify'
 import { Route as AppReviewIndexRouteImport } from './routes/_app/review/index'
 import { Route as AppReviewApplicationIdRouteImport } from './routes/_app/review/$applicationId'
+import { Route as AppReviewProbationRouteImport } from './routes/_app/review/probation'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDossierSplatRouteImport } from './routes/api/dossier/$'
 import { Route as AppAuthRegisterIndexRouteImport } from './routes/_app/auth/register/index'
@@ -62,6 +63,11 @@ const AppReviewApplicationIdRoute = AppReviewApplicationIdRouteImport.update({
   path: '/review/$applicationId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppReviewProbationRoute = AppReviewProbationRouteImport.update({
+  id: '/review/probation',
+  path: '/review/probation',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/auth/register': typeof AppAuthRegisterRouteWithChildren
   '/auth/verify': typeof AppAuthVerifyRoute
   '/review/$applicationId': typeof AppReviewApplicationIdRoute
+  '/review/probation': typeof AppReviewProbationRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dossier/$': typeof ApiDossierSplatRoute
   '/review/': typeof AppReviewIndexRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AppAuthLoginRoute
   '/auth/verify': typeof AppAuthVerifyRoute
   '/review/$applicationId': typeof AppReviewApplicationIdRoute
+  '/review/probation': typeof AppReviewProbationRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dossier/$': typeof ApiDossierSplatRoute
   '/review': typeof AppReviewIndexRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/_app/auth/register': typeof AppAuthRegisterRouteWithChildren
   '/_app/auth/verify': typeof AppAuthVerifyRoute
   '/_app/review/$applicationId': typeof AppReviewApplicationIdRoute
+  '/_app/review/probation': typeof AppReviewProbationRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dossier/$': typeof ApiDossierSplatRoute
   '/_app/review/': typeof AppReviewIndexRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/verify'
     | '/review/$applicationId'
+    | '/review/probation'
     | '/api/auth/$'
     | '/api/dossier/$'
     | '/review/'
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/verify'
     | '/review/$applicationId'
+    | '/review/probation'
     | '/api/auth/$'
     | '/api/dossier/$'
     | '/review'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/_app/auth/register'
     | '/_app/auth/verify'
     | '/_app/review/$applicationId'
+    | '/_app/review/probation'
     | '/api/auth/$'
     | '/api/dossier/$'
     | '/_app/review/'
@@ -240,6 +252,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AppReviewApplicationIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/review/probation': {
+      id: '/_app/review/probation'
+      path: '/review/probation'
+      fullPath: '/review/probation'
+      preLoaderRoute: typeof AppReviewProbationRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -301,6 +320,7 @@ interface AppRouteChildren {
   AppAuthRegisterRoute: typeof AppAuthRegisterRouteWithChildren
   AppAuthVerifyRoute: typeof AppAuthVerifyRoute
   AppReviewApplicationIdRoute: typeof AppReviewApplicationIdRoute
+  AppReviewProbationRoute: typeof AppReviewProbationRoute
   AppReviewIndexRoute: typeof AppReviewIndexRoute
 }
 
@@ -311,6 +331,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAuthRegisterRoute: AppAuthRegisterRouteWithChildren,
   AppAuthVerifyRoute: AppAuthVerifyRoute,
   AppReviewApplicationIdRoute: AppReviewApplicationIdRoute,
+  AppReviewProbationRoute: AppReviewProbationRoute,
   AppReviewIndexRoute: AppReviewIndexRoute,
 }
 

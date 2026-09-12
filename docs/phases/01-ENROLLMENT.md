@@ -2,14 +2,14 @@
 
 > **Status: mostly built.** Implemented and covered by Postgres integration
 > tests: the schema (role rename, probation fields, audit tables), the
-> reader-to-member promotion path (`/apply`), the eligibility rules, and the
+> reader-to-member promotion path (`/apply`), the eligibility rules, the
 > senior-member review queue with approve / reject / request-more-information,
-> promotion on approval, the six-month probation clock, and an authorised,
-> access-logged dossier download.
+> promotion on approval, the six-month probation clock, an authorised,
+> access-logged dossier download, and the confirmation decision that closes
+> probation.
 >
-> Still to build: probation confirmation decisions, promotion to senior member by
-> qualified majority, invitations (cooptation), and blocking. The UI is
-> deliberately plain for now.
+> Still to build: promotion to senior member by qualified majority, invitations
+> (cooptation), and blocking. The UI is deliberately plain for now.
 
 The membership ladder in the app must be the membership ladder in the manifesto, using the
 same words in all four languages. Otherwise people carry a translation table in their heads
@@ -98,9 +98,30 @@ period at the end of which the circle evaluates whether the member kept their in
 commitments. So:
 
 - On approval: `role = member`, set `member_since` and `probation_until = now + 6 months`.
-- At `probation_until`, the application queue surfaces the member for a confirmation
-  decision, checked against the contribution plan they submitted.
+- At `probation_until`, `/review/probation` surfaces the member for a confirmation
+  decision, showing the contribution plan they submitted alongside their name. A
+  queue of names alone would invite a rubber stamp: the reviewer would have
+  nothing to check them against.
 - Confirmation or reversion is recorded in the audit log with a rationale.
+
+**Built, with three rules worth stating.**
+
+*The six months cannot be cut short.* `confirmProbation` refuses a decision taken
+before `probation_until` has passed. A reviewer who could close a probation early
+could admit someone outright in a single click, which is the thing the probation
+period exists to prevent.
+
+*Confirmation is its own timestamp.* `probation_confirmed_at` is a column, not
+the absence of `probation_until`. Clearing the end date would erase when
+probation ran and make a confirmed member indistinguishable from one who never
+had a clock.
+
+*Reversion returns the person to `reader`* and clears `member_since` and
+`probation_until`, because those describe a membership that has ended. Their
+approved application stays on file and does not block a fresh one — the partial
+unique index only bars a second *open* application — so someone who did not keep
+their commitments this time can apply again. The `role_change` row is what
+preserves the history, and it is required to carry a written reason.
 
 ## Flow D — Promotion to senior member
 

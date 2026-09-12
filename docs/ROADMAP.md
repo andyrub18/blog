@@ -39,7 +39,7 @@ minimal hydration there, and spend interactivity on the forum and the editor.
 | Phase | Scope | Status |
 |---|---|---|
 | **0 · Hardening** | Pinned dependencies, Solid 2, Paraglide, tests, transactional email | **Done** — `phases/00-HARDENING.md` |
-| **1 · Enrollment** | Role rename, applications, probation, promotion, audit log | Next — `phases/01-ENROLLMENT.md` |
+| **1 · Enrollment** | Role rename, applications, probation, promotion, audit log | In progress — `phases/01-ENROLLMENT.md` |
 | **2 · Articles** | `article` + `article_translation` + visibility, TipTap editor, reading view | |
 | **3 · Review** | Submissions, assigned contradictors, qualified-majority decisions | `phases/02-ARTICLES-REVIEW.md` |
 | **4 · Import** | DOCX pipeline | `phases/03-DOCUMENT-IMPORT.md` |

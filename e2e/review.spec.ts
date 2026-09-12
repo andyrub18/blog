@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ACCOUNTS, signIn, submitApplication } from './helpers'
+import { ACCOUNTS, signIn, submitApplication, waitForInteractive } from './helpers'
 
 /**
  * The review flow against a real database.
@@ -24,6 +24,7 @@ test('a reader can file a membership application', async ({ page }) => {
 test('a senior member reviews a dossier and approves it', async ({ page }) => {
   await signIn(page, ACCOUNTS.senior)
   await page.goto('/fr/review')
+  await waitForInteractive(page)
   await expect(page.getByText(ACCOUNTS.applicant)).toBeVisible()
 
   await page
@@ -57,6 +58,7 @@ test('a senior member reviews a dossier and approves it', async ({ page }) => {
 
   // Approved applications leave the queue.
   await page.goto('/fr/review')
+  await waitForInteractive(page)
   await expect(page.getByText(ACCOUNTS.applicant)).not.toBeVisible()
 })
 
@@ -82,6 +84,7 @@ test.describe('reader', () => {
   test('cannot reach the review queue', async ({ page }) => {
     await signIn(page, ACCOUNTS.reader)
     await page.goto('/fr/review')
+    await waitForInteractive(page)
     await expect(page.getByText(/File d'examen/i)).not.toBeVisible()
   })
 

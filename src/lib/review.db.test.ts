@@ -301,34 +301,234 @@ describe('audit trail', () => {
   })
 })
 
+/** Admit a fresh member and hand back everyone involved. */
+async function admitMember() {
+  const applicant = await makeUser()
+  const reviewer = await makeUser('senior_member')
+  const app = await applicationFor(applicant)
+  await review.decide({
+    applicationId: app,
+    decision: 'approve',
+    rationale: RATIONALE,
+    actorId: reviewer,
+  })
+  return { applicant, reviewer, app }
+}
+
+/** A moment after the probation the manifesto gives a new member. */
+function afterProbation(): Date {
+  const later = new Date()
+  later.setFullYear(later.getFullYear() + 1)
+  return later
+}
+
+/** Move a member's probation into the past, as six months of waiting would. */
+async function elapseProbation(userId: string) {
+  const past = new Date()
+  past.setFullYear(past.getFullYear() - 1)
+  await harness.db
+    .update(schema.user)
+    .set({ probationUntil: past })
+    .where(eq(schema.user.id, userId))
+}
+
+async function userRow(id: string) {
+  const [row] = await harness.db.select().from(schema.user).where(eq(schema.user.id, id))
+  return row
+}
+
+const PROBATION_RATIONALE =
+  'A tenu son plan de contribution : trois notes de position et un cycle de lectures.'
+
 describe('listProbationDue', () => {
   it('surfaces a member whose probation has elapsed', async () => {
-    const applicant = await makeUser()
-    const reviewer = await makeUser('senior_member')
-    const app = await applicationFor(applicant)
-    await review.decide({
-      applicationId: app,
-      decision: 'approve',
-      rationale: RATIONALE,
-      actorId: reviewer,
-    })
-
-    const past = new Date()
-    past.setFullYear(past.getFullYear() + 1)
-    const due = await review.listProbationDue(past)
+    const { applicant } = await admitMember()
+    const due = await review.listProbationDue(afterProbation())
     expect(due.map((d) => d.userId)).toContain(applicant)
   })
 
   it('leaves a member still inside their probation alone', async () => {
-    const applicant = await makeUser()
-    const reviewer = await makeUser('senior_member')
-    const app = await applicationFor(applicant)
-    await review.decide({
-      applicationId: app,
-      decision: 'approve',
-      rationale: RATIONALE,
+    await admitMember()
+    expect(await review.listProbationDue(new Date())).toHaveLength(0)
+  })
+
+  it('carries the contribution plan the member is to be judged against', async () => {
+    // A queue of names alone would invite a rubber stamp: the reviewer would
+    // have nothing to check the member against.
+    await admitMember()
+    const [item] = await review.listProbationDue(afterProbation())
+    expect(item.contributionPlan).toBe(DOSSIER.contributionPlan)
+  })
+
+  it('drops a member once their probation has been confirmed', async () => {
+    const { applicant, reviewer } = await admitMember()
+    await elapseProbation(applicant)
+    await review.confirmProbation({
+      userId: applicant,
+      decision: 'confirm',
+      rationale: PROBATION_RATIONALE,
       actorId: reviewer,
     })
-    expect(await review.listProbationDue(new Date())).toHaveLength(0)
+    expect(await review.listProbationDue(afterProbation())).toHaveLength(0)
+  })
+})
+
+describe('confirmProbation', () => {
+  it('confirms the member and keeps their role', async () => {
+    const { applicant, reviewer } = await admitMember()
+    await elapseProbation(applicant)
+
+    await expect(
+      review.confirmProbation({
+        userId: applicant,
+        decision: 'confirm',
+        rationale: PROBATION_RATIONALE,
+        actorId: reviewer,
+      }),
+    ).resolves.toEqual({ ok: true, decision: 'confirm' })
+
+    const row = await userRow(applicant)
+    expect(row.role).toBe('member')
+    expect(row.probationConfirmedAt).toBeInstanceOf(Date)
+    // The end of probation is history, not something to erase on confirmation.
+    expect(row.probationUntil).toBeInstanceOf(Date)
+  })
+
+  it('sends a member who did not keep their commitments back to reader', async () => {
+    const { applicant, reviewer } = await admitMember()
+    await elapseProbation(applicant)
+
+    await expect(
+      review.confirmProbation({
+        userId: applicant,
+        decision: 'revert',
+        rationale: 'Aucune contribution depuis son admission malgre deux relances.',
+        actorId: reviewer,
+      }),
+    ).resolves.toEqual({ ok: true, decision: 'revert' })
+
+    const row = await userRow(applicant)
+    expect(row.role).toBe('reader')
+    expect(row.memberSince).toBeNull()
+    expect(row.probationUntil).toBeNull()
+  })
+
+  it('records both outcomes in the audit trail with their reason', async () => {
+    const { applicant, reviewer } = await admitMember()
+    await elapseProbation(applicant)
+    await review.confirmProbation({
+      userId: applicant,
+      decision: 'confirm',
+      rationale: PROBATION_RATIONALE,
+      actorId: reviewer,
+    })
+
+    const changes = await harness.db
+      .select()
+      .from(schema.roleChange)
+      .where(eq(schema.roleChange.subjectUserId, applicant))
+    expect(changes.map((c) => c.reason)).toContain('probation_confirmed')
+    const confirmation = changes.find((c) => c.reason === 'probation_confirmed')
+    expect(confirmation).toMatchObject({ toRole: 'member', actorId: reviewer })
+    expect(confirmation?.rationale).toBe(PROBATION_RATIONALE)
+  })
+
+  it('refuses to close a probation before it has run its course', async () => {
+    // The six months are the rule, not a target. A reviewer who could close a
+    // probation early could admit someone outright in one click.
+    const { applicant, reviewer } = await admitMember()
+    await expect(
+      review.confirmProbation({
+        userId: applicant,
+        decision: 'confirm',
+        rationale: PROBATION_RATIONALE,
+        actorId: reviewer,
+      }),
+    ).resolves.toEqual({ ok: false, code: 'TOO_EARLY' })
+
+    expect((await userRow(applicant)).probationConfirmedAt).toBeNull()
+  })
+
+  it('requires a rationale that says something', async () => {
+    const { applicant, reviewer } = await admitMember()
+    await elapseProbation(applicant)
+    await expect(
+      review.confirmProbation({
+        userId: applicant,
+        decision: 'confirm',
+        rationale: 'ok',
+        actorId: reviewer,
+      }),
+    ).resolves.toEqual({ ok: false, code: 'RATIONALE_REQUIRED' })
+  })
+
+  it('refuses a member closing their own probation', async () => {
+    const { applicant } = await admitMember()
+    await elapseProbation(applicant)
+    await expect(
+      review.confirmProbation({
+        userId: applicant,
+        decision: 'confirm',
+        rationale: PROBATION_RATIONALE,
+        actorId: applicant,
+      }),
+    ).resolves.toEqual({ ok: false, code: 'SELF_REVIEW' })
+  })
+
+  it('refuses to decide the same probation twice', async () => {
+    const { applicant, reviewer } = await admitMember()
+    await elapseProbation(applicant)
+    await review.confirmProbation({
+      userId: applicant,
+      decision: 'confirm',
+      rationale: PROBATION_RATIONALE,
+      actorId: reviewer,
+    })
+    await expect(
+      review.confirmProbation({
+        userId: applicant,
+        decision: 'revert',
+        rationale: PROBATION_RATIONALE,
+        actorId: reviewer,
+      }),
+    ).resolves.toEqual({ ok: false, code: 'NOT_IN_PROBATION' })
+  })
+
+  it('refuses a subject who is not a probationary member at all', async () => {
+    const reader = await makeUser()
+    const reviewer = await makeUser('senior_member')
+    await expect(
+      review.confirmProbation({
+        userId: reader,
+        decision: 'confirm',
+        rationale: PROBATION_RATIONALE,
+        actorId: reviewer,
+      }),
+    ).resolves.toEqual({ ok: false, code: 'NOT_IN_PROBATION' })
+  })
+
+  it('reports a missing user rather than throwing', async () => {
+    const reviewer = await makeUser('senior_member')
+    await expect(
+      review.confirmProbation({
+        userId: randomUUID(),
+        decision: 'confirm',
+        rationale: PROBATION_RATIONALE,
+        actorId: reviewer,
+      }),
+    ).resolves.toEqual({ ok: false, code: 'NOT_FOUND' })
+  })
+
+  it('leaves no trace when it refuses', async () => {
+    const { applicant, reviewer } = await admitMember()
+    const before = await harness.db.select().from(schema.roleChange)
+    await review.confirmProbation({
+      userId: applicant,
+      decision: 'confirm',
+      rationale: PROBATION_RATIONALE,
+      actorId: reviewer,
+    })
+    const after = await harness.db.select().from(schema.roleChange)
+    expect(after).toHaveLength(before.length)
   })
 })

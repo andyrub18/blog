@@ -43,6 +43,18 @@ export const user = pgTable('user', {
    * their contribution plan when it passes.
    */
   probationUntil: timestamp('probation_until', { withTimezone: true }),
+  /**
+   * When the circle confirmed the member at the end of their probation.
+   *
+   * Its own column rather than something inferred from clearing
+   * `probation_until`, because two different questions are being asked: when
+   * probation ended, and whether it was ever decided. Inferring would make a
+   * confirmed member indistinguishable from one who never had a clock, and
+   * would erase the date the circle actually met. Null while probation runs,
+   * and null again for a member reverted to reader — the `role_change` row
+   * carries that story.
+   */
+  probationConfirmedAt: timestamp('probation_confirmed_at', { withTimezone: true }),
   /** Senior member who vouched, when the account arrived by cooptation. */
   sponsoredBy: text('sponsored_by'),
   createdAt: timestamp('created_at').notNull().defaultNow(),

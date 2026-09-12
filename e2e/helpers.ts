@@ -11,11 +11,28 @@ export const ACCOUNTS = {
   applicant: 'applicant@kle.test',
   /** Reader used by the test that actually submits an application. */
   newcomer: 'newcomer@kle.test',
+  /** Member admitted seven months ago; their probation is due for a decision. */
+  probationer: 'probationer@kle.test',
 } as const
+
+/**
+ * Wait until the client has taken over the page.
+ *
+ * Server-rendered markup is visible and clickable before the bundle runs, and a
+ * click sent in that window is simply lost. In dev the route's module may still
+ * be compiling, which is how this bites. No real person outruns hydration, so
+ * waiting here asserts the same behaviour a user sees.
+ */
+export async function waitForInteractive(page: Page): Promise<void> {
+  await page
+    .locator('html[data-hydrated="true"]')
+    .waitFor({ state: 'attached', timeout: 30_000 })
+}
 
 /** Sign in through the real form, so the session cookie is set the way it is in life. */
 export async function signIn(page: Page, email: string): Promise<void> {
   await page.goto('/fr/auth/login')
+  await waitForInteractive(page)
   await page.getByLabel(/courriel/i).fill(email)
   await page.getByLabel(/mot de passe/i).fill(DEMO_PASSWORD)
   await page.getByRole('button', { name: /^se connecter$/i }).click()
@@ -31,6 +48,7 @@ export const PDF_BYTES = Buffer.from(
 /** File the membership application as the signed-in reader. */
 export async function submitApplication(page: Page): Promise<void> {
   await page.goto('/fr/apply')
+  await waitForInteractive(page)
   await page
     .locator('[name="contributionPlan"]')
     .fill(

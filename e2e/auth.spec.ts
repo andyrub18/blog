@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { waitForInteractive } from './helpers'
 
 /**
  * Sign-in and registration form behaviour.
@@ -12,6 +13,9 @@ const needsDb = !process.env.E2E_DATABASE
 test.describe('login form', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/fr/auth/login')
+    // Every test below submits the form, and a submission sent before the
+    // client has taken over is lost rather than validated.
+    await waitForInteractive(page)
   })
 
   test('shows the sign-in form', async ({ page }) => {
@@ -63,6 +67,7 @@ test.describe('login form', () => {
 test.describe('reader registration', () => {
   test('validates every required field before submitting', async ({ page }) => {
     await page.goto('/fr/auth/register/reader')
+    await waitForInteractive(page)
     await page.getByRole('button', { name: /Créer mon compte/i }).click()
     await expect(page.locator('[aria-invalid="true"]')).not.toHaveCount(0)
   })

@@ -22,7 +22,13 @@ function ReviewQueue() {
           <h1 class="text-2xl font-bold text-neutral-900">{m.review_title()}</h1>
           <LanguageSwitcher />
         </div>
-        <p class="mb-6 text-sm text-neutral-600">{m.review_subtitle()}</p>
+        <p class="mb-2 text-sm text-neutral-600">{m.review_subtitle()}</p>
+        <Link
+          to="/review/probation"
+          class="mb-6 inline-block text-sm text-[#00209F] hover:underline"
+        >
+          {m.probation_title()} →
+        </Link>
 
         <Show
           when={queue().length > 0}

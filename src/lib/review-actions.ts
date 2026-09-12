@@ -1,5 +1,10 @@
 import { createServerFn } from '@tanstack/solid-start'
-import type { DecisionKind, QueueItem } from './review'
+import type {
+  DecisionKind,
+  ProbationCase,
+  ProbationDecisionKind,
+  QueueItem,
+} from './review'
 
 export type ReviewErrorCode =
   | 'FORBIDDEN'
@@ -7,6 +12,8 @@ export type ReviewErrorCode =
   | 'ALREADY_DECIDED'
   | 'SELF_REVIEW'
   | 'RATIONALE_REQUIRED'
+  | 'NOT_IN_PROBATION'
+  | 'TOO_EARLY'
   | 'UNEXPECTED'
 
 export type DecideResult =
@@ -94,8 +101,64 @@ export const decideApplication = createServerFn({ method: 'POST' })
     }
   })
 
-export const fetchProbationDue = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireReviewer()
-  const { listProbationDue } = await import('./review')
-  return listProbationDue()
-})
+export const fetchProbationDue = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<Array<ProbationCase>> => {
+    const reviewer = await requireReviewer()
+    const { listProbationDue } = await import('./review')
+    const due = await listProbationDue()
+
+    // Reading a member's contribution plan is a privileged read of their
+    // dossier, and the access log is only honest if it records the list view
+    // too — not just the ones the reviewer clicked into.
+    const seen = due.filter((item) => item.applicationId)
+    if (seen.length > 0) {
+      const [{ db }, { accessEvent }, { randomUUID }] = await Promise.all([
+        import('./db'),
+        import('./db/schema'),
+        import('node:crypto'),
+      ])
+      await db.insert(accessEvent).values(
+        seen.map((item) => ({
+          id: randomUUID(),
+          actorId: reviewer.id,
+          resourceType: 'member_application',
+          resourceId: item.applicationId as string,
+          action: 'view' as const,
+        })),
+      )
+    }
+
+    return due
+  },
+)
+
+export const decideProbation = createServerFn({ method: 'POST' })
+  .inputValidator(
+    (data: { userId: string; decision: ProbationDecisionKind; rationale: string }) => {
+      if (!data?.userId) throw new Error('userId is required')
+      if (!['confirm', 'revert'].includes(data.decision)) {
+        throw new Error('Unknown decision')
+      }
+      return {
+        userId: data.userId,
+        decision: data.decision,
+        rationale: String(data.rationale ?? ''),
+      }
+    },
+  )
+  .handler(async ({ data }): Promise<DecideResult> => {
+    const reviewer = await requireReviewer()
+    const { confirmProbation } = await import('./review')
+    try {
+      const result = await confirmProbation({
+        userId: data.userId,
+        decision: data.decision,
+        rationale: data.rationale,
+        actorId: reviewer.id,
+      })
+      if (!result.ok) return { ok: false, code: result.code }
+      return { ok: true, status: result.decision }
+    } catch {
+      return { ok: false, code: 'UNEXPECTED' }
+    }
+  })

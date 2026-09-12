@@ -1,23 +1,9 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
-import {
-  decideApplication,
-  fetchApplication,
-  type ReviewErrorCode,
-} from '../../../lib/review-actions'
+import { decideApplication, fetchApplication } from '../../../lib/review-actions'
+import { REVIEW_ERROR_MESSAGE } from '../../../lib/review-messages'
 import { m } from '../../../paraglide/messages'
-
-type MessageFn = () => string
-
-const ERROR_MESSAGE: Record<ReviewErrorCode, MessageFn> = {
-  FORBIDDEN: m.review_errors_forbidden,
-  NOT_FOUND: m.review_errors_notFound,
-  ALREADY_DECIDED: m.review_errors_alreadyDecided,
-  SELF_REVIEW: m.review_errors_selfReview,
-  RATIONALE_REQUIRED: m.review_errors_rationaleRequired,
-  UNEXPECTED: m.review_errors_unexpected,
-}
 
 export const Route = createFileRoute('/_app/review/$applicationId')({
   loader: ({ params }) =>
@@ -45,7 +31,7 @@ function ReviewDetail() {
         },
       })
       if (!result.ok) {
-        setError(ERROR_MESSAGE[result.code]())
+        setError(REVIEW_ERROR_MESSAGE[result.code]())
         return
       }
       setDone(true)

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { and, desc, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, lte } from 'drizzle-orm'
 import {
   applicationEvent,
   type MemberApplicationStatus,
@@ -197,10 +197,16 @@ export async function decide(input: {
   return { ok: true, status: nextStatus }
 }
 
-/** Members whose probation has elapsed and who now need a confirmation decision. */
+/**
+ * Members whose probation has elapsed and who now need a confirmation decision.
+ *
+ * The contribution plan comes with them. The manifesto's probation asks whether
+ * the member kept the commitments they made on admission, so a queue that shows
+ * only names would invite a rubber stamp — the reviewer would have nothing to
+ * check against.
+ */
 export async function listProbationDue(now: Date = new Date()) {
   const { db } = await import('./db')
-  const { lte } = await import('drizzle-orm')
   return db
     .select({
       userId: user.id,
@@ -208,7 +214,130 @@ export async function listProbationDue(now: Date = new Date()) {
       email: user.email,
       memberSince: user.memberSince,
       probationUntil: user.probationUntil,
+      applicationId: memberApplication.id,
+      contributionPlan: memberApplication.contributionPlan,
     })
     .from(user)
-    .where(and(eq(user.role, 'member'), lte(user.probationUntil, now)))
+    .leftJoin(
+      memberApplication,
+      and(
+        eq(memberApplication.userId, user.id),
+        eq(memberApplication.status, 'approved'),
+      ),
+    )
+    .where(
+      and(
+        eq(user.role, 'member'),
+        isNull(user.probationConfirmedAt),
+        lte(user.probationUntil, now),
+      ),
+    )
+    .orderBy(user.probationUntil)
+}
+
+export type ProbationCase = Awaited<ReturnType<typeof listProbationDue>>[number]
+
+export type ProbationDecisionKind = 'confirm' | 'revert'
+
+export type ProbationError =
+  | 'NOT_FOUND'
+  | 'NOT_IN_PROBATION'
+  | 'TOO_EARLY'
+  | 'SELF_REVIEW'
+  | 'RATIONALE_REQUIRED'
+
+export type ProbationResult =
+  | { ok: true; decision: ProbationDecisionKind }
+  | { ok: false; code: ProbationError }
+
+/**
+ * Close a member's probation: confirm them, or send them back to reader.
+ *
+ * The manifesto admits a member for a probation period and has the circle
+ * evaluate them at the end of it. Both outcomes are recorded the same way, in
+ * one transaction with a written reason — being sent back is the decision most
+ * worth being able to account for later.
+ */
+export async function confirmProbation(input: {
+  userId: string
+  decision: ProbationDecisionKind
+  rationale: string
+  actorId: string
+  now?: Date
+}): Promise<ProbationResult> {
+  const rationale = input.rationale.trim()
+  if (rationale.length < MIN_RATIONALE_CHARS) {
+    return { ok: false, code: 'RATIONALE_REQUIRED' }
+  }
+
+  // Nobody closes their own probation, for the same reason nobody reviews their
+  // own application.
+  if (input.userId === input.actorId) {
+    return { ok: false, code: 'SELF_REVIEW' }
+  }
+
+  const { db } = await import('./db')
+  const [subject] = await db
+    .select({
+      id: user.id,
+      role: user.role,
+      probationUntil: user.probationUntil,
+      probationConfirmedAt: user.probationConfirmedAt,
+    })
+    .from(user)
+    .where(eq(user.id, input.userId))
+    .limit(1)
+
+  if (!subject) return { ok: false, code: 'NOT_FOUND' }
+
+  if (
+    subject.role !== 'member' ||
+    !subject.probationUntil ||
+    subject.probationConfirmedAt
+  ) {
+    return { ok: false, code: 'NOT_IN_PROBATION' }
+  }
+
+  const now = input.now ?? new Date()
+
+  // The six months are the rule, not a target. A reviewer who could close a
+  // probation early could admit someone outright in a single click, which is
+  // exactly what the probation period exists to prevent.
+  if (subject.probationUntil > now) {
+    return { ok: false, code: 'TOO_EARLY' }
+  }
+
+  await db.transaction(async (tx) => {
+    if (input.decision === 'confirm') {
+      await tx
+        .update(user)
+        .set({ probationConfirmedAt: now, updatedAt: now })
+        .where(eq(user.id, subject.id))
+    } else {
+      // Back to reader. `memberSince` and `probationUntil` are cleared because
+      // they describe a current membership that has ended; the `role_change`
+      // row below is what preserves the history.
+      await tx
+        .update(user)
+        .set({
+          role: 'reader',
+          memberSince: null,
+          probationUntil: null,
+          updatedAt: now,
+        })
+        .where(eq(user.id, subject.id))
+    }
+
+    await tx.insert(roleChange).values({
+      id: randomUUID(),
+      subjectUserId: subject.id,
+      fromRole: 'member',
+      toRole: input.decision === 'confirm' ? 'member' : 'reader',
+      reason: input.decision === 'confirm' ? 'probation_confirmed' : 'probation_reverted',
+      rationale,
+      actorId: input.actorId,
+    })
+  })
+
+  return { ok: true, decision: input.decision }
 }

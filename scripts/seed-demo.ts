@@ -10,7 +10,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { auth } from '../src/lib/auth'
 import { db } from '../src/lib/db'
 import {
@@ -28,6 +28,8 @@ const ACCOUNTS = [
   { key: 'senior', name: 'Manm Senyò', email: 'senior@kle.test', role: 'senior_member' },
   { key: 'reader', name: 'Lektè', email: 'reader@kle.test', role: 'reader' },
   { key: 'applicant', name: 'Kandida', email: 'applicant@kle.test', role: 'reader' },
+  // Admitted member whose six months are up: the probation queue's subject.
+  { key: 'probationer', name: 'Manm an Esè', email: 'probationer@kle.test', role: 'member' },
   // Pristine on purpose: tests that only look at the application form must not
   // share an account with tests that submit one, or they depend on run order.
   { key: 'newcomer', name: 'Nouvo', email: 'newcomer@kle.test', role: 'reader' },
@@ -44,6 +46,21 @@ const MINIMAL_PDF = Buffer.from(
   'latin1',
 )
 
+/**
+ * State every seeded account goes back to.
+ *
+ * The membership fields are cleared on purpose: a previous run's review and
+ * probation decisions would otherwise leave the next run with an empty queue
+ * and nothing to exercise.
+ */
+const RESET_STATE = {
+  emailVerified: true,
+  memberStatus: 'active',
+  memberSince: null,
+  probationUntil: null,
+  probationConfirmedAt: null,
+} as const
+
 async function ensureAccount(account: (typeof ACCOUNTS)[number]): Promise<string> {
   const [existing] = await db
     .select({ id: userTable.id })
@@ -54,7 +71,7 @@ async function ensureAccount(account: (typeof ACCOUNTS)[number]): Promise<string
   if (existing) {
     await db
       .update(userTable)
-      .set({ role: account.role, emailVerified: true, memberStatus: 'active' })
+      .set({ ...RESET_STATE, role: account.role })
       .where(eq(userTable.id, existing.id))
     console.info(`· ${account.email} already existed — role reset to ${account.role}`)
     return existing.id
@@ -67,7 +84,7 @@ async function ensureAccount(account: (typeof ACCOUNTS)[number]): Promise<string
 
   await db
     .update(userTable)
-    .set({ role: account.role, emailVerified: true, memberStatus: 'active' })
+    .set({ ...RESET_STATE, role: account.role })
     .where(eq(userTable.id, result.user.id))
 
   // Even a seeded role gets an audit row. A role nobody can account for is
@@ -86,18 +103,14 @@ async function ensureAccount(account: (typeof ACCOUNTS)[number]): Promise<string
   return result.user.id
 }
 
-async function ensurePendingApplication(userId: string): Promise<void> {
-  const [existing] = await db
-    .select({ id: memberApplication.id })
-    .from(memberApplication)
-    .where(eq(memberApplication.userId, userId))
-    .limit(1)
-  if (existing) {
-    console.info('· applicant already has an application — skipping')
-    return
-  }
+const PLAN =
+  'Je propose de coordonner un cycle de lectures sur les politiques ' +
+  'éducatives haïtiennes, de produire une note de position par trimestre, ' +
+  'et de mettre mes compétences en analyse de données au service du ' +
+  'Cercle Économie pour documenter les projets financés par le Fonds.'
 
-  const id = randomUUID()
+/** Write the three dossier PDFs for a user and return their stored paths. */
+async function writeDossier(userId: string): Promise<Record<string, string>> {
   const paths: Record<string, string> = {}
   for (const field of ['cv', 'vision', 'contribution'] as const) {
     const relative = `member-applications/${userId}/${field}-${randomUUID()}-${field}.pdf`
@@ -106,6 +119,34 @@ async function ensurePendingApplication(userId: string): Promise<void> {
     await writeFile(absolute, MINIMAL_PDF)
     paths[field] = relative
   }
+  return paths
+}
+
+/**
+ * Put a demo user's application back to a known status.
+ *
+ * Replaces rather than skips: a run that approved the applicant would otherwise
+ * leave the next run with an empty review queue.
+ */
+async function clearApplications(userId: string): Promise<void> {
+  const existing = await db
+    .select({ id: memberApplication.id })
+    .from(memberApplication)
+    .where(eq(memberApplication.userId, userId))
+  if (existing.length === 0) return
+  const ids = existing.map((row) => row.id)
+  await db.delete(applicationEvent).where(inArray(applicationEvent.applicationId, ids))
+  await db.delete(memberApplication).where(inArray(memberApplication.id, ids))
+}
+
+async function resetApplication(
+  userId: string,
+  status: 'pending' | 'approved',
+): Promise<void> {
+  await clearApplications(userId)
+
+  const id = randomUUID()
+  const paths = await writeDossier(userId)
 
   await db.insert(memberApplication).values({
     id,
@@ -113,23 +154,34 @@ async function ensurePendingApplication(userId: string): Promise<void> {
     cvPath: paths.cv,
     visionEssayPath: paths.vision,
     contributionEssayPath: paths.contribution,
-    contributionPlan:
-      'Je propose de coordonner un cycle de lectures sur les politiques ' +
-      'éducatives haïtiennes, de produire une note de position par trimestre, ' +
-      'et de mettre mes compétences en analyse de données au service du ' +
-      'Cercle Économie pour documenter les projets financés par le Fonds.',
-    status: 'pending',
+    contributionPlan: PLAN,
+    status,
   })
 
   await db.insert(applicationEvent).values({
     id: randomUUID(),
     applicationId: id,
     fromStatus: null,
-    toStatus: 'pending',
+    toStatus: status,
     actorId: userId,
   })
+}
 
-  console.info('· created a pending application for the applicant')
+/**
+ * Age a member's probation so the confirmation queue has something in it.
+ *
+ * Admitted seven months ago, so the manifesto's six months ran out a month ago.
+ */
+async function ensureProbationDue(userId: string): Promise<void> {
+  const memberSince = new Date()
+  memberSince.setMonth(memberSince.getMonth() - 7)
+  const probationUntil = new Date(memberSince)
+  probationUntil.setMonth(probationUntil.getMonth() + 6)
+
+  await db
+    .update(userTable)
+    .set({ memberSince, probationUntil, probationConfirmedAt: null })
+    .where(eq(userTable.id, userId))
 }
 
 async function main() {
@@ -150,7 +202,20 @@ async function main() {
   for (const account of ACCOUNTS) {
     ids[account.key] = await ensureAccount(account)
   }
-  await ensurePendingApplication(ids.applicant)
+  await resetApplication(ids.applicant, 'pending')
+  console.info('· applicant has a pending application')
+
+  // The newcomer must arrive with nothing on file: their test is the one that
+  // actually submits the form, and the application it leaves behind would stop
+  // the next run from reaching it.
+  await clearApplications(ids.newcomer)
+  console.info('· newcomer has no application on file')
+
+  // The probationer is already admitted, so their application is approved and
+  // their contribution plan is what the confirmation queue judges them against.
+  await resetApplication(ids.probationer, 'approved')
+  await ensureProbationDue(ids.probationer)
+  console.info('· probationer is a member whose six months have elapsed')
 
   console.info(`\nDemo accounts (password: ${PASSWORD})`)
   for (const account of ACCOUNTS) {
