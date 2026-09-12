@@ -181,10 +181,16 @@ function RosterRow(props: {
         <label class="mt-3 flex flex-col gap-1 text-sm">
           <span class="font-medium text-neutral-800">{m.roster_rationaleLabel()}</span>
           <span class="text-xs text-neutral-500">{m.roster_rationaleHint()}</span>
+          {/*
+           * No `value` binding, deliberately. Solid's SSR writes a textarea's value
+           * as a child text node while the client template has none, so the two sides
+           * end up one node apart and hydration detaches everything after it in the
+           * tree — rendered, visible and completely inert. The field is uncontrolled
+           * and read through `onInput`. See CLAUDE.md.
+           */}
           <textarea
             rows="2"
             name={`rationale-${props.person.id}`}
-            value={props.rationale}
             onInput={(e) => props.onRationale(e.currentTarget.value)}
             class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
           />

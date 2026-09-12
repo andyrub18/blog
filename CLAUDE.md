@@ -129,8 +129,8 @@ child text node while the client template has none, so the two sides end up one
 node apart and hydration silently detaches everything after it — the page looks
 right and stops answering clicks. Leave the textarea uncontrolled and read it in
 `onInput`; put an initial value in as a JSX child. `<input value={…}>` is fine.
-`src/components/auth/ApplyForm.tsx` and `src/routes/_app/review/probation.tsx`
-still have the old shape and are affected.
+Every textarea in the codebase now follows this; `review/invitations.tsx` shows
+the shape to use when the field also has to be cleared programmatically.
 
 **An author cannot publish their own article, and publication is per language.**
 `publishTranslation` requires a senior member (D13), and it sets the status on

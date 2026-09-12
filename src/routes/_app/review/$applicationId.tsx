@@ -139,9 +139,15 @@ function ReviewDetail() {
                     <span class="text-xs text-neutral-500">
                       {m.review_rationaleHint()}
                     </span>
+                    {/*
+                     * No `value` binding, deliberately. Solid's SSR writes a textarea's value
+                     * as a child text node while the client template has none, so the two sides
+                     * end up one node apart and hydration detaches everything after it in the
+                     * tree — rendered, visible and completely inert. The field is uncontrolled
+                     * and read through `onInput`. See CLAUDE.md.
+                     */}
                     <textarea
                       rows="4"
-                      value={rationale()}
                       onInput={(e) => setRationale(e.currentTarget.value)}
                       class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
                     />

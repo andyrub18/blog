@@ -158,11 +158,16 @@ split, which is the part that mattered.
 value as a child text node; the client template has no child. The two sides end
 up one node apart, and everything after the textarea in the tree is created
 detached — visible, correctly rendered, and completely inert. On the author's
-desk that was the entire list of articles. Textareas here are uncontrolled, read
-through `onInput`, with any initial value passed as a JSX child.
-`src/components/auth/ApplyForm.tsx` and `src/routes/_app/review/probation.tsx`
-still use the old shape and have the same defect; they were left alone because
-they belong to phase 1, not because they are fine.
+desk that was the entire list of articles.
+
+Textareas are now uncontrolled everywhere, read through `onInput`, with any
+initial value passed as a JSX child. The five that phase 1 left bound — the
+rationale boxes in `review/members.tsx`, `review/$applicationId.tsx`,
+`review/probation.tsx`, `review/promotions.tsx` and the note in
+`review/invitations.tsx` — were fixed here rather than left for later, because
+the visible symptom is a page that looks correct and ignores clicks, which is
+the kind of bug nobody files. `review/invitations.tsx` is the one that also has
+to clear the field on success, and it does it through a ref.
 
 ### What is deliberately still missing
 
