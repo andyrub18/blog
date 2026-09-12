@@ -16,7 +16,11 @@ import { db } from '../src/lib/db'
 import {
   applicationEvent,
   article,
+  articleDecision,
+  articleReview,
+  articleReviewer,
   articleRevision,
+  articleSubmission,
   articleTranslation,
   authThrottle,
   invitation,
@@ -289,6 +293,54 @@ const ARTICLES: ReadonlyArray<DemoArticle> = [
     ],
   },
   {
+    slug: 'bouyon-pou-soumet',
+    visibility: 'public',
+    translations: [
+      {
+        lang: 'fr',
+        status: 'draft',
+        title: 'Le budget national et ses angles morts',
+        summary:
+          "Ce que le budget publié ne dit pas, et les trois questions que le cercle propose de poser.",
+        paragraphs: [
+          'Un brouillon terminé, prêt à être soumis au cercle : il sert au test de soumission.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'pwopozisyon-san-panel',
+    visibility: 'public',
+    translations: [
+      {
+        lang: 'fr',
+        status: 'draft',
+        title: 'La décentralisation comme condition',
+        summary:
+          "Pourquoi les décisions prises depuis Port-au-Prince ne tiennent pas dans les communes qui doivent les appliquer.",
+        paragraphs: [
+          "Le diagnostic porte sur l'écart entre la décision et son application locale.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'pwopozisyon-sou-eneji',
+    visibility: 'public',
+    translations: [
+      {
+        lang: 'fr',
+        status: 'draft',
+        title: "L'accès à l'électricité comme préalable",
+        summary:
+          "Pourquoi aucune des autres priorités ne tient sans un accès à l'électricité mesurable et vérifiable.",
+        paragraphs: [
+          'Le diagnostic porte sur la couverture réelle, heure par heure, et non sur la capacité installée.',
+        ],
+      },
+    ],
+  },
+  {
     slug: 'note-interne-cercle-economie',
     visibility: 'members',
     translations: [
@@ -321,6 +373,21 @@ async function resetArticles(authorId: string, allAuthors: Array<string>): Promi
     .where(inArray(article.authorId, allAuthors))
   if (existing.length > 0) {
     const ids = existing.map((row) => row.id)
+    const submissions = await db
+      .select({ id: articleSubmission.id })
+      .from(articleSubmission)
+      .where(inArray(articleSubmission.articleId, ids))
+    if (submissions.length > 0) {
+      const submissionIds = submissions.map((row) => row.id)
+      await db
+        .delete(articleDecision)
+        .where(inArray(articleDecision.submissionId, submissionIds))
+      await db.delete(articleReview).where(inArray(articleReview.submissionId, submissionIds))
+      await db
+        .delete(articleReviewer)
+        .where(inArray(articleReviewer.submissionId, submissionIds))
+      await db.delete(articleSubmission).where(inArray(articleSubmission.id, submissionIds))
+    }
     await db.delete(articleRevision).where(inArray(articleRevision.articleId, ids))
     await db.delete(articleTranslation).where(inArray(articleTranslation.articleId, ids))
     await db.delete(article).where(inArray(article.id, ids))
@@ -362,6 +429,102 @@ async function resetArticles(authorId: string, allAuthors: Array<string>): Promi
       })
     }
   }
+}
+
+
+const DOCUMENTATION = {
+  diagnosis:
+    "Les recettes publiées ne se recoupent pas avec les dépenses annoncées, et l'écart n'est expliqué nulle part.",
+  solutions:
+    'Trois options ont été considérées : un audit externe, une publication trimestrielle, ou les deux ensemble.',
+  resources:
+    "Deux membres du Cercle Économie à mi-temps pendant un trimestre, et l'accès aux journaux officiels.",
+  risks:
+    "Le principal risque est de publier un chiffre erroné et de perdre la crédibilité que l'article cherche à bâtir.",
+  indicators:
+    'Succès : trois notes trimestrielles publiées et au moins une reprise par un média national.',
+}
+
+/**
+ * Two deliberations, at the two states the end-to-end tests need.
+ *
+ * The first is waiting for a panel, so a senior member can be watched naming a
+ * contradictor and being refused a debate until the quorum is met. The second is
+ * already in debate with every assigned reviewer's verdict recorded, so the
+ * decision itself can be exercised in a single sign-in — the suite shares one
+ * per-IP throttle bucket, and four sign-ins to reach one button is how a test
+ * run locks out the next.
+ */
+async function resetDeliberations(ids: Record<string, string>): Promise<void> {
+  // A submission with no panel yet, so the quorum refusal can be exercised
+  // without depending on another test having filed one first. The suite runs
+  // `fullyParallel`, which means tests inside one file race each other too —
+  // every test owns its own fixture or it owns its own flake.
+  const [noPanel] = await db
+    .select({ id: article.id })
+    .from(article)
+    .where(eq(article.slug, 'pwopozisyon-san-panel'))
+  if (noPanel) {
+    await db.insert(articleSubmission).values({
+      id: randomUUID(),
+      articleId: noPanel.id,
+      round: 1,
+      langs: ['fr'],
+      submittedBy: ids.confirmed,
+      status: 'open',
+      ...DOCUMENTATION,
+    })
+    await db
+      .update(article)
+      .set({ status: 'submitted' })
+      .where(eq(article.id, noPanel.id))
+  }
+
+  const [awaitingPanel] = await db
+    .select({ id: article.id })
+    .from(article)
+    .where(eq(article.slug, 'pwopozisyon-sou-eneji'))
+  if (!awaitingPanel) return
+
+  const submissionId = randomUUID()
+  await db.insert(articleSubmission).values({
+    id: submissionId,
+    articleId: awaitingPanel.id,
+    round: 1,
+    langs: ['fr'],
+    submittedBy: ids.confirmed,
+    status: 'in_review',
+    ...DOCUMENTATION,
+  })
+
+  // The author is `confirmed`, so the panel is drawn from everybody else.
+  const panel: Array<[string, 'contradictor' | 'reviewer']> = [
+    [ids.senior2, 'contradictor'],
+    [ids.senior3, 'reviewer'],
+    [ids.blockable, 'reviewer'],
+  ]
+  for (const [userId, stance] of panel) {
+    await db.insert(articleReviewer).values({
+      submissionId,
+      userId,
+      stance,
+      assignedBy: ids.senior,
+    })
+    await db.insert(articleReview).values({
+      id: randomUUID(),
+      submissionId,
+      reviewerId: userId,
+      lang: 'fr',
+      verdict: 'support',
+      rationale:
+        'Le diagnostic tient, les indicateurs sont vérifiables et les risques sont nommés.',
+    })
+  }
+
+  await db
+    .update(article)
+    .set({ status: 'in_review' })
+    .where(eq(article.id, awaitingPanel.id))
 }
 
 async function main() {
@@ -413,6 +576,11 @@ async function main() {
 
   await resetArticles(ids.confirmed, Object.values(ids))
   console.info('· demo articles: two published (one French-only), one members-only draft')
+
+  await resetDeliberations(ids)
+  console.info(
+    '· one submission with no panel, one in debate with every verdict recorded',
+  )
 
   console.info(`\nDemo accounts (password: ${PASSWORD})`)
   for (const account of ACCOUNTS) {

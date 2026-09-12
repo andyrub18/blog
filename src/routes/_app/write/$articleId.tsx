@@ -9,13 +9,15 @@ import { createSignal, For, Show } from 'solid-js'
  * entry to hydrate against, so the editor never appeared at all.
  */
 import ArticleEditor from '../../../components/editor/ArticleEditor'
+import SubmitPanel from '../../../components/editor/SubmitPanel'
 import { isLocale, LOCALE_LABELS, type Locale } from '../../../i18n'
 import {
   fetchEditableArticle,
-  publishArticle,
   saveArticle,
+  withdrawTranslation,
 } from '../../../lib/article-actions'
 import { ARTICLE_ERROR_MESSAGE } from '../../../lib/article-messages'
+import { fetchRounds } from '../../../lib/article-review-actions'
 import type { DocNode } from '../../../lib/prosemirror'
 import { m } from '../../../paraglide/messages'
 
@@ -26,8 +28,13 @@ export const Route = createFileRoute('/_app/write/$articleId')({
     lang: isLocale(search.lang) ? search.lang : undefined,
   }),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
-  loader: ({ params, deps }) =>
-    fetchEditableArticle({ data: { articleId: params.articleId, lang: deps.lang } }),
+  loader: async ({ params, deps }) => {
+    const [article, rounds] = await Promise.all([
+      fetchEditableArticle({ data: { articleId: params.articleId, lang: deps.lang } }),
+      fetchRounds({ data: { articleId: params.articleId } }),
+    ])
+    return { article, rounds }
+  },
   component: EditorPage,
 })
 
@@ -37,11 +44,11 @@ function EditorPage() {
   const router = useRouter()
 
   const article = () => {
-    const loaded = result()
+    const loaded = result().article
     return loaded.ok ? loaded.value : null
   }
-  const refusal = () => {
-    const loaded = result()
+  const refusal = (): keyof typeof ARTICLE_ERROR_MESSAGE => {
+    const loaded = result().article
     return loaded.ok ? 'NOT_FOUND' : loaded.code
   }
 
@@ -63,6 +70,7 @@ function EditorPage() {
           {(loaded) => (
             <Editing
               article={loaded()}
+              rounds={result().rounds}
               canPublish={
                 context().user?.role === 'senior_member' ||
                 context().user?.role === 'super_admin'
@@ -88,6 +96,13 @@ type EditingProps = {
     otherLangs: Array<{ lang: string; status: string }>
   }
   canPublish: boolean
+  rounds: Array<{
+    submissionId: string
+    round: number
+    status: string
+    langs: Array<string>
+    outcome: string | null
+  }>
   onChanged: () => void | Promise<void>
 }
 
@@ -128,12 +143,12 @@ function Editing(props: EditingProps) {
     }
   }
 
-  async function setPublished(publish: boolean) {
+  async function withdraw() {
     setBusy('publish')
     setError('')
     try {
-      const result = await publishArticle({
-        data: { articleId: props.article.articleId, lang: props.article.lang, publish },
+      const result = await withdrawTranslation({
+        data: { articleId: props.article.articleId, lang: props.article.lang },
       })
       if (!result.ok) {
         setError(ARTICLE_ERROR_MESSAGE[result.code]())
@@ -223,32 +238,21 @@ function Editing(props: EditingProps) {
           {busy() === 'save' ? m.write_saving() : m.write_save()}
         </button>
 
-        <Show
-          when={props.canPublish}
-          fallback={<p class="text-xs text-neutral-500">{m.write_publishHint()}</p>}
-        >
-          <Show
-            when={props.article.translationStatus === 'published'}
-            fallback={
-              <button
-                type="button"
-                disabled={busy() !== null}
-                onClick={() => void setPublished(true)}
-                class="h-10 rounded-md bg-[#1F6B45] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
-              >
-                {busy() === 'publish' ? m.write_publishing() : m.write_publish()}
-              </button>
-            }
+        {/*
+         * Publication now comes out of a deliberation, not a button. A senior
+         * member may still take a language down — that is an editorial
+         * correction — but putting one up is a decision the circle makes, which
+         * is the whole point of phase 3.
+         */}
+        <Show when={props.canPublish && props.article.translationStatus === 'published'}>
+          <button
+            type="button"
+            disabled={busy() !== null}
+            onClick={() => void withdraw()}
+            class="h-10 rounded-md border border-[#A3261F] px-4 text-sm font-semibold text-[#A3261F] hover:bg-red-50 disabled:opacity-60"
           >
-            <button
-              type="button"
-              disabled={busy() !== null}
-              onClick={() => void setPublished(false)}
-              class="h-10 rounded-md border border-[#A3261F] px-4 text-sm font-semibold text-[#A3261F] hover:bg-red-50 disabled:opacity-60"
-            >
-              {busy() === 'publish' ? m.write_publishing() : m.write_unpublish()}
-            </button>
-          </Show>
+            {busy() === 'publish' ? m.write_publishing() : m.write_unpublish()}
+          </button>
         </Show>
 
         <span class="text-xs text-neutral-500">
@@ -271,6 +275,20 @@ function Editing(props: EditingProps) {
           {(message) => <p class="text-[#A3261F]">{message()}</p>}
         </Show>
       </div>
+
+      {/*
+       * The languages this article actually has text in. Submitting a language
+       * nobody has written would put the panel in front of a blank page.
+       */}
+      <SubmitPanel
+        articleId={props.article.articleId}
+        writtenLangs={[
+          props.article.lang,
+          ...props.article.otherLangs.map((other) => other.lang),
+        ].sort()}
+        rounds={props.rounds}
+        onSubmitted={props.onChanged}
+      />
 
       <Show when={props.article.otherLangs.length > 0}>
         <footer class="border-t border-neutral-200 pt-4 text-sm">

@@ -24,6 +24,9 @@ function ReviewQueue() {
         </div>
         <p class="mb-2 text-sm text-neutral-600">{m.review_subtitle()}</p>
         <div class="mb-6 flex flex-wrap gap-4 text-sm">
+          <Link to="/review/articles" class="text-[#00209F] hover:underline">
+            {m.deliberation_title()} →
+          </Link>
           <Link to="/review/probation" class="text-[#00209F] hover:underline">
             {m.probation_title()} →
           </Link>

@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
   index,
   integer,
@@ -6,6 +7,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { article } from './article'
 import { user } from './auth'
@@ -49,6 +51,15 @@ export const articleSubmission = pgTable(
      * is the reason round three reads the way it does.
      */
     round: integer('round').notNull().default(1),
+    /**
+     * The languages this submission puts to the circle.
+     *
+     * A submission covers one or more `(article_id, lang)` variants, because
+     * reviewers validate the languages they can read and the decision is taken
+     * per language. An author who has only written the French submits only the
+     * French; the Creole comes back as its own round when it exists.
+     */
+    langs: jsonb('langs').$type<Array<string>>().notNull(),
     submittedBy: text('submitted_by').references(() => user.id, { onDelete: 'set null' }),
     submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
     status: text('status').$type<SubmissionStatus>().notNull().default('open'),
@@ -58,7 +69,20 @@ export const articleSubmission = pgTable(
     risks: text('risks').notNull(),
     indicators: text('indicators').notNull(),
   },
-  (table) => [index('article_submission_article_idx').on(table.articleId)],
+  (table) => [
+    index('article_submission_article_idx').on(table.articleId),
+    /**
+     * One live submission per article — not one ever.
+     *
+     * Two concurrent submissions on the same article would split the assigned
+     * reviewers and could produce two different answers about the same text.
+     * Closed rounds are left alone, which is what makes a revision a new round
+     * rather than an overwrite.
+     */
+    uniqueIndex('one_open_submission_per_article')
+      .on(table.articleId)
+      .where(sql`${table.status} in ('open', 'in_review')`),
+  ],
 )
 
 /**
@@ -111,7 +135,22 @@ export const articleReview = pgTable(
     rationale: text('rationale').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index('article_review_submission_idx').on(table.submissionId)],
+  (table) => [
+    index('article_review_submission_idx').on(table.submissionId),
+    /**
+     * One verdict per reviewer per language.
+     *
+     * Per *language*, not per submission: a reviewer who reads both French and
+     * Creole speaks to both, and their two verdicts may honestly differ — the
+     * argument can be sound in one language and badly rendered in the other.
+     * What they may not do is vote twice on the same text.
+     */
+    uniqueIndex('one_verdict_per_reviewer_per_lang').on(
+      table.submissionId,
+      table.reviewerId,
+      table.lang,
+    ),
+  ],
 )
 
 /** Never a simple majority — consensus, or two thirds of the votes cast. */
@@ -120,6 +159,32 @@ export type DecisionMethod = (typeof DECISION_METHODS)[number]
 
 export const DECISION_OUTCOMES = ['accepted', 'revision_requested', 'rejected'] as const
 export type DecisionOutcome = (typeof DECISION_OUTCOMES)[number]
+
+/**
+ * The shape of `tally_json`, declared rather than left as `unknown`.
+ *
+ * A `jsonb` column types as `unknown` by default, which a server function
+ * refuses to serialise — correctly, since it cannot know the value is
+ * JSON-safe. Naming the shape here is also the more useful half: this record is
+ * what somebody reads years later to see how a decision was reached, and it
+ * should not be a bag nobody can describe.
+ */
+export type DecisionTallyEntry = {
+  lang: string
+  supports: number
+  objections: number
+  abstentions: number
+  contradicted: boolean
+  accepted: boolean
+  method: DecisionMethod
+  reason: string
+}
+
+export type DecisionTally = {
+  /** The senior member's written reason for closing the round. */
+  rationale: string
+  languages: Array<DecisionTallyEntry>
+}
 
 export const articleDecision = pgTable(
   'article_decision',
@@ -136,9 +201,11 @@ export const articleDecision = pgTable(
      * The tally is the account of how the circle got here; a bare outcome would
      * make the result unauditable the moment anybody disputes it.
      */
-    tallyJson: jsonb('tally_json').notNull(),
+    tallyJson: jsonb('tally_json').$type<DecisionTally>().notNull(),
     decidedBy: text('decided_by').references(() => user.id, { onDelete: 'set null' }),
     decidedAt: timestamp('decided_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index('article_decision_submission_idx').on(table.submissionId)],
+  // One decision per submission. A second would not be a correction, it would
+  // be a contradiction with no record of which one the circle meant.
+  (table) => [uniqueIndex('one_decision_per_submission').on(table.submissionId)],
 )

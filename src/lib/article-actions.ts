@@ -208,29 +208,33 @@ export const saveArticle = createServerFn({ method: 'POST' })
     }
   })
 
-export const publishArticle = createServerFn({ method: 'POST' })
-  .validator((data: { articleId: string; lang: string; publish: boolean }) => {
+/**
+ * Take one language of an article back off the site.
+ *
+ * Withdrawal only, on purpose. Publication used to run through here as well,
+ * which phase 3 removed: a language goes up because the circle decided it does,
+ * in `article-review.ts`, and leaving a senior-member publish endpoint standing
+ * would be a way around the entire deliberation — the one thing this platform
+ * exists to make unavoidable. Taking a language down stays a single editorial
+ * act, because a correction that needs three people and a week is a correction
+ * nobody makes. Putting it back means another round.
+ */
+export const withdrawTranslation = createServerFn({ method: 'POST' })
+  .validator((data: { articleId: string; lang: string }) => {
     if (!data?.articleId) throw new Error('articleId is required')
-    return {
-      articleId: String(data.articleId),
-      lang: String(data.lang ?? ''),
-      publish: data.publish !== false,
-    }
+    return { articleId: String(data.articleId), lang: String(data.lang ?? '') }
   })
   .handler(async ({ data }): Promise<ActionResult<{ lang: string }>> => {
     const actor = await requireWriter()
-    const { publishTranslation, unpublishTranslation } = await import('./articles')
+    const { unpublishTranslation } = await import('./articles')
     try {
-      const result = data.publish
-        ? await publishTranslation({ actor, articleId: data.articleId, lang: data.lang })
-        : await unpublishTranslation({
-            actor,
-            articleId: data.articleId,
-            lang: data.lang,
-          })
-      return result.ok
-        ? { ok: true, value: { lang: data.lang } }
-        : { ok: false, code: result.code }
+      const lang = localeOf(data.lang)
+      const result = await unpublishTranslation({
+        actor,
+        articleId: data.articleId,
+        lang,
+      })
+      return result.ok ? { ok: true, value: { lang } } : { ok: false, code: result.code }
     } catch {
       return { ok: false, code: 'UNEXPECTED' }
     }
