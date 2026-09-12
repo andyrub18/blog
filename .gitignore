@@ -10,3 +10,11 @@ dist-ssr
 .output
 .vinxi
 __unconfig*
+uploads
+src/paraglide
+
+# Playwright
+test-results
+playwright-report
+blob-report
+.cache

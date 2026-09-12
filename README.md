@@ -1,167 +1,68 @@
-# TanStack Start App
+# KLE
 
-Welcome to your new TanStack Start app!
+Publishing platform for **KLE — *Konbit libète ak egalite***, a Haitian civic
+movement. Members propose articles, senior members review them through the
+movement's own deliberation process, and readers discuss them in a forum.
 
-## Getting Started
+The site is bilingual French and Haitian Creole today, with English and Spanish
+planned for the diaspora.
 
-To run this application:
+## Running it
 
 ```bash
 npm install
-npm run dev
+cp .env.example .env.local     # then fill in the values
+npm run db:migrate
+npm run db:seed                # creates the super admin
+npm run dev                    # http://localhost:3000
 ```
 
-## Building For Production
+Without `RESEND_API_KEY` and `EMAIL_FROM`, verification emails are printed to
+the console instead of sent. That is intentional for local work; in production
+their absence is a startup failure.
 
-To build this application for production:
+## Commands
 
-```bash
-npm run build
-```
+| | |
+|---|---|
+| `npm run dev` | Dev server on :3000 |
+| `npm run build` | Production build |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | Vitest — unit, integration, component |
+| `npm run test:e2e` | Playwright, desktop and mobile |
+| `npm run check` | Biome lint and format |
+| `npm run db:generate` | Drizzle migration from schema changes |
+| `npm run email:test -- <to> [locale]` | Send a real verification email |
 
-## Styling
+## Stack
 
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
+TypeScript, **Solid 2** and **TanStack Start** (both on pinned release
+candidates), **Drizzle** with **PostgreSQL**, **Better Auth**, **Paraglide** for
+compile-time i18n, **Resend** for transactional mail, Tailwind for styling.
 
-### Removing Tailwind CSS
+Every dependency is pinned to an exact version. See `docs/DECISIONS.md` for why.
 
-If you prefer not to use Tailwind CSS:
+## Documentation
 
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Uninstall the packages: `npm install @tailwindcss/vite tailwindcss -D`
+Start with **`CLAUDE.md`** — it is the working guide, and the rules there about
+the server/client boundary and upload validation are the ones most likely to
+bite.
 
-## Setting up Better Auth
+| | |
+|---|---|
+| `docs/OVERVIEW.md` | What the product is |
+| `docs/ARCHITECTURE.md` | Layers, and the server/client boundary |
+| `docs/DECISIONS.md` | Settled decisions and their reasoning |
+| `docs/ROADMAP.md` | Phase order and the first-load budget |
+| `docs/SECURITY.md` | Threat model and prioritised controls |
+| `docs/phases/` | Specification per phase |
 
-1. Generate and set the `BETTER_AUTH_SECRET` environment variable in your `.env.local`:
+## Two things to know before contributing
 
-   ```bash
-   npx -y @better-auth/cli secret
-   ```
+**This data is dangerous if it leaks.** The platform holds names, emails, CVs
+and political essays from engaged Haitians. Read `docs/SECURITY.md` before
+touching auth, uploads, or anything that reads an application dossier.
 
-2. Visit the [Better Auth documentation](https://www.better-auth.com) to unlock the full potential of authentication in your app.
-
-### Adding a Database (Optional)
-
-Better Auth can work in stateless mode, but to persist user data, add a database:
-
-```typescript
-// src/lib/auth.ts
-import { betterAuth } from "better-auth";
-import { Pool } from "pg";
-
-export const auth = betterAuth({
-  database: new Pool({
-    connectionString: process.env.DATABASE_URL,
-  }),
-  // ... rest of config
-});
-```
-
-Then run migrations:
-
-```bash
-npx -y @better-auth/cli migrate
-```
-
-## Routing
-
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/solid-router`.
-
-```tsx
-import { Link } from "@tanstack/solid-router";
-```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/solid/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes.
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/solid/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/solid-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/solid-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      <For each={data().results}>
-        {(person) => <li>{person.name}</li>}
-      </For>
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/solid/guide/data-loading#loader-parameters).
-
-## Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-## Linting & Formatting
-
-This project uses [Biome](https://biomejs.dev/) for linting and formatting. The following scripts are available:
-
-```bash
-npm run lint
-npm run format
-npm run check
-```
-
-## Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+**First-load weight is a feature.** An article page must stay under 100 KB
+gzipped of client JavaScript. Measure before and after adding a dependency;
+`docs/ROADMAP.md` has the command.
