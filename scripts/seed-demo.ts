@@ -309,6 +309,20 @@ const ARTICLES: ReadonlyArray<DemoArticle> = [
     ],
   },
   {
+    slug: 'bouyon-pou-enpote',
+    visibility: 'public',
+    translations: [
+      {
+        lang: 'fr',
+        status: 'draft',
+        title: "Un brouillon prêt pour l'import",
+        summary:
+          "Un brouillon que la suite d'import remplace par un fichier Word ; il n'appartient à aucun autre test.",
+        paragraphs: ['Ce texte sera remplacé par le contenu du document importé.'],
+      },
+    ],
+  },
+  {
     slug: 'pwopozisyon-san-panel',
     visibility: 'public',
     translations: [

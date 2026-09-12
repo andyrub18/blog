@@ -83,7 +83,7 @@ minimal hydration there, and spend interactivity on the forum and the editor.
 | **1 · Enrollment** | Role rename, applications, probation, promotion, cooptation, blocking, audit log | **Done** — `phases/01-ENROLLMENT.md` |
 | **2 · Articles** | `article` + `article_translation` + visibility, TipTap editor, reading view | **Done** — `phases/02-ARTICLES-REVIEW.md` |
 | **3 · Review** | Submissions, assigned contradictors, qualified-majority decisions | **Done** — `phases/02-ARTICLES-REVIEW.md` |
-| **4 · Import** | DOCX pipeline | `phases/03-DOCUMENT-IMPORT.md` |
+| **4 · Import** | DOCX pipeline | **Done** — `phases/03-DOCUMENT-IMPORT.md` |
 | **5 · Forum** | Threads on articles | |
 | **6 · `en` + `es`** | Two locale files and the fallback experience | |
 

@@ -25,9 +25,24 @@ import { m } from '../../paraglide/messages'
  * live — the same shape `_app.tsx` uses.
  */
 
+/** The handle the editor hands back once it is live. */
+export type EditorHandle = {
+  /**
+   * Replace everything in the editor.
+   *
+   * The only way in, on purpose. The editor does not follow `content` after it
+   * is built — see `untrack` below — because the route re-reads its loader data
+   * after every save and following that would tear the editor down under the
+   * author's cursor. An import is the one case where replacing is what the
+   * author asked for, so it is an explicit call rather than a reactive edge.
+   */
+  replace: (doc: DocNode) => void
+}
+
 type Props = {
   content: DocNode
   onChange: (doc: DocNode, words: number) => void
+  onReady?: (handle: EditorHandle) => void
 }
 
 type ToolbarButton = {
@@ -106,6 +121,13 @@ const BUTTONS: Array<ToolbarButton> = [
     label: () => m.write_toolbar_rule(),
     run: (e) => e.chain().focus().setHorizontalRule().run(),
   },
+  {
+    key: 'table',
+    label: () => m.write_toolbar_table(),
+    active: { name: 'table' },
+    run: (e) =>
+      e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+  },
 ]
 
 export default function ArticleEditor(props: Props) {
@@ -135,9 +157,10 @@ export default function ArticleEditor(props: Props) {
       const initial = untrack(() => props.content)
 
       void (async () => {
-        const [{ Editor }, { default: StarterKit }] = await Promise.all([
+        const [{ Editor }, { default: StarterKit }, { TableKit }] = await Promise.all([
           import('@tiptap/core'),
           import('@tiptap/starter-kit'),
+          import('@tiptap/extension-table'),
         ])
 
         // The author may have navigated away while the chunk was in flight.
@@ -158,6 +181,15 @@ export default function ArticleEditor(props: Props) {
                 isAllowedUri: (url) => isSafeHref(url),
               },
             }),
+            /**
+             * Tables, so an imported one can be edited rather than only read.
+             *
+             * `resizable` is off: a column width is layout, and layout is what
+             * this document format deliberately does not carry — the server
+             * would drop the attribute on the next save and the author would
+             * watch their work undo itself.
+             */
+            TableKit.configure({ table: { resizable: false } }),
           ],
           content: initial,
           onUpdate: ({ editor: current }) => {
@@ -174,6 +206,14 @@ export default function ArticleEditor(props: Props) {
         })
         setEditor(instance)
         setReady(true)
+        props.onReady?.({
+          replace: (next) => {
+            // `emitUpdate` stays on, so the route's own copy of the document
+            // follows. Turning it off would leave the parent holding the old
+            // text, and the next save would quietly undo the import.
+            instance?.commands.setContent(next as never)
+          },
+        })
       })()
     },
   )

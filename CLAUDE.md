@@ -70,6 +70,9 @@ logic** (server functions) → **auth** (Better Auth) → **components** (Solid)
   allowlist, the parser and the server-side HTML renderer. Pure, no IO. Test it.
 - `src/lib/articles.ts` — article business logic. `src/lib/article-actions.ts` —
   the server functions, each re-checking the caller.
+- `src/lib/docx.ts` — the DOCX import pipeline. **Server only.**
+  `src/lib/html-to-prosemirror.ts` — HTML to our format, and the thing that makes
+  an imported file safe.
 - `src/lib/deliberation.ts` — the review rules: quorum, the per-language
   threshold, the five documentation fields. Pure, and therefore safe for a route
   to import. `src/lib/article-review.ts` is the flow around them, and is
@@ -149,6 +152,20 @@ the shape to use when the field also has to be cleared programmatically.
 publish endpoint; `withdrawTranslation` only takes one down. If you find
 yourself adding a way for one person to publish, you are building the thing this
 platform exists to make unavoidable (D13, D15).
+
+**An imported document is rebuilt, never cleaned.** Mammoth sanitises nothing
+(it says so itself), so `html-to-prosemirror.ts` is what stands between a Word
+file somebody emailed an author and a public page. It copies no tag through:
+every node comes from the allowlist in `prosemirror.ts`. Do not add a shortcut
+that passes HTML along, and do not add a tag to its tables without asking what
+it lets a document put in a reader's browser (D18).
+
+**Check a `.docx` before opening it, in this order:** `file.size` before the
+body is read, then `PK\x03\x04` (the MIME type is the client's), then the ZIP
+central directory — entry count, total uncompressed size, per-entry compression
+ratio — and only then `[Content_Types].xml` and a `word/` entry. Finding out how
+big an archive expands to by expanding it is the bug that whole step exists to
+avoid.
 
 **Import the review rules from `deliberation.ts`, never from
 `article-review.ts`.** A route that imports a *value* from the latter pulls

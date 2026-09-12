@@ -8,7 +8,10 @@ import { createSignal, For, Show } from 'solid-js'
  * instead — `lazy()` here — served the toolbar from the server with no client
  * entry to hydrate against, so the editor never appeared at all.
  */
-import ArticleEditor from '../../../components/editor/ArticleEditor'
+import ArticleEditor, {
+  type EditorHandle,
+} from '../../../components/editor/ArticleEditor'
+import ImportPanel from '../../../components/editor/ImportPanel'
 import SubmitPanel from '../../../components/editor/SubmitPanel'
 import { isLocale, LOCALE_LABELS, type Locale } from '../../../i18n'
 import {
@@ -107,6 +110,7 @@ type EditingProps = {
 }
 
 function Editing(props: EditingProps) {
+  let editor: EditorHandle | undefined
   const [title, setTitle] = createSignal(props.article.title)
   const [summary, setSummary] = createSignal(props.article.summary)
   const [doc, setDoc] = createSignal<DocNode>(props.article.content)
@@ -221,6 +225,9 @@ function Editing(props: EditingProps) {
       {/* The wait for TipTap is named inside the editor itself. */}
       <ArticleEditor
         content={props.article.content}
+        onReady={(handle) => {
+          editor = handle
+        }}
         onChange={(next, count) => {
           setDoc(next)
           setWords(count)
@@ -275,6 +282,24 @@ function Editing(props: EditingProps) {
           {(message) => <p class="text-[#A3261F]">{message()}</p>}
         </Show>
       </div>
+
+      {/*
+       * Import sits above the submission form, in the order the work happens:
+       * bring the Word file in, read what the conversion lost, fix it, then put
+       * it to the circle.
+       */}
+      <ImportPanel
+        articleId={props.article.articleId}
+        lang={props.article.lang}
+        onImported={async (imported) => {
+          // The server already stored it, so the editor is being caught up
+          // rather than changed: put the text on screen and clear the unsaved
+          // marker the replacement itself sets.
+          editor?.replace(imported)
+          setDirty(false)
+          await props.onChanged()
+        }}
+      />
 
       {/*
        * The languages this article actually has text in. Submitting a language

@@ -20,11 +20,12 @@ import {
 
 const doc = (...content: Array<unknown>): unknown => ({ type: 'doc', content })
 const para = (...content: Array<unknown>) => ({ type: 'paragraph', content })
-const text = (value: string, marks?: Array<unknown>) => ({
+const textNode = (value: string, marks?: Array<unknown>) => ({
   type: 'text',
   text: value,
   ...(marks ? { marks } : {}),
 })
+const text = textNode
 
 function render(input: unknown): string {
   const parsed = parseDocument(input)
@@ -266,5 +267,83 @@ describe('emptyDocument', () => {
     const result = parseDocument(emptyDocument())
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.code).toBe('EMPTY')
+  })
+})
+
+describe('tables', () => {
+  const cell = (text: string, attrs?: Record<string, number>) => ({
+    type: 'tableCell',
+    ...(attrs ? { attrs } : {}),
+    content: [para(textNode(text))],
+  })
+
+  it('renders a table inside a wrapper that can scroll', () => {
+    // A wide table is the one thing on an article page allowed to scroll
+    // sideways; without the wrapper it widens the page on a phone.
+    const html = render(
+      doc({
+        type: 'table',
+        content: [
+          {
+            type: 'tableRow',
+            content: [
+              { type: 'tableHeader', content: [para(textNode('Année'))] },
+              { type: 'tableHeader', content: [para(textNode('Recettes'))] },
+            ],
+          },
+          { type: 'tableRow', content: [cell('2025'), cell('inconnu')] },
+        ],
+      }),
+    )
+    expect(html).toBe(
+      '<div class="article-table"><table><tbody>' +
+        '<tr><th><p>Année</p></th><th><p>Recettes</p></th></tr>' +
+        '<tr><td><p>2025</p></td><td><p>inconnu</p></td></tr>' +
+        '</tbody></table></div>',
+    )
+  })
+
+  it('keeps spans but refuses an absurd one', () => {
+    const html = render(
+      doc({
+        type: 'table',
+        content: [
+          {
+            type: 'tableRow',
+            content: [
+              cell('a', { colspan: 2, rowspan: 3 }),
+              cell('b', { colspan: 9999 }),
+            ],
+          },
+        ],
+      }),
+    )
+    expect(html).toContain('<td colspan="2" rowspan="3">')
+    // A cell claiming a thousand columns is broken input, not a wide table.
+    expect(html).toContain('<td colspan="100">')
+  })
+
+  it('drops a span of one rather than writing it out', () => {
+    const html = render(
+      doc({
+        type: 'table',
+        content: [{ type: 'tableRow', content: [cell('a', { colspan: 1 })] }],
+      }),
+    )
+    expect(html).toContain('<td>')
+    expect(html).not.toContain('colspan')
+  })
+
+  it('drops table attributes an author invented', () => {
+    const parsed = parseDocument(
+      doc({
+        type: 'table',
+        attrs: { style: 'width:9999px', onclick: 'steal()' },
+        content: [{ type: 'tableRow', content: [cell('a')] }],
+      }),
+    )
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.doc.content?.[0]?.attrs).toBeUndefined()
   })
 })
