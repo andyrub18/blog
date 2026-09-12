@@ -75,3 +75,52 @@ export function ageInYears(birth: Date, now: Date = new Date()): number {
 export function meetsMinimumAge(birth: Date, now: Date = new Date()): boolean {
   return ageInYears(birth, now) >= MIN_ACCOUNT_AGE_YEARS
 }
+
+/**
+ * Article titles, summaries and slugs.
+ *
+ * The summary is required rather than optional: it is what a reader sees in the
+ * index and what a link preview shows, and an article that arrives in a Haitian
+ * WhatsApp group with no description is an article nobody opens.
+ */
+export const MIN_ARTICLE_TITLE_CHARS = 8
+export const MAX_ARTICLE_TITLE_CHARS = 160
+export const MIN_ARTICLE_SUMMARY_CHARS = 40
+export const MAX_ARTICLE_SUMMARY_CHARS = 400
+export const MAX_SLUG_CHARS = 80
+
+export function isValidArticleTitle(value: string): boolean {
+  const length = value.trim().length
+  return length >= MIN_ARTICLE_TITLE_CHARS && length <= MAX_ARTICLE_TITLE_CHARS
+}
+
+export function isValidArticleSummary(value: string): boolean {
+  const length = value.trim().length
+  return length >= MIN_ARTICLE_SUMMARY_CHARS && length <= MAX_ARTICLE_SUMMARY_CHARS
+}
+
+export const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+export function isValidSlug(value: string): boolean {
+  return value.length > 0 && value.length <= MAX_SLUG_CHARS && SLUG_RE.test(value)
+}
+
+/**
+ * A URL-safe slug from a title in French or Creole.
+ *
+ * Accents are folded to their base letters — `sitiyasyon-ekonomik`, not a
+ * percent-encoded mess — because these URLs get pasted into WhatsApp and read
+ * aloud on the radio. Creole's `è`, `ò`, `à` and French's `é`, `ç`, `û` all
+ * decompose under NFD, so one pass over the combining marks handles both
+ * languages without a transliteration table.
+ */
+export function slugify(title: string): string {
+  return title
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, MAX_SLUG_CHARS)
+    .replace(/-+$/g, '')
+}

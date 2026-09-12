@@ -85,7 +85,14 @@ breaking change arrives unannounced, which on a volunteer team is a lost weekend
 
 TipTap *is* ProseMirror with a maintained API; using ProseMirror directly would
 be over-engineering. There is no first-party Solid binding, so the vanilla
-`Editor` gets constructed in `onSettled` and destroyed in `onCleanup`.
+`Editor` is constructed once on the client and destroyed in `onCleanup`.
+
+Two corrections from building it. Solid 2 has neither `onMount` nor `onSettled`,
+so the construction happens in an effect whose compute is constant — the same
+shape `routes/_app.tsx` uses. And the editor's extension set is configured to
+match the server's allowlist exactly (`underline` is switched off, links are
+checked with the same `isSafeHref`), because a button that produces something the
+server drops loses an author's formatting on save and tells them nothing.
 
 ## D10 — Article content is stored as ProseMirror JSON
 
@@ -97,3 +104,42 @@ stage needs, and it cannot carry script.
 Private buckets, random UUID keys, short-lived signed URLs, encryption at rest,
 same region as the app. Never the local filesystem in production — it does not
 survive a redeploy, and it is the wrong security posture for dossiers.
+
+## D12 — Publication is per language, on the translation
+
+`article.status` is the life of the work; `article_translation.status` and
+`published_at` are the life of one language of it, and the reading view checks
+the translation. A single article-level flag cannot express the normal case for
+this movement — the French is ready, the Creole is still being written — and
+would put an unfinished draft in front of readers the moment another language
+was approved.
+
+Withdrawing one language is therefore not a retraction of the article. It leaves
+`article` and the other translations alone, because conflating an editorial
+correction with a retraction would make the audit trail lie about what happened.
+
+## D13 — An author does not publish their own article
+
+`publishTranslation` requires a senior member. The manifesto does not let an
+author decide that their own proposal has been accepted, and phase 3's
+submission workflow will put a documented proposal and assigned contradictors
+behind that judgement.
+
+Recorded as a decision rather than a placeholder because the constraint had to
+exist from the first article, not from the day the workflow lands. A
+self-publish button is the hardest kind of thing to take away: by the time the
+review process arrived, people would have been publishing that way for months
+and the removal would read as a loss of trust rather than the rule working.
+Phase 3 replaces the judgement behind the constraint, not the constraint.
+
+## D14 — Article HTML is rendered on the server
+
+`renderDocumentToHtml` runs in the server function; the reading view receives
+finished markup and the stored ProseMirror document never crosses the wire.
+Sending both would mean every reader downloads the same article twice, on the
+one page the 100 KB budget is written for, and would put a renderer in the
+client bundle to rebuild markup the server already had.
+
+The document is parsed against the allowlist on the way in *and* again on the
+way out. The row was sanitised when it was written, but the rules can tighten and
+a row could be changed by something other than `saveTranslation`.

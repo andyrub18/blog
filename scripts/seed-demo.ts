@@ -15,6 +15,9 @@ import { auth } from '../src/lib/auth'
 import { db } from '../src/lib/db'
 import {
   applicationEvent,
+  article,
+  articleRevision,
+  articleTranslation,
   authThrottle,
   invitation,
   memberApplication,
@@ -209,6 +212,158 @@ async function confirmMember(userId: string): Promise<void> {
     .where(eq(userTable.id, userId))
 }
 
+/** A ProseMirror document with a couple of paragraphs, the shape the editor produces. */
+function demoDocument(paragraphs: Array<string>) {
+  return {
+    type: 'doc',
+    content: paragraphs.map((text) => ({
+      type: 'paragraph',
+      content: [{ type: 'text', text }],
+    })),
+  }
+}
+
+type DemoArticle = {
+  slug: string
+  visibility: 'public' | 'members'
+  translations: Array<{
+    lang: string
+    status: 'draft' | 'published'
+    title: string
+    summary: string
+    paragraphs: Array<string>
+  }>
+}
+
+/**
+ * Three articles, each exercising a different reading path.
+ *
+ * The second is published in French only on purpose: the fallback banner a
+ * Creole reader sees is the part of the reading view most likely to break
+ * quietly, because it only appears when a language is missing.
+ */
+const ARTICLES: ReadonlyArray<DemoArticle> = [
+  {
+    slug: 'sitiyasyon-ekonomik-nan-peyi-a',
+    visibility: 'public',
+    translations: [
+      {
+        lang: 'fr',
+        status: 'published',
+        title: 'La situation économique et ce que le mouvement propose',
+        summary:
+          "Un diagnostic de la crise économique, les réponses envisagées et les moyens qu'elles demandent.",
+        paragraphs: [
+          "Le diagnostic d'abord : sans état des lieux partagé, chaque proposition défend un problème différent.",
+          'Les solutions envisagées, les ressources qu’elles demandent et les risques identifiés viennent ensuite.',
+        ],
+      },
+      {
+        lang: 'ht',
+        status: 'published',
+        title: 'Sitiyasyon ekonomik la ak sa mouvman an pwopoze',
+        summary:
+          'Yon dyagnostik sou kriz ekonomik la, repons nou anvizaje yo ak mwayen yo mande.',
+        paragraphs: [
+          'Dyagnostik la anvan : san yon leve kanpe nou tout dakò sou li, chak pwopozisyon ap defann yon pwoblèm diferan.',
+          'Solisyon yo, resous yo mande ak risk nou idantifye yo vini apre.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'leducation-comme-priorite',
+    visibility: 'public',
+    translations: [
+      {
+        lang: 'fr',
+        status: 'published',
+        title: "L'éducation comme priorité vérifiable",
+        summary:
+          "Pourquoi une priorité sans indicateur de réussite n'est qu'une intention, et ce que nous mesurerons.",
+        paragraphs: [
+          'Une priorité que personne ne peut vérifier est une intention, pas un engagement.',
+          'Cet article propose trois indicateurs et la manière de les publier chaque trimestre.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'note-interne-cercle-economie',
+    visibility: 'members',
+    translations: [
+      {
+        lang: 'fr',
+        status: 'draft',
+        title: 'Note de travail du Cercle Économie',
+        summary:
+          "Un brouillon interne : ce que le cercle doit trancher avant de proposer une position publique.",
+        paragraphs: ['Brouillon. Rien ici n’a encore été soumis au cercle.'],
+      },
+    ],
+  },
+]
+
+/**
+ * Replace the demo articles wholesale.
+ *
+ * Like the applications above, these are reset rather than skipped: a run that
+ * published the draft would leave the next run's editor test with nothing
+ * unpublished to work on.
+ */
+async function resetArticles(authorId: string, allAuthors: Array<string>): Promise<void> {
+  // Everything these accounts wrote, not only the known slugs: the end-to-end
+  // suite publishes an article of its own, and leaving it behind would grow the
+  // public index by one every run.
+  const existing = await db
+    .select({ id: article.id })
+    .from(article)
+    .where(inArray(article.authorId, allAuthors))
+  if (existing.length > 0) {
+    const ids = existing.map((row) => row.id)
+    await db.delete(articleRevision).where(inArray(articleRevision.articleId, ids))
+    await db.delete(articleTranslation).where(inArray(articleTranslation.articleId, ids))
+    await db.delete(article).where(inArray(article.id, ids))
+  }
+
+  for (const entry of ARTICLES) {
+    const id = randomUUID()
+    const published = entry.translations.some((t) => t.status === 'published')
+    const now = new Date()
+
+    await db.insert(article).values({
+      id,
+      slug: entry.slug,
+      authorId,
+      visibility: entry.visibility,
+      status: published ? 'published' : 'draft',
+      publishedAt: published ? now : null,
+    })
+
+    for (const translation of entry.translations) {
+      const content = demoDocument(translation.paragraphs)
+      await db.insert(articleTranslation).values({
+        articleId: id,
+        lang: translation.lang,
+        title: translation.title,
+        summary: translation.summary,
+        contentJson: content,
+        status: translation.status,
+        publishedAt: translation.status === 'published' ? now : null,
+      })
+      await db.insert(articleRevision).values({
+        id: randomUUID(),
+        articleId: id,
+        lang: translation.lang,
+        title: translation.title,
+        summary: translation.summary,
+        contentJson: content,
+        createdBy: authorId,
+      })
+    }
+  }
+}
+
 async function main() {
   if (process.env.NODE_ENV === 'production' && process.env.ALLOW_INSECURE_LOCAL !== 'true') {
     console.error(
@@ -255,6 +410,9 @@ async function main() {
   await confirmMember(ids.confirmed)
   await confirmMember(ids.blockable)
   console.info('· confirmed and blockable are members past their probation')
+
+  await resetArticles(ids.confirmed, Object.values(ids))
+  console.info('· demo articles: two published (one French-only), one members-only draft')
 
   console.info(`\nDemo accounts (password: ${PASSWORD})`)
   for (const account of ACCOUNTS) {

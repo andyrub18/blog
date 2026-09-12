@@ -1,13 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import {
   ageInYears,
+  isValidArticleSummary,
+  isValidArticleTitle,
   isValidEmail,
   isValidEssay,
   isValidName,
   isValidPassword,
+  isValidSlug,
+  MAX_ARTICLE_SUMMARY_CHARS,
+  MAX_ARTICLE_TITLE_CHARS,
+  MAX_SLUG_CHARS,
   MIN_ACCOUNT_AGE_YEARS,
+  MIN_ARTICLE_SUMMARY_CHARS,
   meetsMinimumAge,
   parseDateOfBirth,
+  slugify,
 } from './validation'
 
 describe('isValidEmail', () => {
@@ -102,5 +110,72 @@ describe('meetsMinimumAge', () => {
     birth.setUTCFullYear(now.getUTCFullYear() - MIN_ACCOUNT_AGE_YEARS)
     birth.setUTCDate(birth.getUTCDate() + 1)
     expect(meetsMinimumAge(birth, now)).toBe(false)
+  })
+})
+
+describe('slugify', () => {
+  it('folds French and Creole accents to their base letters', () => {
+    // These URLs get pasted into WhatsApp and read aloud on the radio; a
+    // percent-encoded slug survives neither.
+    expect(slugify('La situation économique en Haïti')).toBe(
+      'la-situation-economique-en-haiti',
+    )
+    expect(slugify('Sitiyasyon ekonomik nan peyi a — kèk repons')).toBe(
+      'sitiyasyon-ekonomik-nan-peyi-a-kek-repons',
+    )
+  })
+
+  it('collapses punctuation and trims the separators it leaves behind', () => {
+    expect(slugify('  Quoi ?! Vraiment…  ')).toBe('quoi-vraiment')
+  })
+
+  it('never ends on a separator after being cut to length', () => {
+    const slug = slugify(`${'a'.repeat(MAX_SLUG_CHARS - 1)} bcdef`)
+    expect(slug.length).toBeLessThanOrEqual(MAX_SLUG_CHARS)
+    expect(slug.endsWith('-')).toBe(false)
+    expect(isValidSlug(slug)).toBe(true)
+  })
+
+  it('produces nothing from a title with no Latin letters, which the caller must handle', () => {
+    expect(slugify('!!!')).toBe('')
+    expect(isValidSlug('')).toBe(false)
+  })
+})
+
+describe('isValidSlug', () => {
+  it('accepts lowercase words joined by single hyphens', () => {
+    expect(isValidSlug('manifes-kle-2026')).toBe(true)
+  })
+
+  it('rejects anything that would change what the URL means', () => {
+    for (const value of [
+      'Majuscule',
+      'deux--tirets',
+      '-bord',
+      'bord-',
+      'a/b',
+      'a b',
+      'é',
+    ]) {
+      expect(isValidSlug(value), value).toBe(false)
+    }
+  })
+
+  it('rejects a slug past the length limit', () => {
+    expect(isValidSlug('a'.repeat(MAX_SLUG_CHARS + 1))).toBe(false)
+  })
+})
+
+describe('article title and summary', () => {
+  it('requires a title long enough to say something and short enough to display', () => {
+    expect(isValidArticleTitle('court')).toBe(false)
+    expect(isValidArticleTitle('Un titre honnête')).toBe(true)
+    expect(isValidArticleTitle('a'.repeat(MAX_ARTICLE_TITLE_CHARS + 1))).toBe(false)
+  })
+
+  it('requires a summary, because it is what a shared link shows', () => {
+    expect(isValidArticleSummary('trop court')).toBe(false)
+    expect(isValidArticleSummary('x'.repeat(MIN_ARTICLE_SUMMARY_CHARS))).toBe(true)
+    expect(isValidArticleSummary('x'.repeat(MAX_ARTICLE_SUMMARY_CHARS + 1))).toBe(false)
   })
 })

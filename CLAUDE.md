@@ -58,6 +58,10 @@ logic** (server functions) → **auth** (Better Auth) → **components** (Solid)
   function.
 - `src/lib/session.server.ts` — server only: `getSession`, `requireUser`,
   `requireRole`, `redirectIfAuthenticated`.
+- `src/lib/prosemirror.ts` — the article document format: the node/mark
+  allowlist, the parser and the server-side HTML renderer. Pure, no IO. Test it.
+- `src/lib/articles.ts` — article business logic. `src/lib/article-actions.ts` —
+  the server functions, each re-checking the caller.
 - `src/i18n/` — locale registry and the locale context.
 - `messages/<locale>.json` — translations, compiled by Paraglide.
 
@@ -96,6 +100,42 @@ bytes — `stageApplicationPdf` in `src/lib/uploads.ts` is the reference.
 **Validate and stage uploads before creating an account.** Creating the user
 first means a failed upload strands an account with no application. See the
 comment in `signUpMember`.
+
+**Article content is parsed before it is stored, and again before it is
+rendered.** `parseDocument` in `src/lib/prosemirror.ts` drops every node, mark
+and attribute outside its allowlist. Never store what the editor sent; never add
+a node type without asking what it lets an author put in another reader's
+browser. There is no image node and no raw-HTML node, both on purpose.
+
+**The reading view renders on the server and ships no JavaScript of its own.**
+`fetchArticle` returns HTML and deliberately strips the ProseMirror document
+from the payload — sending both would put the same article on the wire twice, on
+the one page the budget exists for. `innerHTML` on that string is safe *because*
+the renderer wrote every tag and escaped every author-supplied character; it
+would not be safe for HTML from anywhere else.
+
+**Never import `@tiptap/*` anywhere but inside the editor's effect.** It is
+126 KB gzipped. `components/editor/ArticleEditor.tsx` loads it with a dynamic
+`import()` and imports only its *type* statically; `e2e/articles.spec.ts` fails
+if an article page ever requests an editor script. Splitting the component
+instead — `lazy()` on the route — does not work: the server renders the toolbar,
+the client manifest has no entry for the module, and hydration gives up, leaving
+a toolbar that looks right above an editor that never appears. Keep the editor's
+extension set matched to the server allowlist, or a toolbar button silently
+loses an author's formatting on save.
+
+**Do not bind `value` on a `<textarea>`.** Solid's SSR writes the value as a
+child text node while the client template has none, so the two sides end up one
+node apart and hydration silently detaches everything after it — the page looks
+right and stops answering clicks. Leave the textarea uncontrolled and read it in
+`onInput`; put an initial value in as a JSX child. `<input value={…}>` is fine.
+`src/components/auth/ApplyForm.tsx` and `src/routes/_app/review/probation.tsx`
+still have the old shape and are affected.
+
+**An author cannot publish their own article, and publication is per language.**
+`publishTranslation` requires a senior member (D13), and it sets the status on
+the *translation* (D12) — publishing French while Creole is still a draft is the
+normal case, not an edge case.
 
 **Dates of birth are compared in UTC.** An `<input type="date">` value parses as
 UTC midnight; reading it with local getters shifts it a day in any timezone
