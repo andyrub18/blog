@@ -46,6 +46,22 @@ const BLOCK_NODES = [
   'listItem',
   'codeBlock',
   'horizontalRule',
+  /**
+   * Tables, added in phase 4 for the DOCX import.
+   *
+   * A table is the one Word structure that genuinely cannot be written as
+   * prose: a budget line against a year, an indicator against its target. The
+   * import would otherwise have to flatten them into paragraphs, which loses
+   * the thing the author was using a table to say.
+   *
+   * No column widths, no merged-cell spans beyond `colspan`/`rowspan`, no
+   * styling. Those are layout, and layout is what this document format
+   * deliberately does not carry.
+   */
+  'table',
+  'tableRow',
+  'tableHeader',
+  'tableCell',
 ] as const
 
 const INLINE_NODES = ['text', 'hardBreak'] as const
@@ -68,6 +84,9 @@ export const MAX_HEADING_LEVEL = 4
 
 /** Guards against a pathological document walking the renderer into a stack overflow. */
 const MAX_DEPTH = 20
+
+/** A cell spanning more than this is broken input, not a wide table. */
+const MAX_CELL_SPAN = 100
 
 export type ParseError = 'NOT_A_DOCUMENT' | 'EMPTY'
 
@@ -154,6 +173,19 @@ function sanitizeNode(value: unknown, depth: number): DocNode | null {
     result.attrs = {
       level: Math.min(MAX_HEADING_LEVEL, Math.max(MIN_HEADING_LEVEL, level)),
     }
+  }
+
+  if (type === 'tableHeader' || type === 'tableCell') {
+    // Spans only, and only as small positive integers. A cell claiming to span
+    // a thousand columns is either broken or an attempt to make the renderer
+    // emit something enormous.
+    const attrs: Record<string, number> = {}
+    for (const key of ['colspan', 'rowspan'] as const) {
+      const raw = (node.attrs as Record<string, unknown> | undefined)?.[key]
+      const span = typeof raw === 'number' && Number.isFinite(raw) ? Math.round(raw) : 1
+      if (span > 1) attrs[key] = Math.min(MAX_CELL_SPAN, span)
+    }
+    if (Object.keys(attrs).length > 0) result.attrs = attrs
   }
 
   if (type === 'codeBlock') {
@@ -269,6 +301,7 @@ const BLOCK_TAGS: Record<string, string> = {
   bulletList: 'ul',
   orderedList: 'ol',
   listItem: 'li',
+  tableRow: 'tr',
 }
 
 function renderNode(node: DocNode): string {
@@ -287,6 +320,21 @@ function renderNode(node: DocNode): string {
     const language = node.attrs?.language
     const attr = language ? ` class="language-${escapeHtml(String(language))}"` : ''
     return `<pre><code${attr}>${children}</code></pre>`
+  }
+
+  if (node.type === 'table') {
+    // Wrapped, because a wide table is the one thing on an article page allowed
+    // to scroll sideways. Without the wrapper it widens the whole page on a
+    // phone, which is the device most readers arrive on.
+    return `<div class="article-table"><table><tbody>${children}</tbody></table></div>`
+  }
+
+  if (node.type === 'tableHeader' || node.type === 'tableCell') {
+    const tag = node.type === 'tableHeader' ? 'th' : 'td'
+    const spans = (['colspan', 'rowspan'] as const)
+      .map((key) => (node.attrs?.[key] ? ` ${key}="${Number(node.attrs[key])}"` : ''))
+      .join('')
+    return `<${tag}${spans}>${children}</${tag}>`
   }
 
   const tag = BLOCK_TAGS[node.type]

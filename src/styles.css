@@ -116,3 +116,61 @@ body {
   height: 0;
   pointer-events: none;
 }
+
+/*
+ * Tables, in the reading view and the editor.
+ *
+ * The wrapper is the important part. A budget table is wider than a phone, and
+ * most readers arrive on one; without a scrolling container the table widens
+ * the whole page and every paragraph on it goes off-screen. `article-table` is
+ * emitted by the renderer around every table for exactly that reason.
+ */
+.article-table {
+  margin-top: 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.article-prose table {
+  border-collapse: collapse;
+  min-width: 100%;
+  width: max-content;
+}
+
+.article-prose th,
+.article-prose td {
+  border: 1px solid var(--color-neutral-300);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.article-prose th {
+  background: var(--color-neutral-100);
+  font-weight: 600;
+}
+
+/* A cell holds paragraphs; they should not carry the prose spacing. */
+.article-prose th > p,
+.article-prose td > p {
+  margin: 0;
+}
+
+.article-prose th > p + p,
+.article-prose td > p + p {
+  margin-top: 0.5rem;
+}
+
+/* The editor's own table, where a cell needs to show it is selected. */
+.article-prose .ProseMirror .selectedCell::after {
+  background: rgba(0, 32, 159, 0.12);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.article-prose .ProseMirror th,
+.article-prose .ProseMirror td {
+  position: relative;
+}

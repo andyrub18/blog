@@ -52,6 +52,17 @@ export const RULES = {
   // yet. A 32-byte token is not guessable, so this is not really brute-force
   // defence; it stops the endpoint being used as a free probe.
   inviteLookup: { limit: 30, windowSeconds: 15 * 60 },
+  /**
+   * Keyed to the account, not the address.
+   *
+   * Importing is the most expensive thing a signed-in member can ask for — an
+   * archive to unzip and an XML tree to walk — so it needs a ceiling. But the
+   * caller is authenticated here, and keying it to an IP would charge a whole
+   * cybercafé for one member's revisions, which is the same mistake `signIn`
+   * above is written to avoid. Twenty an hour is more imports than anybody
+   * makes in an afternoon of rewriting.
+   */
+  docxImport: { limit: 20, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimitRule>
 
 export type RateLimitAction = keyof typeof RULES

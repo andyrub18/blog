@@ -197,3 +197,40 @@ it lands on every page including the ones with no queries at all.
 The same reasoning applies to anything else the scaffold left behind. An unused
 dependency is not free: it is bytes on a metered connection, a supply-chain
 surface, and a pinned release candidate somebody has to keep upgrading.
+
+## D18 — An importer that rebuilds, rather than a sanitiser that cleans
+
+Mammoth states plainly that it sanitises nothing, and that a Word file can carry
+a `javascript:` link which becomes executable if the output is embedded
+uncleaned. The conventional answer is an allowlist sanitiser over the HTML,
+followed by a parse into the editor's schema.
+
+`html-to-prosemirror.ts` does the two in one pass instead, and not to save a
+step. Nothing in it copies a tag through: every node is rebuilt from the
+vocabulary in `prosemirror.ts`, so an element with no entry in its tables cannot
+produce anything at all, whatever it contains. A sanitiser must enumerate what
+is dangerous and is wrong whenever that list is incomplete. This enumerates what
+is allowed, which is a list we already maintain for the editor, and the output
+is structured JSON rather than HTML — so there is no markup to get wrong.
+
+It also avoids TipTap's `generateJSON`, which would mean running the editor and
+a DOM implementation on the server to re-derive an allowlist we own.
+
+## D19 — Tables are content; images are a pipeline
+
+Phase 4 added tables to the document format — nodes, renderer, editor extension,
+import mapping — because a budget line against a year is the one Word structure
+that cannot honestly be rewritten as prose.
+
+Images are counted in the import report and dropped. Mammoth's default is to
+inline each one as a base64 `data:` URI, which would bloat the stored row and
+every page load of the published article. The alternative is storage, and D11
+says that is managed object storage, which does not exist yet.
+
+The deeper reason to wait is that "images work" is not the same feature as an
+`<img>` tag. For a reader on metered Haitian mobile data, images are the bill —
+the roadmap says so — and doing them properly means re-encoding to strip EXIF,
+AVIF or WebP, `srcset`, explicit dimensions and lazy loading below the fold.
+Shipping an `<img>` now would spend the hard part's budget without doing the
+hard part. Until then the author is told plainly that their images were not
+taken, which is the honest half of the feature.

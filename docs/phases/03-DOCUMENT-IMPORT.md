@@ -1,4 +1,9 @@
-# Phase 3 — Document handling
+# Phase 4 — Document handling
+
+> **Section B is built; section A landed with phase 1.** The DOCX pipeline,
+> tables, and the import report all ship in phase 4. Images do not — see "What
+> phase 4 built" at the end, which also records the two places this
+> implementation departed from the plan below and why.
 
 There are two upload paths in this application and they have opposite security postures.
 Keeping them separate is the whole design.
@@ -83,3 +88,75 @@ imports against the same `article_id`.
 
 Members will eventually ask to get their work back out. Rendering stored ProseMirror JSON
 to `.docx` is straightforward but it is not v1 work — note it and move on.
+
+
+---
+
+## What phase 4 built
+
+`src/lib/docx.ts` is the pipeline and `src/lib/html-to-prosemirror.ts` is the
+conversion. Between them they follow the eight steps above, with two deliberate
+departures.
+
+### Departure 1 — the sanitiser and the parser are one pass
+
+Steps 6 and 7 above are "sanitise the HTML, then parse it into ProseMirror
+JSON". This does both at once, and the result is stronger than doing them in
+sequence.
+
+`htmlToDocument` never copies a tag through. Every node is *rebuilt* from the
+allowlist in `prosemirror.ts`, so an element with no entry in its tables cannot
+produce anything, whatever it contains. A sanitiser has to enumerate what is
+dangerous; this enumerates what is allowed. The step is not skipped — it is the
+whole module, and `html-to-prosemirror.test.ts` holds it to the properties that
+matter: a `javascript:` link becomes plain text, a `<script>` disappears with
+its contents, an `onclick` attribute has no path by which it could survive.
+
+Doing it this way also avoided TipTap's `generateJSON`, which would have meant
+running the editor and a DOM implementation on the server to re-derive an
+allowlist we already own.
+
+### Departure 2 — images are dropped, and tables are not
+
+The table above says both survive. Tables do, and needed four layers: nodes in
+the schema, the renderer, the TipTap table extension in the editor, and the
+import mapping. A budget line against a year is the one Word structure that
+genuinely cannot be rewritten as prose.
+
+**Images are counted and named in the report, not imported.** Mammoth's default
+is to inline each one as a base64 `data:` URI, which would bloat the stored row
+and every page load of the published article — directly against the first-load
+budget — and there is nowhere to put them instead: D11 wants managed object
+storage and it does not exist yet. Half-doing it now would also skip the part
+that actually matters for a reader on metered data, which is AVIF/WebP with
+`srcset` and lazy loading, not simply having an `<img>`.
+
+So images arrive with the storage pipeline, as their own piece of work, and
+until then an author is told plainly that their three images were not taken.
+
+### The order of the checks
+
+Worth stating because it is the part that would be easy to reorder harmlessly
+and wrongly:
+
+1. `file.size` before the body is read, so an oversized upload never becomes
+   memory.
+2. `PK\x03\x04`, because the MIME type is set by the client.
+3. The **central directory**, which states every entry's compressed and
+   uncompressed size — read before anything is decompressed. The entry count,
+   the total, and the per-entry ratio are all checked there. A 2 MB upload that
+   expands to 8 GB is a denial of service that costs the attacker nothing, and
+   finding that out by decompressing it is the bug.
+4. `[Content_Types].xml` and a `word/` entry, which is what makes a ZIP a Word
+   file rather than a renamed archive.
+5. Only then mammoth, under a wall-clock timeout.
+
+### Still open
+
+**A worker or sandboxed process.** Step 4 of the plan asks for the conversion to
+run with memory and wall-clock limits in isolation. There is a timeout, and the
+archive limits cap what one request can cost, but it still runs in the request
+handler. That is the remaining piece, and it belongs with the same deployment
+work as object storage.
+
+**Export.** Still not v1, as the plan says.
