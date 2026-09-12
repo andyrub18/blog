@@ -22,7 +22,8 @@
     "db:studio": "dotenv -e .env.local -- drizzle-kit studio",
     "db:seed": "dotenv -e .env.local -- tsx scripts/seed-super-admin.ts",
     "email:test": "dotenv -e .env.local -- tsx scripts/send-test-email.ts",
-    "test:db": "vitest run --project=db"
+    "test:db": "vitest run --project=db",
+    "db:seed:demo": "dotenv -e .env.local -- tsx scripts/seed-demo.ts"
   },
   "dependencies": {
     "@inlang/paraglide-js": "2.23.2",

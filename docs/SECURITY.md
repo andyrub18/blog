@@ -122,7 +122,11 @@ forget — a legitimate senior member account that has been compromised or turne
 
 23. **Backups are another copy of the roster.** Encrypt them, restrict who can restore
     them, and test a restore before launch.
-24. **Choose the hosting jurisdiction deliberately.** A managed provider in the EU or US
+24. **Confirm the host sets `x-forwarded-for` before launch.** Without a proxy
+    header, `clientIp()` returns `unknown` and every caller shares a single
+    rate-limit bucket — they throttle each other. It fails in the safe
+    direction, but the site becomes unusable under real load.
+25. **Choose the hosting jurisdiction deliberately.** A managed provider in the EU or US
     gives better availability and security engineering than self-hosting in Haiti, at the
     cost of placing member data under a foreign legal regime. There is no free answer —
     make it a recorded decision rather than a default.

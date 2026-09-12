@@ -41,6 +41,7 @@ npm run check          # biome lint + format check
 npm run db:generate    # drizzle migration from schema changes
 npm run db:migrate     # apply migrations
 npm run db:seed        # create the super admin
+npm run db:seed:demo   # demo accounts + a pending application (dev only)
 ```
 
 ## Architecture
@@ -154,7 +155,20 @@ Three layers — three Vitest projects plus Playwright:
   the committed migrations, so a migration that does not apply cleanly fails here
   rather than on deploy. Needs a running Docker daemon.
 - **e2e** — `e2e/`, Playwright, desktop and mobile. Specs needing real accounts
-  are skipped unless `E2E_DATABASE` is set.
+  are skipped unless `E2E_DATABASE` is set. To run those:
+
+  ```bash
+  npm run db:migrate && npm run db:seed:demo   # against the target database
+  npm run dev
+  E2E_DATABASE=1 npx playwright test
+  ```
+
+  Every e2e test owns its own seeded account. The flow is stateful — an approved
+  application leaves the queue, and a reader with an open application no longer
+  sees the form — so sharing an account between tests makes them pass or fail on
+  the order they happened to run in. `db:seed:demo` also clears `auth_throttle`,
+  because repeated sign-ins trip the per-IP limit and one run would lock out the
+  next.
 
 Anything whose correctness lives in SQL belongs in the db project. The rate
 limiter is the example: its behaviour is an `INSERT … ON CONFLICT DO UPDATE` with

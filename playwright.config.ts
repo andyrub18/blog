@@ -18,7 +18,15 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     // Most Haitian readers arrive on a phone; treat mobile as a first-class target.
-    { name: 'mobile', use: { ...devices['Pixel 7'] } },
+    {
+      name: 'mobile',
+      use: { ...devices['Pixel 7'] },
+      // The review flow is not responsive-specific, and running it twice would
+      // double the sign-ins — enough to trip our own per-IP rate limit, which
+      // buckets every local caller together when no proxy sets
+      // `x-forwarded-for`. Correctness of the flow is covered on chromium.
+      testIgnore: /review\.spec\.ts/,
+    },
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined

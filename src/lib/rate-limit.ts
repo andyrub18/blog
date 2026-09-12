@@ -107,6 +107,11 @@ export async function sweepExpired(): Promise<void> {
  * overwrites it. On a managed host that is the case; if this ever runs without
  * one, a client can forge the header and sidestep per-IP limits. The per-email
  * counter is the backstop for that.
+ *
+ * The `unknown` fallback deserves care in deployment: with no proxy header at
+ * all, every caller shares one bucket and they throttle each other. That is the
+ * safe direction to fail, but it makes the site unusable under any real load,
+ * so confirm the host sets `x-forwarded-for` before launch.
  */
 export function clientIp(headers: Headers): string {
   const forwarded = headers.get('x-forwarded-for')

@@ -15,14 +15,29 @@ export const Route = createFileRoute('/api/dossier/$')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        const [{ requireRole }, { readDossierFile }, { clientIp }] = await Promise.all([
-          import('../../../lib/session.server'),
-          import('../../../lib/dossier'),
-          import('../../../lib/rate-limit'),
-        ])
+        const [{ getSession }, { readDossierFile }, { clientIp }, { hasAtLeastRole }] =
+          await Promise.all([
+            import('../../../lib/session.server'),
+            import('../../../lib/dossier'),
+            import('../../../lib/rate-limit'),
+            import('../../../lib/db/schema'),
+          ])
 
-        // Re-checked here, not only in a route guard: this is a public URL.
-        const reviewer = await requireRole(['senior_member', 'super_admin'])
+        // Checked here, not only in a route guard: this is a public URL.
+        //
+        // Deliberately NOT `requireRole`, which throws a redirect. A redirect is
+        // right for a page a person navigated to, but this endpoint is fetched;
+        // answering an unauthorised fetch with 307 to the home page means the
+        // caller receives HTML with a 200 after following it, which hides the
+        // refusal. Status codes are the contract here.
+        const session = await getSession()
+        if (!session?.user) {
+          return new Response('Unauthorized', { status: 401 })
+        }
+        if (!hasAtLeastRole(session.user.role, 'senior_member')) {
+          return new Response('Forbidden', { status: 403 })
+        }
+        const reviewer = session.user
 
         const segments = String(params._splat ?? '')
           .split('/')
