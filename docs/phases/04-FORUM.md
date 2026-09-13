@@ -161,7 +161,10 @@ Polling on a metered connection has to be written with the connection in mind:
 
 ## Tests
 
-- **unit** — the validation rules and the paragraph splitting.
+- **unit** — the validation rules, the paragraph splitting, and that the poller
+  stops when the reader leaves the page. That last one is a behaviour test on
+  purpose: both of Solid 2's teardown forms work, so reading the component tells
+  you which was used, not whether the timer actually stops.
 - **db** — threading, the visibility inheritance, moderation transitions, and
   that a blocked account is refused. This is where correctness lives in SQL.
 - **e2e** — post, see it appear, moderate it; and the budget assertion, extended:
@@ -223,11 +226,11 @@ either a pointless optimisation or an abandoned feature.
 | Page | Before | After |
 |---|---|---|
 | Shared entry | 94.5 KB | 95.3 KB |
-| `/articles/{slug}` — the reading view | 97.3 KB | **98.7 KB** |
-| `/articles/{slug}/discussion` | — | 102.6 KB |
+| `/articles/{slug}` — the reading view | 97.3 KB | **98.8 KB** |
+| `/articles/{slug}/discussion` | — | 103.0 KB |
 
-The reading view keeps the budget with 1.3 KB of headroom. The forum page does
-not, and is not held to it: at 102.6 KB it is the 95.3 KB shared entry plus 6 KB
+The reading view keeps the budget with 1.2 KB of headroom. The forum page does
+not, and is not held to it: at 103.0 KB it is the 95.3 KB shared entry plus 6 KB
 of thread, on a framework floor of roughly 81 KB. Any interactive page on this
 stack lands there. It is a page a reader opens on purpose from an article they
 are already reading, which is the same bargain the editor makes — and unlike the
@@ -237,9 +240,23 @@ editor it is 6 KB, not 126.
 never open, because every route's non-component module sits in the entry graph.
 Phase 6 adds locales rather than routes, so it should not repeat.
 
+### The moderation record is read where the question is asked
+
+`forum_moderation` is not a screen. A moderator looking at a hidden post sees,
+under it, who hid it, when, and the reason they wrote — fetched only for
+moderators, only for the posts already on the page, and read back from the
+database after a moderation rather than assumed from what the browser thinks it
+just did.
+
+It was nearly shipped write-only, on the grounds that a log viewer is a new
+surface and D17 says code ships when a feature needs it. That was the wrong
+reading: an account of a decision that nobody can read is not an account of
+anything, and this costs no route and almost no bytes because the question —
+"why is this hidden?" — is asked in the thread, not on a page somebody has to go
+and find. A *separate* moderation log page is still not built, and that one can
+wait until somebody asks to audit a thread they are not reading.
+
 ### Still to do
 
-`forum_moderation` is written and nothing reads it yet. The record exists so a
-hidden post can be accounted for; a screen that shows senior members what has
-been hidden and why is the obvious next piece, and `listModerations` was written
-and then removed rather than shipped unused (D17).
+Email notification of replies, reader-facing reports, and a moderation log that
+can be read away from the thread. None of them blocks the phase.

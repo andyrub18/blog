@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { and, asc, count, desc, eq, gt } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, inArray } from 'drizzle-orm'
 import type { Viewer } from './articles'
 import { canRead } from './articles'
 import {
@@ -471,4 +471,50 @@ export async function moderatePost(input: {
   })
 
   return { ok: true, value: { postId: input.postId, status } }
+}
+
+export type ModerationRecord = {
+  id: string
+  postId: string
+  action: string
+  rationale: string
+  actorName: string | null
+  createdAt: Date
+}
+
+/**
+ * Why the posts in this thread were hidden, and by whom.
+ *
+ * Moderators only, and it exists because an account of a decision that nobody
+ * can read is not an account of anything. It is shown inline, under the post it
+ * explains, rather than on a page of its own: the question "why is this hidden"
+ * is asked in the thread, and an audit trail somebody has to go looking for is
+ * one nobody looks at.
+ *
+ * Scoped to the posts the caller is already looking at, so it cannot be used to
+ * page through every moderation the movement has ever made.
+ */
+export async function listModerations(input: {
+  actor: Viewer
+  postIds: Array<string>
+}): Promise<ForumResult<Array<ModerationRecord>>> {
+  if (!canModerate(input.actor)) return { ok: false, code: 'FORBIDDEN' }
+  if (input.postIds.length === 0) return { ok: true, value: [] }
+
+  const { db } = await import('./db')
+  const rows = await db
+    .select({
+      id: forumModeration.id,
+      postId: forumModeration.postId,
+      action: forumModeration.action,
+      rationale: forumModeration.rationale,
+      actorName: user.name,
+      createdAt: forumModeration.createdAt,
+    })
+    .from(forumModeration)
+    .leftJoin(user, eq(user.id, forumModeration.actorId))
+    .where(inArray(forumModeration.postId, input.postIds))
+    .orderBy(desc(forumModeration.createdAt))
+
+  return { ok: true, value: rows }
 }

@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/solid-start'
 import { isLocale, type Locale } from '../i18n'
 import type { Viewer } from './articles'
 import { resolveRequestLocale } from './email/locale'
-import type { Discussion, ForumError, ForumPostView } from './forum'
+import type { Discussion, ForumError, ForumPostView, ModerationRecord } from './forum'
 
 /**
  * The forum endpoints.
@@ -178,3 +178,22 @@ export const moderateDiscussionPost = createServerFn({ method: 'POST' })
       }
     },
   )
+
+/**
+ * Why posts in this thread were hidden. Moderators only, checked in `forum.ts`.
+ *
+ * The caller names the posts it is looking at rather than asking for a page of
+ * the log, so this cannot become a way to walk every moderation ever made.
+ */
+export const fetchModerationLog = createServerFn({ method: 'GET' })
+  .validator((data: { postIds: Array<string> }) => ({
+    postIds: Array.isArray(data?.postIds) ? data.postIds.map(String).slice(0, 200) : [],
+  }))
+  .handler(async ({ data }): Promise<ForumActionResult<Array<ModerationRecord>>> => {
+    const actor = await requirePoster()
+    const { listModerations } = await import('./forum')
+    const result = await listModerations({ actor, postIds: data.postIds })
+    return result.ok
+      ? { ok: true, value: result.value }
+      : { ok: false, code: result.code }
+  })

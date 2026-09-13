@@ -26,10 +26,17 @@ test('the article page shows the discussion without shipping it', async ({ page 
   await page.goto(`/fr/articles/${PUBLISHED}`)
   await waitForInteractive(page)
 
-  // The tail is server-rendered: the count and the posts are there before
-  // anything runs.
+  // The tail is server-rendered: the count, at least one post and the way in
+  // are all there before anything runs.
+  //
+  // Deliberately not asserting *which* post. The tail holds the last three, so
+  // naming one makes this test depend on nothing else having been posted since
+  // the seed — which the posting test below does, in parallel. That the seeded
+  // conversation is readable is asserted on the discussion page, which shows
+  // the whole thread.
   await expect(page.getByText(/réponses/i).first()).toBeVisible()
-  await expect(page.getByText(/il ne dit rien de l'agriculture/i)).toBeVisible()
+  await expect(page.locator('section li').first()).toBeVisible()
+  await expect(page.getByRole('link', { name: /discussion|répondre/i })).toBeVisible()
 
   // And the thread's own code is not. The poller, the composer and the
   // moderation controls belong to the page a reader chooses to open; a reader
@@ -58,9 +65,16 @@ test('a members-only article has no discussion for an anonymous reader', async (
   await expect(page.getByText(/introuvable|ne pouvez pas participer/i)).toBeVisible()
 })
 
+/**
+ * Posting runs on the phone as well as the desktop, and that is deliberate.
+ *
+ * Most of KLE's readers arrive on a phone, so the composer on a narrow screen
+ * is the case that matters most, not a variant of the real one. It costs a
+ * second sign-in per run, which is well inside the per-IP limit — that limit is
+ * loose on purpose, because one Haitian address is routinely one cybercafé, and
+ * a successful sign-in clears it.
+ */
 test.describe('posting', () => {
-  test.skip(({ browserName }) => browserName !== 'chromium', 'one sign-in per run')
-
   test('a reader posts and sees it appear', async ({ page }) => {
     await signIn(page, ACCOUNTS.reader)
     await page.goto(`/fr/articles/${PUBLISHED}/discussion`)
@@ -76,8 +90,10 @@ test.describe('posting', () => {
     await expect(page.getByText(said)).toBeVisible({ timeout: 15_000 })
 
     // It is really stored, not only painted: a fresh load of the article page
-    // shows it in the tail.
+    // shows it in the tail. Matched on the whole line, timestamp included —
+    // every run of this test leaves one behind, and a loose match would find
+    // all of them.
     await page.goto(`/fr/articles/${PUBLISHED}`)
-    await expect(page.getByText(/question du transport/i)).toBeVisible()
+    await expect(page.getByText(said)).toBeVisible()
   })
 })

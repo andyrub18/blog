@@ -24,14 +24,14 @@ must have before that page is interactive.
 | Page | Client JS, gzipped |
 |---|---|
 | Shared entry, on every page | **95.3 KB** |
-| `/articles/{slug}` — the reading view | **98.7 KB** |
+| `/articles/{slug}` — the reading view | **98.8 KB** |
 | `/articles` | 97.4 KB |
 | `/` — the home page | 98.0 KB |
-| `/articles/{slug}/discussion` — the forum | 102.6 KB (opened from an article) |
+| `/articles/{slug}/discussion` — the forum | 103.0 KB (opened from an article) |
 | `/write/{id}` — the editor, before TipTap loads | 108.6 KB (author screen) |
 | TipTap itself, fetched only when the editor mounts | +126 KB, in two chunks |
 
-**The budget is met, with 1.3 KB of headroom.** It was not, for three phases:
+**The budget is met, with 1.2 KB of headroom.** It was not, for three phases:
 the reading view peaked at 103.8 KB after phase 3. Two things fixed it.
 
 **TanStack Query was in every page and nothing used it.** The scaffold put a

@@ -378,6 +378,80 @@ describe('moderation', () => {
   })
 })
 
+describe('reading the moderation record back', () => {
+  it('gives a moderator the reason, and refuses everyone else', async () => {
+    const slug = await publishedArticle()
+    const reader = await makeUser('reader')
+    const member = await makeUser('member')
+    const senior = await makeUser('senior_member')
+    const post = await forum.createPost({
+      actor: reader,
+      slug,
+      lang: 'fr',
+      body: 'Un message qui vise une personne plutôt que son argument.',
+    })
+    if (!post.ok) throw new Error('setup failed')
+    await forum.moderatePost({
+      actor: senior,
+      postId: post.value.id,
+      hidden: true,
+      rationale: RATIONALE,
+    })
+
+    // An account of a decision nobody can read is not an account of anything.
+    const asModerator = await forum.listModerations({
+      actor: senior,
+      postIds: [post.value.id],
+    })
+    expect(asModerator.ok && asModerator.value).toHaveLength(1)
+    expect(asModerator.ok && asModerator.value[0].rationale).toBe(RATIONALE)
+    // Who decided, by name: a rationale with no author is half a record.
+    expect(asModerator.ok && asModerator.value[0].actorName).toMatch(/^senior_member-/)
+
+    // It names a member and quotes what they wrote; it is not for the thread.
+    expect(
+      await forum.listModerations({ actor: member, postIds: [post.value.id] }),
+    ).toEqual({ ok: false, code: 'FORBIDDEN' })
+    expect(
+      await forum.listModerations({ actor: reader, postIds: [post.value.id] }),
+    ).toEqual({ ok: false, code: 'FORBIDDEN' })
+  })
+
+  it('keeps both decisions when a post is hidden and then restored', async () => {
+    const slug = await publishedArticle()
+    const reader = await makeUser('reader')
+    const senior = await makeUser('senior_member')
+    const post = await forum.createPost({
+      actor: reader,
+      slug,
+      lang: 'fr',
+      body: 'Un message dont la modération sera revue.',
+    })
+    if (!post.ok) throw new Error('setup failed')
+
+    await forum.moderatePost({
+      actor: senior,
+      postId: post.value.id,
+      hidden: true,
+      rationale: RATIONALE,
+    })
+    await forum.moderatePost({
+      actor: senior,
+      postId: post.value.id,
+      hidden: false,
+      rationale: 'Relu en réunion : le message reste dans les limites du débat.',
+    })
+
+    const log = await forum.listModerations({ actor: senior, postIds: [post.value.id] })
+
+    // A `hidden_reason` column would have kept only the second. The manifesto's
+    // answer to a bad decision is that it can be seen and undone, which needs
+    // both halves on the record.
+    expect(log.ok && log.value).toHaveLength(2)
+    expect(log.ok && log.value.map((row) => row.action)).toEqual(['restored', 'hidden'])
+  })
+})
+
 describe('what the poller asks for', () => {
   it('returns a post that was hidden, not only posts that are new', async () => {
     const slug = await publishedArticle()

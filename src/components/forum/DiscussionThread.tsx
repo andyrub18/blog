@@ -1,8 +1,9 @@
-import { createEffect, createSignal, For, Show } from 'solid-js'
-import type { Discussion, ForumPostView } from '../../lib/forum'
+import { createEffect, createSignal, For, onCleanup, Show, untrack } from 'solid-js'
+import type { Discussion, ForumPostView, ModerationRecord } from '../../lib/forum'
 import {
   editMyPost,
   fetchDiscussion,
+  fetchModerationLog,
   moderateDiscussionPost,
   postToDiscussion,
   withdrawMyPost,
@@ -75,21 +76,72 @@ export default function DiscussionThread(props: { initial: Discussion }) {
   const [pendingIds, setPendingIds] = createSignal<Array<string>>([])
   const isPending = (id: string) => pendingIds().includes(id)
 
+  // What a moderator sees under a post that is hidden: who hid it, when, and
+  // the reason they wrote. Empty for everyone else, and never fetched for them.
+  const [moderations, setModerations] = createSignal<Record<string, ModerationRecord>>({})
+
+  async function loadModerationLog() {
+    if (!props.initial.canModerate) return
+    const hidden = untrack(posts)
+      .filter((post) => post.status === 'hidden')
+      .map((post) => post.id)
+    if (hidden.length === 0) return
+    const result = await fetchModerationLog({ data: { postIds: hidden } })
+    if (!result.ok) return
+    // Newest first out of the query, so the first entry for a post is the
+    // decision that put it in the state it is in now.
+    const latest: Record<string, ModerationRecord> = {}
+    for (const record of result.value) {
+      if (!latest[record.postId]) latest[record.postId] = record
+    }
+    setModerations(latest)
+  }
+
   // Set by every poll and every action, and read by the loop to decide whether
   // anybody is still here.
   let lastActivity = Date.now()
   let resume: (() => void) | null = null
 
+  /**
+   * The poller's handles, held here so the teardown sits in the component's own
+   * owner — the shape `ArticleEditor` uses for TipTap, and the one to copy.
+   *
+   * Returning the same function from the effect's apply step also works; it was
+   * measured, not assumed (`DiscussionThread.test.tsx` passes either way). This
+   * form is preferred because it puts the teardown next to the state it tears
+   * down, where somebody editing the loop will see it.
+   *
+   * What must not happen either way is the timer and the `visibilitychange`
+   * listener outliving the page: a thread the reader has left, still asking
+   * every fifteen seconds, on metered data.
+   */
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let stopped = false
+  let onVisibility: (() => void) | null = null
+
+  onCleanup(() => {
+    stopped = true
+    clearTimeout(timer)
+    // Null on the server, where there is no document and nothing ran.
+    if (onVisibility) document.removeEventListener('visibilitychange', onVisibility)
+  })
+
   const topLevel = () => posts().filter((post) => post.parentId === null)
   const repliesTo = (id: string) => posts().filter((post) => post.parentId === id)
 
   async function poll(): Promise<boolean> {
+    // `untrack` says out loud that these are point-in-time reads: the poller
+    // wants the cursor as it stands when it asks, and must not become a
+    // subscription to its own result.
     const result = await fetchDiscussion({
-      data: { slug: props.initial.slug, since: cursor() },
+      data: { slug: props.initial.slug, since: untrack(cursor) },
     })
     if (!result.ok || result.value.posts.length === 0) return false
     setPosts((current) => merge(current, result.value.posts))
     setCursor(newest(result.value.posts) ?? cursor())
+    if (result.value.posts.some((post) => post.status === 'hidden')) {
+      void loadModerationLog()
+    }
     return true
   }
 
@@ -104,8 +156,6 @@ export default function DiscussionThread(props: { initial: Discussion }) {
     () => undefined,
     () => {
       let delay = POLL_FASTEST_MS
-      let timer: ReturnType<typeof setTimeout> | undefined
-      let stopped = false
 
       const schedule = () => {
         clearTimeout(timer)
@@ -135,19 +185,16 @@ export default function DiscussionThread(props: { initial: Discussion }) {
       }
       resume = wake
 
-      const onVisibility = () => {
+      onVisibility = () => {
         if (document.visibilityState === 'visible') wake()
         else clearTimeout(timer)
       }
 
       document.addEventListener('visibilitychange', onVisibility)
       schedule()
-
-      return () => {
-        stopped = true
-        clearTimeout(timer)
-        document.removeEventListener('visibilitychange', onVisibility)
-      }
+      // A thread that arrives with posts already hidden: the reasons are
+      // fetched once, here, rather than being served to every reader.
+      void loadModerationLog()
     },
   )
 
@@ -267,6 +314,9 @@ export default function DiscussionThread(props: { initial: Discussion }) {
           post.id === postId ? { ...post, status: hidden ? 'hidden' : 'visible' } : post,
         ),
       )
+      // Read back rather than assumed: what is shown under the post is the row
+      // that was written, not what this browser believes it wrote.
+      await loadModerationLog()
       return true
     } catch {
       setError(m.forum_errors_unexpected())
@@ -314,6 +364,8 @@ export default function DiscussionThread(props: { initial: Discussion }) {
               <li>
                 <PostCard
                   post={post}
+                  moderation={moderations()[post.id] ?? null}
+                  moderations={moderations()}
                   viewerId={props.initial.viewerId}
                   pending={isPending(post.id)}
                   canPost={props.initial.canPost}
@@ -378,6 +430,8 @@ export default function DiscussionThread(props: { initial: Discussion }) {
 function PostCard(props: {
   post: ForumPostView
   replies: Array<ForumPostView>
+  moderation: ModerationRecord | null
+  moderations: Record<string, ModerationRecord>
   viewerId: string | null
   pending: boolean
   pendingIds: Array<string>
@@ -410,6 +464,7 @@ function PostCard(props: {
       <PostBody
         post={props.post}
         mine={props.post.authorId === props.viewerId}
+        moderation={props.moderation}
         canModerate={props.canModerate}
         busy={props.busy}
         editing={props.editing}
@@ -436,6 +491,7 @@ function PostCard(props: {
               <li>
                 <ReplyCard
                   post={reply}
+                  moderation={props.moderations[reply.id] ?? null}
                   viewerId={props.viewerId}
                   pending={props.pendingIds.includes(reply.id)}
                   canModerate={props.canModerate}
@@ -473,6 +529,7 @@ function PostCard(props: {
 
 function ReplyCard(props: {
   post: ForumPostView
+  moderation: ModerationRecord | null
   viewerId: string | null
   pending: boolean
   canModerate: boolean
@@ -488,6 +545,7 @@ function ReplyCard(props: {
       <PostBody
         post={props.post}
         mine={props.post.authorId === props.viewerId}
+        moderation={props.moderation}
         canModerate={props.canModerate}
         busy={props.busy}
         editing={props.editing}
@@ -511,6 +569,7 @@ function ReplyCard(props: {
 function PostBody(props: {
   post: ForumPostView
   mine: boolean
+  moderation: ModerationRecord | null
   canModerate: boolean
   busy: boolean
   editing: boolean
@@ -586,6 +645,25 @@ function PostBody(props: {
         {(body) => (
           <p class="mt-2 rounded border border-neutral-200 bg-neutral-50 p-2 text-xs whitespace-pre-line text-neutral-600">
             {body()}
+          </p>
+        )}
+      </Show>
+
+      {/*
+       * And the reason it was hidden, under the post it explains. An account of
+       * a decision nobody can read is not an account of anything, and the
+       * question is asked here rather than on a page somebody has to go and
+       * find.
+       */}
+      <Show when={props.canModerate && props.moderation}>
+        {(record) => (
+          <p class="mt-2 text-xs text-amber-900">
+            <span class="font-medium">{m.forum_moderationLog()}</span> ·{' '}
+            {m.forum_moderationBy({
+              name: record().actorName ?? '—',
+              date: new Date(record().createdAt).toLocaleString(),
+            })}{' '}
+            — {record().rationale}
           </p>
         )}
       </Show>
