@@ -3,6 +3,7 @@ import { For, Show } from 'solid-js'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import { LOCALE_LABELS } from '../../../i18n'
 import { fetchArticle } from '../../../lib/article-actions'
+import type { DiscussionTail as Tail } from '../../../lib/forum'
 import { m } from '../../../paraglide/messages'
 
 /**
@@ -99,6 +100,8 @@ function ArticlePage() {
                   </For>
                 </footer>
               </Show>
+
+              <DiscussionTail slug={loaded().slug} tail={loaded().discussion} />
             </article>
           )}
         </Show>
@@ -131,5 +134,63 @@ function Refusal(props: { code: string | null }) {
         </Link>
       </Show>
     </div>
+  )
+}
+
+/**
+ * The last few things said about this article, and the way in.
+ *
+ * Server-rendered, like the article above it, and it runs nothing: no poller,
+ * no composer, no client module of its own. A reader who only wanted the
+ * article pays for none of the forum, and one who wants the argument follows
+ * the link to a page where spending bytes is the point.
+ *
+ * The count is here rather than only on the other page because a published
+ * article with a visible "14 responses" is an invitation and a silent link is
+ * not.
+ */
+function DiscussionTail(props: { slug: string; tail: Tail }) {
+  return (
+    <section class="mt-12 border-t border-neutral-200 pt-6">
+      <h2 class="text-lg font-semibold text-neutral-900">
+        {props.tail.total > 0
+          ? m.forum_responses({ count: props.tail.total })
+          : m.forum_noResponses()}
+      </h2>
+
+      <ol class="mt-4 flex flex-col gap-4">
+        <For each={props.tail.recent}>{(post) => <TailPost post={post} />}</For>
+      </ol>
+
+      <Link
+        to="/articles/$slug/discussion"
+        params={{ slug: props.slug }}
+        class="mt-6 inline-flex h-10 items-center justify-center rounded-md border border-[#00209F] px-4 text-sm font-semibold text-[#00209F] hover:bg-[#00209F]/5"
+      >
+        {props.tail.total > 0 ? m.forum_readFullThread() : m.forum_join()}
+      </Link>
+    </section>
+  )
+}
+
+/** One post in the tail. Text nodes only — see `DiscussionThread`. */
+function TailPost(props: { post: Tail['recent'][number] }) {
+  return (
+    <li class="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+      <p class="text-sm font-medium text-neutral-900">
+        {props.post.authorName}
+        <span class="ml-2 text-xs font-normal text-neutral-500">
+          {new Date(props.post.createdAt).toLocaleDateString()}
+        </span>
+      </p>
+      {/*
+       * One element, not a paragraph each: `whitespace-pre-line` renders the
+       * blank lines the server already normalised, and this page does not
+       * import the splitter for a difference nobody can see. The text is a
+       * text node — the `innerHTML` above is safe only because the renderer
+       * wrote it, and a forum post is written by whoever registered today.
+       */}
+      <p class="mt-1 text-sm whitespace-pre-line text-neutral-700">{props.post.body}</p>
+    </li>
   )
 }

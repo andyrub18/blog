@@ -1,19 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import {
   ageInYears,
+  forumParagraphs,
   isValidArticleSummary,
   isValidArticleTitle,
   isValidEmail,
   isValidEssay,
+  isValidForumPost,
   isValidName,
   isValidPassword,
   isValidSlug,
   MAX_ARTICLE_SUMMARY_CHARS,
   MAX_ARTICLE_TITLE_CHARS,
+  MAX_FORUM_POST_CHARS,
   MAX_SLUG_CHARS,
   MIN_ACCOUNT_AGE_YEARS,
   MIN_ARTICLE_SUMMARY_CHARS,
   meetsMinimumAge,
+  normalizeForumPost,
   parseDateOfBirth,
   slugify,
 } from './validation'
@@ -177,5 +181,27 @@ describe('article title and summary', () => {
     expect(isValidArticleSummary('trop court')).toBe(false)
     expect(isValidArticleSummary('x'.repeat(MIN_ARTICLE_SUMMARY_CHARS))).toBe(true)
     expect(isValidArticleSummary('x'.repeat(MAX_ARTICLE_SUMMARY_CHARS + 1))).toBe(false)
+  })
+})
+
+describe('forum posts', () => {
+  it('accepts a short answer, because "Wi." is one', () => {
+    // A length floor borrowed from the membership essays would be a rule about
+    // how people are allowed to talk.
+    expect(isValidForumPost('Wi.')).toBe(true)
+    expect(isValidForumPost(' ')).toBe(false)
+    expect(isValidForumPost('x'.repeat(MAX_FORUM_POST_CHARS + 1))).toBe(false)
+  })
+
+  it('collapses a wall of blank lines', () => {
+    // Forty blank lines push every other reply off a phone screen — a denial of
+    // the page achieved with the Enter key and no rule broken.
+    expect(normalizeForumPost('un\n\n\n\n\n\ndeux')).toBe('un\n\ndeux')
+    expect(normalizeForumPost('\r\n  du texte  \r\n')).toBe('du texte')
+  })
+
+  it('splits paragraphs on blank lines and keeps single newlines inside one', () => {
+    expect(forumParagraphs('un\ndeux\n\ntrois')).toEqual(['un\ndeux', 'trois'])
+    expect(forumParagraphs('   ')).toEqual([])
   })
 })

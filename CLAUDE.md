@@ -73,6 +73,10 @@ logic** (server functions) → **auth** (Better Auth) → **components** (Solid)
 - `src/lib/docx.ts` — the DOCX import pipeline. **Server only.**
   `src/lib/html-to-prosemirror.ts` — HTML to our format, and the thing that makes
   an imported file safe.
+- `src/lib/forum.ts` — the forum rules and queries. **Server only.**
+  `src/lib/forum-actions.ts` — its server functions. The post format's rules
+  (length, normalising, paragraph splitting) live in `validation.ts`, because
+  the composer in the browser needs them too.
 - `src/lib/deliberation.ts` — the review rules: quorum, the per-language
   threshold, the five documentation fields. Pure, and therefore safe for a route
   to import. `src/lib/article-review.ts` is the flow around them, and is
@@ -173,6 +177,25 @@ avoid.
 throws, and nothing on it responds. Types are fine either way — they compile
 away.
 
+**The discussion is a separate page, and must stay one.** The reading view
+carries a server-rendered tail — a count and the last three posts, delivered by
+`fetchArticle` itself so the page makes no second request — and a link to
+`/articles/{slug}/discussion`. The thread, the poller and the composer live on
+that route. Putting them on the article page would spend the reading view's
+remaining headroom on a feature most readers never open (D20, and
+`docs/phases/04-FORUM.md`).
+
+**A forum post is text, and is rendered as text nodes.** Never `innerHTML`, on
+either page. The reading view's `innerHTML` is safe only because
+`renderDocumentToHtml` wrote every tag of that string; a post was written by
+whoever registered this morning. There is no rich text in the forum and adding
+any would mean answering the question the article format already answers, again,
+for content nobody reviews.
+
+**Poll against `changed_at`, not `created_at`.** A post that a moderator hid
+creates no row. Asking for what is *new* leaves it on screen in every tab that
+already had it, which is the one case moderation exists for.
+
 **Dates of birth are compared in UTC.** An `<input type="date">` value parses as
 UTC midnight; reading it with local getters shifts it a day in any timezone
 behind UTC, Haiti included, and silently changes a computed age.
@@ -254,6 +277,12 @@ Three layers — three Vitest projects plus Playwright:
   `src/routes/_app.tsx` sets `data-hydrated` on `<html>` once the client takes
   over, and the helper waits for it. Without it the suite passes on a warm
   server and fails on a cold one.
+
+`npm run budget` matches route files by an anchored `.tsx` key, not a prefix. It
+once used a prefix, and `articles/$slug` silently matched
+`articles/$slug_/discussion`: the reading view was reported at 105 KB and over
+budget while it was at 99 KB and under. Keep that matcher exact — a gauge that is
+wrong in the alarming direction gets believed.
 
 Anything whose correctness lives in SQL belongs in the db project. The rate
 limiter is the example: its behaviour is an `INSERT … ON CONFLICT DO UPDATE` with

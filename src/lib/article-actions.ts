@@ -10,6 +10,7 @@ import type {
 } from './articles'
 import type { ArticleVisibility } from './db/schema'
 import { resolveRequestLocale } from './email/locale'
+import type { DiscussionTail } from './forum'
 
 /**
  * The article endpoints.
@@ -28,8 +29,19 @@ import { resolveRequestLocale } from './email/locale'
 
 export type ArticleErrorCode = ArticleError | 'UNEXPECTED'
 
-/** A readable article minus its source document — see `fetchArticle`. */
-export type RenderedArticle = Omit<ReadableArticle, 'doc'>
+/**
+ * A readable article minus its source document — see `fetchArticle` — plus the
+ * last few things said about it.
+ *
+ * The tail rides along with the article instead of being fetched by the page,
+ * because the reading view runs no JavaScript of its own: a second request
+ * would mean a second round trip on a connection this whole project is written
+ * around. It is a count and three posts, server-rendered like everything else
+ * on that page.
+ */
+export type RenderedArticle = Omit<ReadableArticle, 'doc'> & {
+  discussion: DiscussionTail
+}
 
 export type ActionResult<T> =
   | { ok: true; value: T }
@@ -97,7 +109,13 @@ export const fetchArticle = createServerFn({ method: 'GET' })
     // would send every reader the same article twice — on the one page whose
     // weight this project is built around.
     const { doc: _doc, ...rendered } = result.value
-    return { ok: true, value: rendered }
+
+    // Authorised already: `getReadableArticle` refused anyone who may not have
+    // this article, so the tail rides on that decision rather than repeating it.
+    const { getDiscussionTail } = await import('./forum')
+    const discussion = await getDiscussionTail(result.value.articleId)
+
+    return { ok: true, value: { ...rendered, discussion } }
   })
 
 export const fetchMyArticles = createServerFn({ method: 'GET' }).handler(
