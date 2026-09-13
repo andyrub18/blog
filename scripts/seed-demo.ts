@@ -23,6 +23,7 @@ import {
   articleSubmission,
   articleTranslation,
   authThrottle,
+  forumPost,
   invitation,
   memberApplication,
   roleChange,
@@ -446,6 +447,64 @@ async function resetArticles(authorId: string, allAuthors: Array<string>): Promi
 }
 
 
+/**
+ * A discussion under the published article.
+ *
+ * Seeded so the article page's tail has something in it on a fresh database:
+ * the count and the excerpt are the part a reader sees first, and an empty
+ * forum tests only the empty case. The posts hang off the article, so
+ * `resetArticles` above has already removed the previous run's — the foreign
+ * key cascades.
+ */
+async function seedForum(ids: Record<string, string>): Promise<void> {
+  const [target] = await db
+    .select({ id: article.id })
+    .from(article)
+    .where(eq(article.slug, 'sitiyasyon-ekonomik-nan-peyi-a'))
+    .limit(1)
+  if (!target) return
+
+  const conversation = [
+    {
+      authorId: ids.reader,
+      lang: 'fr',
+      body: "Le diagnostic me paraît juste, mais il ne dit rien de l'agriculture, qui fait vivre la majorité du pays.",
+    },
+    {
+      authorId: ids.confirmed,
+      lang: 'ht',
+      body: 'Se yon bon remak. Nou te chwazi kòmanse ak de sektè pou nòt la rete kout, men agrikilti a merite pwòp nòt pa l.',
+    },
+    {
+      authorId: ids.newcomer,
+      lang: 'fr',
+      body: "Est-ce que les chiffres cités viennent des journaux officiels ? J'aimerais pouvoir les vérifier moi-même.",
+    },
+  ]
+
+  let written = 0
+  let parentId: string | null = null
+  for (const post of conversation) {
+    const id = randomUUID()
+    // The second one answers the first, so the seeded thread exercises a reply
+    // as well as a top-level post.
+    const now = new Date(Date.now() - (conversation.length - written) * 60_000)
+    await db.insert(forumPost).values({
+      id,
+      articleId: target.id,
+      lang: post.lang,
+      authorId: post.authorId,
+      parentId: written === 1 ? parentId : null,
+      body: post.body,
+      status: 'visible',
+      createdAt: now,
+      changedAt: now,
+    })
+    if (written === 0) parentId = id
+    written += 1
+  }
+}
+
 const DOCUMENTATION = {
   diagnosis:
     "Les recettes publiées ne se recoupent pas avec les dépenses annoncées, et l'écart n'est expliqué nulle part.",
@@ -590,6 +649,9 @@ async function main() {
 
   await resetArticles(ids.confirmed, Object.values(ids))
   console.info('· demo articles: two published (one French-only), one members-only draft')
+
+  await seedForum(ids)
+  console.info('· a seeded discussion under the published article')
 
   await resetDeliberations(ids)
   console.info(

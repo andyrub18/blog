@@ -234,3 +234,54 @@ AVIF or WebP, `srcset`, explicit dimensions and lazy loading below the fold.
 Shipping an `<img>` now would spend the hard part's budget without doing the
 hard part. Until then the author is told plainly that their images were not
 taken, which is the honest half of the feature.
+
+## D20 — The forum polls by hand; TanStack Query did not come back
+
+The roadmap planned to reinstate TanStack Query in phase 5, scoped to the forum
+route, for polling. It was not reinstated, and the rule that removed it in the
+first place is the reason (D17): a dependency earns its place when a feature
+needs it.
+
+`@tanstack/solid-query@6.0.0-rc.3` does support Solid 2 RC, so this was a choice
+and not a constraint. What the forum needs is one loop that asks "what changed
+since?" and merges the answer, and the loop it needs is not the loop Query's
+defaults give: it must ask for a delta rather than the thread, stop dead while
+the tab is hidden, slow down while nothing is happening, and give up after ten
+quiet minutes. Most of that is turning Query's behaviour off, and all of it is
+about forty lines of `setTimeout` in `DiscussionThread.tsx`.
+
+The cost avoided is small — around 6 KB gzipped on a page already at 102 KB —
+but it is 6 KB, a supply-chain surface, and another pinned release candidate to
+keep in step with Solid and TanStack Start. Optimistic posting, the other thing
+Query was wanted for, is a temporary row in a signal, replaced by the row the
+server returns.
+
+**What would flip this:** a second and third polled surface — notifications, a
+live review queue — at which point the caching and deduplication become shared
+infrastructure rather than one screen's forty lines.
+
+## D21 — The forum's three governance rules
+
+Settled with KLE before the phase was built, and recorded here because each one
+could plausibly have gone the other way.
+
+**One discussion per article, not one per language.** D12 splits *publication*
+by language; it does not split the work. A Creole thread and a French thread
+under the same article would divide the movement's own argument, and the smaller
+room is the one that goes quiet. Each post records the language its author was
+reading, so the distinction is kept without being enforced.
+
+**Readers and above post; anonymous visitors read.** Exactly the roles table in
+`phases/01-ENROLLMENT.md`. Reading must never require an account (D1); speaking
+under KLE's article requires one that has verified an email and passed a
+captcha. Restricting the forum to members was rejected: it would leave the
+reader tier with no purpose and contradict the path this project encourages —
+read first, take part, then apply by dossier.
+
+**Posts appear at once and are moderated afterwards, with a written reason.**
+The mirror image of D15. There, the constraint is that no one person may publish
+in the movement's name; here, the constraint would cost more than it buys — a
+queue drained by the same senior members who already carry application review,
+article review and promotion votes is a forum that dies waiting. Hiding a post
+writes a rationale to `forum_moderation` in the same transaction as the status
+change, and nothing is ever deleted.

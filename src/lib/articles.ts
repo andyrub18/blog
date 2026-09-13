@@ -515,6 +515,7 @@ function pickTranslation<T extends { lang: string }>(
 }
 
 export type ReadableArticle = {
+  articleId: string
   slug: string
   visibility: ArticleVisibility
   authorName: string
@@ -546,6 +547,7 @@ export async function getReadableArticle(input: {
   const { db } = await import('./db')
   const rows = await db
     .select({
+      articleId: article.id,
       visibility: article.visibility,
       articleStatus: article.status,
       authorName: user.name,
@@ -585,6 +587,7 @@ export async function getReadableArticle(input: {
   return {
     ok: true,
     value: {
+      articleId: rows[0].articleId,
       slug: input.slug,
       visibility,
       authorName: chosen.authorName,

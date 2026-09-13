@@ -27,6 +27,7 @@ import { Route as AppWriteIndexRouteImport } from './routes/_app/write/index'
 import { Route as AppWriteArticleIdRouteImport } from './routes/_app/write/$articleId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDossierSplatRouteImport } from './routes/api/dossier/$'
+import { Route as AppArticlesSlugDiscussionRouteImport } from './routes/_app/articles/$slug_/discussion'
 import { Route as AppAuthRegisterIndexRouteImport } from './routes/_app/auth/register/index'
 import { Route as AppAuthRegisterInvitedRouteImport } from './routes/_app/auth/register/invited'
 import { Route as AppAuthRegisterMemberRouteImport } from './routes/_app/auth/register/member'
@@ -123,6 +124,12 @@ const ApiDossierSplatRoute = ApiDossierSplatRouteImport.update({
   path: '/api/dossier/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppArticlesSlugDiscussionRoute =
+  AppArticlesSlugDiscussionRouteImport.update({
+    id: '/articles/$slug_/discussion',
+    path: '/articles/$slug/discussion',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAuthRegisterIndexRoute = AppAuthRegisterIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -173,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/articles/': typeof AppArticlesIndexRoute
   '/review/': typeof AppReviewIndexRoute
   '/write/': typeof AppWriteIndexRoute
+  '/articles/$slug/discussion': typeof AppArticlesSlugDiscussionRoute
   '/auth/register/invited': typeof AppAuthRegisterInvitedRoute
   '/auth/register/member': typeof AppAuthRegisterMemberRoute
   '/auth/register/reader': typeof AppAuthRegisterReaderRoute
@@ -197,6 +205,7 @@ export interface FileRoutesByTo {
   '/articles': typeof AppArticlesIndexRoute
   '/review': typeof AppReviewIndexRoute
   '/write': typeof AppWriteIndexRoute
+  '/articles/$slug/discussion': typeof AppArticlesSlugDiscussionRoute
   '/auth/register/invited': typeof AppAuthRegisterInvitedRoute
   '/auth/register/member': typeof AppAuthRegisterMemberRoute
   '/auth/register/reader': typeof AppAuthRegisterReaderRoute
@@ -224,6 +233,7 @@ export interface FileRoutesById {
   '/_app/articles/': typeof AppArticlesIndexRoute
   '/_app/review/': typeof AppReviewIndexRoute
   '/_app/write/': typeof AppWriteIndexRoute
+  '/_app/articles/$slug_/discussion': typeof AppArticlesSlugDiscussionRoute
   '/_app/auth/register/invited': typeof AppAuthRegisterInvitedRoute
   '/_app/auth/register/member': typeof AppAuthRegisterMemberRoute
   '/_app/auth/register/reader': typeof AppAuthRegisterReaderRoute
@@ -251,6 +261,7 @@ export interface FileRouteTypes {
     | '/articles/'
     | '/review/'
     | '/write/'
+    | '/articles/$slug/discussion'
     | '/auth/register/invited'
     | '/auth/register/member'
     | '/auth/register/reader'
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/articles'
     | '/review'
     | '/write'
+    | '/articles/$slug/discussion'
     | '/auth/register/invited'
     | '/auth/register/member'
     | '/auth/register/reader'
@@ -301,6 +313,7 @@ export interface FileRouteTypes {
     | '/_app/articles/'
     | '/_app/review/'
     | '/_app/write/'
+    | '/_app/articles/$slug_/discussion'
     | '/_app/auth/register/invited'
     | '/_app/auth/register/member'
     | '/_app/auth/register/reader'
@@ -443,6 +456,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof ApiDossierSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/articles/$slug_/discussion': {
+      id: '/_app/articles/$slug_/discussion'
+      path: '/articles/$slug/discussion'
+      fullPath: '/articles/$slug/discussion'
+      preLoaderRoute: typeof AppArticlesSlugDiscussionRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/auth/register/': {
       id: '/_app/auth/register/'
       path: '/'
@@ -522,6 +542,7 @@ interface AppRouteChildren {
   AppArticlesIndexRoute: typeof AppArticlesIndexRoute
   AppReviewIndexRoute: typeof AppReviewIndexRoute
   AppWriteIndexRoute: typeof AppWriteIndexRoute
+  AppArticlesSlugDiscussionRoute: typeof AppArticlesSlugDiscussionRoute
   AppReviewArticlesSubmissionIdRoute: typeof AppReviewArticlesSubmissionIdRoute
   AppReviewArticlesIndexRoute: typeof AppReviewArticlesIndexRoute
 }
@@ -542,6 +563,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppArticlesIndexRoute: AppArticlesIndexRoute,
   AppReviewIndexRoute: AppReviewIndexRoute,
   AppWriteIndexRoute: AppWriteIndexRoute,
+  AppArticlesSlugDiscussionRoute: AppArticlesSlugDiscussionRoute,
   AppReviewArticlesSubmissionIdRoute: AppReviewArticlesSubmissionIdRoute,
   AppReviewArticlesIndexRoute: AppReviewArticlesIndexRoute,
 }
