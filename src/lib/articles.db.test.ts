@@ -583,6 +583,29 @@ describe('what a reader gets', () => {
     expect(read.value.lang).toBe('ht')
     expect(read.value.availableLangs).toEqual(['fr', 'ht'])
   })
+
+  /**
+   * A reader on the Spanish interface is not waiting for a translation.
+   *
+   * English and Spanish are interface languages only: the movement deliberates
+   * and publishes in Creole and French, so this fallback is permanent, not a
+   * gap. The page tells the two cases apart on exactly these fields, and the
+   * wording differs — "not yet available in Creole" is an invitation, and
+   * saying the same thing about Spanish would promise a translation nobody has
+   * decided to make.
+   */
+  it('serves a reader whose interface language the movement does not publish in', async () => {
+    const author = await makeUser()
+    const senior = await makeUser('senior_member')
+    const { slug } = await writeAndPublish(author, senior, { lang: 'fr' })
+
+    const read = await articles.getReadableArticle({ slug, lang: 'es', viewer: null })
+    expect(read.ok).toBe(true)
+    if (!read.ok) return
+    expect(read.value.requestedLang).toBe('es')
+    expect(read.value.lang).toBe('fr')
+    expect(read.value.html).toContain('Le premier paragraphe.')
+  })
 })
 
 describe('listPublished', () => {

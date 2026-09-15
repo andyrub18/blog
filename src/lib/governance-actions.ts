@@ -208,21 +208,45 @@ export const issueInvitationAction = createServerFn({ method: 'POST' })
         if (!result.ok) return { ok: false, code: result.code }
 
         const { env } = await import('../env')
-        const url = `${env.BETTER_AUTH_URL}/auth/register/invited?token=${encodeURIComponent(result.token)}`
+        const [
+          { getMailer },
+          { renderInvitationEmail },
+          { resolveRequestLocale },
+          { localizeHref },
+        ] = await Promise.all([
+          import('./email/mailer'),
+          import('./email/templates'),
+          import('./email/locale'),
+          import('../paraglide/runtime'),
+        ])
 
-        const [{ getMailer }, { renderInvitationEmail }, { resolveRequestLocale }] =
-          await Promise.all([
-            import('./email/mailer'),
-            import('./email/templates'),
-            import('./email/locale'),
-          ])
+        /**
+         * The link opens in the language the email is written in.
+         *
+         * It used to be unprefixed, and that was invisible while the site spoke
+         * only French and Creole: an unprefixed URL fell through to the base
+         * locale and everyone landed on French. With English and Spanish
+         * registered, `preferredLanguage` now answers first, so the recipient's
+         * browser decided — a French invitation could open an English form.
+         *
+         * Prefixing it with the email's own locale is what `url`-first strategy
+         * is for: a link carries the language it was sent in, rather than
+         * asking the reader's browser what it would have preferred.
+         */
+        const locale = resolveRequestLocale()
+        const path = localizeHref(
+          `/auth/register/invited?token=${encodeURIComponent(result.token)}`,
+          { locale },
+        )
+        const url = `${env.BETTER_AUTH_URL}${path}`
+
         await getMailer().send({
           to: result.email,
           ...renderInvitationEmail({
             sponsor: actor.name,
             url,
             expiresAt: result.expiresAt,
-            locale: resolveRequestLocale(),
+            locale,
           }),
         })
 

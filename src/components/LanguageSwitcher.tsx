@@ -21,8 +21,11 @@ export default function LanguageSwitcher() {
   }
 
   return (
+    /* `flex-wrap`, because there are four of these now and the row they sit in
+       also carries a link. On a 360 px phone the fourth would otherwise push
+       the group off the side of the screen rather than onto a second line. */
     <fieldset
-      class="inline-flex items-center gap-1 rounded-md border border-neutral-200 bg-white p-0.5 text-xs"
+      class="inline-flex flex-wrap items-center gap-1 rounded-md border border-neutral-200 bg-white p-0.5 text-xs"
       aria-label={m.common_switchLanguage()}
     >
       <For each={LOCALES}>

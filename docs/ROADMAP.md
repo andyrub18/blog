@@ -72,7 +72,12 @@ Run `/budget` or `npm run budget` after any dependency change.
 Four things decide whether the budget holds:
 
 1. **Compile-time i18n.** Paraglide tree-shakes per message, so bundle size does
-   not grow with locales or message count.
+   not grow with the number of *messages* — an unused one costs nothing. It does
+   grow with the number of *locales*: a message a page uses compiles to one
+   function holding every locale's text. Phase 6 measured it — see
+   `phases/05-LOCALES.md`. When measuring a new locale, use real translations;
+   a placeholder file copied from the base locale gzips against itself and
+   reports a cost four times too low.
 2. **The editor must never reach readers.** Done in phase 2: TipTap is 126 KB
    gzipped and is reached only by a dynamic `import()` inside the editor's own
    effect, so it is fetched when somebody starts writing and at no other time.
@@ -95,7 +100,7 @@ minimal hydration there, and spend interactivity on the forum and the editor.
 | **3 · Review** | Submissions, assigned contradictors, qualified-majority decisions | **Done** — `phases/02-ARTICLES-REVIEW.md` |
 | **4 · Import** | DOCX pipeline | **Done** — `phases/03-DOCUMENT-IMPORT.md` |
 | **5 · Forum** | Threads on articles, moderated after the fact | **Done** — `phases/04-FORUM.md` |
-| **6 · `en` + `es`** | Two locale files and the fallback experience | |
+| **6 · `en` + `es`** | Interface locales for the diaspora, split from the content languages, and the fallback experience | **Done** — `phases/05-LOCALES.md` |
 
 Phase 1 comes before articles because the role rename is cheap now and expensive
 once articles exist and carry authorship.
