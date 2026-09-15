@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/solid-start'
-import { type ContentLang, isContentLang } from '../i18n'
+import { isLocale, type Locale } from '../i18n'
 import type {
   ArticleCard,
   ArticleError,
@@ -9,7 +9,7 @@ import type {
   Viewer,
 } from './articles'
 import type { ArticleVisibility } from './db/schema'
-import { resolveRequestContentLang, resolveRequestLocale } from './email/locale'
+import { resolveRequestLocale } from './email/locale'
 import type { DiscussionTail } from './forum'
 
 /**
@@ -70,24 +70,22 @@ async function requireWriter(): Promise<Viewer> {
 /**
  * The language a write applies to.
  *
- * The caller may name one, but only a language the movement actually publishes
- * in. The column is deliberately not constrained in the database — a
- * translation may outlive the list it was written under — and this is where
- * that openness is held shut for new writes.
+ * The caller may name one, but only a language the site actually speaks. The
+ * column is deliberately unconstrained in the database — a translation may
+ * outlive the list it was written under, and a published URL should keep
+ * rendering either way — and this is where that openness is held shut for new
+ * writes.
  *
- * `CONTENT_LANGS`, not `LOCALES`, and the difference is the whole of phase 6.
- * The interface speaks four languages; the circle deliberates in two. A
- * server function is a public endpoint, so a request naming `lang=es` would
- * otherwise create a Spanish translation that no reviewer is assigned to and
- * `decide()` can never publish — a draft in a language with no way out.
+ * Any of the four is allowed. Nothing bans an article in English or Spanish;
+ * whether one is *published* is settled by `decide()`, which needs a
+ * contradictor who argued in that language, and that requirement enforces
+ * itself without a second gate here.
  *
- * The fallback is the language of the request, but only when the request is in
- * one the movement writes: an author reading the interface in English who saves
- * without naming a language means French, the base locale, not an English
- * article nobody asked them for.
+ * Anything else falls back to the language of the request — the URL prefix
+ * Paraglide resolved, not a cookie the page may disagree with.
  */
-function contentLangOf(value: unknown): ContentLang {
-  return isContentLang(value) ? value : resolveRequestContentLang()
+function localeOf(value: unknown): Locale {
+  return isLocale(value) ? value : resolveRequestLocale()
 }
 
 export const fetchArticleIndex = createServerFn({ method: 'GET' }).handler(
@@ -158,7 +156,7 @@ export const createArticleAction = createServerFn({ method: 'POST' })
       try {
         const result = await createArticle({
           author,
-          lang: contentLangOf(data.lang),
+          lang: localeOf(data.lang),
           title: data.title,
           summary: data.summary,
           visibility: data.visibility,
@@ -186,7 +184,7 @@ export const fetchEditableArticle = createServerFn({ method: 'GET' })
     const result = await getEditableArticle({
       actor,
       articleId: data.articleId,
-      lang: contentLangOf(data.lang),
+      lang: localeOf(data.lang),
     })
     return result.ok
       ? { ok: true, value: result.value }
@@ -222,7 +220,7 @@ export const saveArticle = createServerFn({ method: 'POST' })
       const result = await saveTranslation({
         actor,
         articleId: data.articleId,
-        lang: contentLangOf(data.lang),
+        lang: localeOf(data.lang),
         title: data.title,
         summary: data.summary,
         content: data.content,
@@ -255,7 +253,7 @@ export const withdrawTranslation = createServerFn({ method: 'POST' })
     const actor = await requireWriter()
     const { unpublishTranslation } = await import('./articles')
     try {
-      const lang = contentLangOf(data.lang)
+      const lang = localeOf(data.lang)
       const result = await unpublishTranslation({
         actor,
         articleId: data.articleId,

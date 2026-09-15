@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/solid-start'
-import { type ContentLang, isContentLang } from '../i18n'
+import { isLocale, type Locale } from '../i18n'
 import type { DocxError } from './docx'
-import { resolveRequestContentLang } from './email/locale'
+import { resolveRequestLocale } from './email/locale'
 import type { ImportReport } from './html-to-prosemirror'
 import type { DocNode } from './prosemirror'
 
@@ -48,7 +48,7 @@ export const importDocx = createServerFn({ method: 'POST' })
     if (!articleId) throw new Error('articleId is required')
     return {
       articleId,
-      lang: isContentLang(lang) ? (lang as ContentLang) : null,
+      lang: isLocale(lang) ? (lang as Locale) : null,
       file: file instanceof File ? file : null,
     }
   })
@@ -69,12 +69,7 @@ export const importDocx = createServerFn({ method: 'POST' })
     // An import targets exactly one `(article_id, lang)` variant, and the author
     // is asked which — never guessed. A member publishing the same piece in
     // French and Creole performs two imports against the same article.
-    //
-    // The fallback is a *content* language. An author reading the interface in
-    // English or Spanish still writes in French or Creole, and taking the
-    // interface locale here would file their document under a language the
-    // review circle has no process for.
-    const lang = data.lang ?? resolveRequestContentLang()
+    const lang = data.lang ?? resolveRequestLocale()
 
     // Loaded before the conversion, so an unauthorised caller is refused before
     // we spend anything unzipping their file.

@@ -32,8 +32,6 @@
   "articles_signIn": "Sign in",
   "articles_subtitle": "What the movement proposes, argues and publishes.",
   "articles_title": "Articles",
-  "articles_uiOnlyBody": "KLE publishes in Creole and French. This article is in {shown}.",
-  "articles_uiOnlyIndexNote": "KLE publishes in Creole and French. Each article is labelled with the language it was written in.",
   "auth_login_email": "Email address",
   "auth_login_emailPlaceholder": "you@example.ht",
   "auth_login_errors_accountBlocked": "This account has been blocked. Write to the circle if you think this is a mistake.",

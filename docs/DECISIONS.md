@@ -286,34 +286,34 @@ article review and promotion votes is a forum that dies waiting. Hiding a post
 writes a rationale to `forum_moderation` in the same transaction as the status
 change, and nothing is ever deleted.
 
-## D22 — The interface speaks four languages; the movement publishes in two
+## D22 — Any interface language is also a content language
 
-`LOCALES` is the interface: `fr`, `ht`, `en`, `es`. `CONTENT_LANGS` is what an
-article may be written, reviewed and published in: `fr` and `ht`. They were one
-list until phase 6, and separating them is the whole of that phase.
+`LOCALES` is `fr`, `ht`, `en`, `es`, and an article may be written, reviewed and
+published in any of them. There is one list, not two.
 
-English and Spanish are for the diaspora — Haitians in Miami, Boston, Montréal,
-Santo Domingo who follow KLE. They are an interface, not a promise of translated
-articles.
+Phase 6 briefly shipped two. The reasoning was that `deliberation.ts` publishes a
+language only once an assigned contradictor has argued *in that language*, and
+that a circle deliberating in Creole and French has nobody to staff a Spanish
+adversarial review — so a Spanish draft would be writing with no way out, and the
+platform should not offer what the process cannot finish.
 
-The reason the lists cannot be merged is governance, not presentation. D12 makes
-publication a per-language decision, and `deliberation.ts` publishes a language
-only once a contradictor has argued *in that language*. Offering `es` as a
-content language asks a circle that deliberates in Creole and French to hold a
-Spanish adversarial review it has nobody to staff: the draft would exist, no
-reviewer would be assigned to it, and `decide()` could never carry it. A piece of
-writing with no way out is worse than one the platform declined to accept.
+That was a restriction nobody asked for, and it was reverted. **Nothing in the
+manifesto bans an article in English or Spanish.** The constraint that prompted
+the split already enforces itself: a translation no contradictor reads simply
+never publishes, and `decide()` needs no help refusing it. A second gate in
+`article-actions.ts` added nothing except a decision taken away from KLE.
 
-The practical consequence is that every write path naming a language must use
-`CONTENT_LANGS`, and its fallback must be a content language rather than the
-request's locale — otherwise an author reading the interface in English creates
-English translations by saving. `resolveRequestContentLang()` exists for exactly
-that, and `src/i18n/messages.test.ts` asserts `isContentLang('es') === false` so
-the asymmetry is not tidied away by somebody reading it as an oversight.
+The general rule this leaves: `CLAUDE.md` says a manifesto rule must not be
+*simplified* without a decision from KLE. Adding one nobody asked for is the same
+error, and harder to notice, because the code looks more careful afterwards.
+Before encoding a limit on who may write, review, publish or join, check it is
+written down. If it is only inferred from surrounding code, leave the door open.
 
-**What would flip this:** KLE deciding to publish in a third language, and a
-circle able to name a contradictor who reads it. That is one entry in
-`CONTENT_LANGS` and no other code change.
+What remains true, and is a fact rather than a rule: most articles will be in
+Creole and French, because that is who writes them. The reading view's fallback
+banner therefore says the same thing in all four languages — a reader who asked
+for a language this article lacks is looking at a gap an author may close,
+whichever language it is.
 
 ## D23 — A link KLE sends carries the language it was sent in
 
