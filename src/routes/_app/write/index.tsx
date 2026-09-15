@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
-import { LOCALE_LABELS, LOCALES } from '../../../i18n'
+import { CONTENT_LANGS, LOCALE_LABELS } from '../../../i18n'
 import { createArticleAction, fetchMyArticles } from '../../../lib/article-actions'
 import { ARTICLE_ERROR_MESSAGE } from '../../../lib/article-messages'
 import {
@@ -181,12 +181,18 @@ function WriteDesk() {
                   </div>
 
                   {/*
-                   * Every language, present or not. A missing language is the
-                   * thing an author most needs to see on this page, so the ones
-                   * they have not started are listed too rather than left out.
+                   * Every language the movement publishes in, present or not. A
+                   * missing language is the thing an author most needs to see on
+                   * this page, so the ones they have not started are listed too
+                   * rather than left out.
+                   *
+                   * `CONTENT_LANGS`, not `LOCALES`: the interface also speaks
+                   * English and Spanish, and listing those here would put two
+                   * permanent "not started" boxes on every author's checklist
+                   * for work the review circle is not set up to decide on.
                    */}
                   <ul class="mt-3 flex flex-wrap gap-2 text-xs">
-                    <For each={LOCALES}>
+                    <For each={CONTENT_LANGS}>
                       {(lang) => (
                         <li>
                           <Link

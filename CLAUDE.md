@@ -19,8 +19,9 @@ before touching auth, uploads, or anything that reads a dossier.
 
 **2. First-load weight is a feature, not a nicety.** Readers arrive on slow,
 metered Haitian mobile data. The budget is **under 100 KB gzipped** of client
-JS for an article page, and it currently has about 2.7 KB of headroom. Measure
-before and after any dependency addition:
+JS for an article page, and after phase 6 it has about **0.4 KB** of headroom —
+the next thing added to that page has to find bytes before it spends them.
+Measure before and after any dependency addition:
 
 ```bash
 npm run build && npm run budget
@@ -196,6 +197,26 @@ for content nobody reviews.
 creates no row. Asking for what is *new* leaves it on screen in every tab that
 already had it, which is the one case moderation exists for.
 
+**The interface speaks four languages; the movement publishes in two.**
+`LOCALES` is `fr, ht, en, es` — chrome, forms, emails, URL prefix.
+`CONTENT_LANGS` is `fr, ht` — what an article may be written, reviewed and
+published in. Never use `LOCALES` to offer a *content* language. `deliberation.ts`
+publishes a language only once a contradictor has argued in it, so a Spanish
+translation is a draft no reviewer is assigned to and `decide()` can never carry.
+Every write path that names a language falls back to `resolveRequestContentLang()`,
+not `resolveRequestLocale()` — otherwise an author reading the interface in
+English files an English article by saving (D22).
+
+**An unprefixed URL is a decision, not a default.** Paraglide resolves `url`,
+then cookie, then the browser's `Accept-Language`. A URL with no locale prefix
+therefore lets the reader's browser pick the language. That is right for the site
+root and wrong for a link inside a message we wrote: the invitation email was
+rendered in French and opened an English form for anyone whose browser preferred
+English, the moment `en` was registered. Localize links you emit with the locale
+of the thing that carries them (D23). The same shift is why `src/test/setup.ts`
+pins the locale — jsdom reports `en-US`, and without the pin every component test
+asserting a French string fails.
+
 **Dates of birth are compared in UTC.** An `<input type="date">` value parses as
 UTC midnight; reading it with local getters shifts it a day in any timezone
 behind UTC, Haiti included, and silently changes a computed age.
@@ -203,7 +224,12 @@ behind UTC, Haiti included, and silently changes a computed age.
 ## i18n
 
 Paraglide compiles each message into its own tree-shakable function, so bundle
-size does not grow with the number of locales. Call a message with no arguments:
+size does not grow with the number of *messages* — one nobody calls costs
+nothing. It **does** grow with the number of *locales*: a message a page uses
+compiles to one function holding every locale's text, so the eleven messages on
+the reading view each carry four strings. Phase 6 measured that at about 0.6 KB
+gzipped for `en` + `es` (`docs/phases/05-LOCALES.md`). Call a message with no
+arguments:
 
 ```tsx
 import { m } from '../paraglide/messages'
@@ -238,11 +264,19 @@ becomes `auth_login_title`. For a message chosen at runtime (an error code, say)
 map the code to the **message function**, not to a key string — a dynamic key
 lookup defeats tree-shaking. `ERROR_MESSAGE` in `LoginForm.tsx` shows the shape.
 
-Adding a locale: add the code to `LOCALES` and `LOCALE_LABELS` in
+Adding an **interface** locale: add the code to `LOCALES` and `LOCALE_LABELS` in
 `src/i18n/index.ts`, add `messages/<code>.json`, add it to
 `project.inlang/settings.json`, and add a `urlPatterns` entry in
-`src/i18n/paraglide-options.ts` so it gets a path prefix. `src/i18n/messages.test.ts` fails if any key is
-missing, orphaned, blank, or has mismatched placeholders.
+`src/i18n/paraglide-options.ts` so it gets a path prefix.
+`src/i18n/messages.test.ts` fails if any key is missing, orphaned, blank, or has
+mismatched placeholders — and also if those three files disagree about which
+locales exist, because registering a language in two of the three is the quiet
+failure.
+
+Measure the new locale's cost with **real translations**. A placeholder file
+copied from `fr.json` gzips against itself and reports a cost four times too
+low; that is how phase 6 first measured `en` + `es` at 0.2 KB when they cost
+0.6 KB.
 
 ## Testing
 

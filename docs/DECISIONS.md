@@ -285,3 +285,54 @@ queue drained by the same senior members who already carry application review,
 article review and promotion votes is a forum that dies waiting. Hiding a post
 writes a rationale to `forum_moderation` in the same transaction as the status
 change, and nothing is ever deleted.
+
+## D22 — The interface speaks four languages; the movement publishes in two
+
+`LOCALES` is the interface: `fr`, `ht`, `en`, `es`. `CONTENT_LANGS` is what an
+article may be written, reviewed and published in: `fr` and `ht`. They were one
+list until phase 6, and separating them is the whole of that phase.
+
+English and Spanish are for the diaspora — Haitians in Miami, Boston, Montréal,
+Santo Domingo who follow KLE. They are an interface, not a promise of translated
+articles.
+
+The reason the lists cannot be merged is governance, not presentation. D12 makes
+publication a per-language decision, and `deliberation.ts` publishes a language
+only once a contradictor has argued *in that language*. Offering `es` as a
+content language asks a circle that deliberates in Creole and French to hold a
+Spanish adversarial review it has nobody to staff: the draft would exist, no
+reviewer would be assigned to it, and `decide()` could never carry it. A piece of
+writing with no way out is worse than one the platform declined to accept.
+
+The practical consequence is that every write path naming a language must use
+`CONTENT_LANGS`, and its fallback must be a content language rather than the
+request's locale — otherwise an author reading the interface in English creates
+English translations by saving. `resolveRequestContentLang()` exists for exactly
+that, and `src/i18n/messages.test.ts` asserts `isContentLang('es') === false` so
+the asymmetry is not tidied away by somebody reading it as an oversight.
+
+**What would flip this:** KLE deciding to publish in a third language, and a
+circle able to name a contradictor who reads it. That is one entry in
+`CONTENT_LANGS` and no other code change.
+
+## D23 — A link KLE sends carries the language it was sent in
+
+Paraglide resolves locale from the URL first, then a cookie, then the browser's
+`Accept-Language`. An unprefixed URL therefore hands the choice of language to
+the reader's browser.
+
+That is right for the site root, where we have no better signal. It is wrong for
+a link inside a message we wrote: the invitation email was rendered in French
+and, once `en` was registered, opened an English registration form for anyone
+whose browser preferred English. Nothing had changed except that `en` existed —
+before, every unprefixed URL fell through to the base locale and the mismatch
+could not occur.
+
+Invitation links are now localized with the same locale as the email that
+carries them. The general rule: **an unprefixed URL is a decision, not a
+default.** Before emitting one, ask whether the language should follow the
+reader's browser or the message it came in.
+
+Not yet applied to the email-verification callback, which Better Auth builds;
+that is an auth-flow change and belongs with the P0 that retires the mock Google
+sign-in path.

@@ -13,7 +13,7 @@ import ArticleEditor, {
 } from '../../../components/editor/ArticleEditor'
 import ImportPanel from '../../../components/editor/ImportPanel'
 import SubmitPanel from '../../../components/editor/SubmitPanel'
-import { isLocale, LOCALE_LABELS, type Locale } from '../../../i18n'
+import { type ContentLang, isContentLang, LOCALE_LABELS } from '../../../i18n'
 import {
   fetchEditableArticle,
   saveArticle,
@@ -24,11 +24,19 @@ import { fetchRounds } from '../../../lib/article-review-actions'
 import type { DocNode } from '../../../lib/prosemirror'
 import { m } from '../../../paraglide/messages'
 
-type Search = { lang?: Locale }
+/**
+ * Which language of the article to edit.
+ *
+ * A content language, not a UI locale: `/write/x?lang=es` is not a Spanish
+ * draft waiting to be written, it is a typo, and dropping it puts the author
+ * on the language the server picks instead of an empty editor for a language
+ * that can never be published.
+ */
+type Search = { lang?: ContentLang }
 
 export const Route = createFileRoute('/_app/write/$articleId')({
   validateSearch: (search: Record<string, unknown>): Search => ({
-    lang: isLocale(search.lang) ? search.lang : undefined,
+    lang: isContentLang(search.lang) ? search.lang : undefined,
   }),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   loader: async ({ params, deps }) => {
@@ -325,7 +333,7 @@ function Editing(props: EditingProps) {
                   <Link
                     to="/write/$articleId"
                     params={{ articleId: props.article.articleId }}
-                    search={{ lang: other.lang as Locale }}
+                    search={{ lang: other.lang as ContentLang }}
                     class="rounded border border-neutral-200 bg-white px-2 py-1 text-neutral-700 hover:bg-neutral-50"
                   >
                     {languageName(other.lang)} ·{' '}

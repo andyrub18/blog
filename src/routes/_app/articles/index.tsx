@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { For, Show } from 'solid-js'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
-import { LOCALE_LABELS } from '../../../i18n'
+import { isContentLang, LOCALE_LABELS } from '../../../i18n'
 import { fetchArticleIndex } from '../../../lib/article-actions'
 import { m } from '../../../paraglide/messages'
+import { getLocale } from '../../../paraglide/runtime'
 
 /**
  * The public index.
@@ -28,6 +29,23 @@ function ArticleIndex() {
           <LanguageSwitcher />
         </div>
         <p class="mb-6 text-sm text-neutral-600">{m.articles_subtitle()}</p>
+
+        {/*
+         * Said once, at the top, rather than implied by a chip on every card.
+         *
+         * A reader using the English or Spanish interface will find every
+         * article labelled Français or Kreyòl, and without this that reads as a
+         * site that has failed to translate itself. It has not: the movement
+         * deliberates in Creole and French and publishes what it deliberated
+         * on. The per-card chip stays, and is worth more to this reader than to
+         * any other — which of the two languages a given piece is in is exactly
+         * what they need in order to choose.
+         */}
+        <Show when={!isContentLang(getLocale())}>
+          <p class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            {m.articles_uiOnlyIndexNote()}
+          </p>
+        </Show>
 
         <Show
           when={articles().length > 0}

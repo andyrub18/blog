@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { For, Show } from 'solid-js'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
-import { LOCALE_LABELS } from '../../../i18n'
+import { isContentLang, LOCALE_LABELS } from '../../../i18n'
 import { fetchArticle } from '../../../lib/article-actions'
 import type { DiscussionTail as Tail } from '../../../lib/forum'
 import { m } from '../../../paraglide/messages'
@@ -48,21 +48,7 @@ function ArticlePage() {
           {(loaded) => (
             <article>
               <Show when={loaded().lang !== loaded().requestedLang}>
-                {/*
-                 * Never require every language. An author writes what they can;
-                 * a reader who lands on a language nobody has written yet gets
-                 * the article with an honest note rather than a 404.
-                 */}
-                <aside class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
-                  <p class="font-medium text-amber-900">
-                    {m.articles_fallbackTitle({
-                      language: languageName(loaded().requestedLang),
-                    })}
-                  </p>
-                  <p class="mt-1 text-amber-800">
-                    {m.articles_fallbackBody({ shown: languageName(loaded().lang) })}
-                  </p>
-                </aside>
+                <FallbackNote requested={loaded().requestedLang} shown={loaded().lang} />
               </Show>
 
               <Show when={loaded().visibility === 'members'}>
@@ -134,6 +120,46 @@ function Refusal(props: { code: string | null }) {
         </Link>
       </Show>
     </div>
+  )
+}
+
+/**
+ * Why this article is not in the language you asked for.
+ *
+ * Two different facts, and telling them apart is most of what phase 6 added.
+ *
+ * A Creole reader on a French-only article is looking at a *gap*: the article
+ * exists in one of the movement's two languages and not yet the other, and an
+ * author may close it tomorrow. Saying "not yet available in Creole" is true
+ * and is an invitation.
+ *
+ * An English or Spanish reader is not looking at a gap. KLE deliberates and
+ * publishes in Creole and French; English and Spanish are there so the
+ * diaspora can use the site, not because a translation is pending. Showing
+ * them "not yet available in English" would promise something nobody has
+ * decided to do, and would keep promising it on every article forever. The
+ * honest version says what the movement publishes in and stops.
+ */
+function FallbackNote(props: { requested: string; shown: string }) {
+  const gap = () => isContentLang(props.requested)
+  return (
+    <aside class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+      <Show
+        when={gap()}
+        fallback={
+          <p class="text-amber-900">
+            {m.articles_uiOnlyBody({ shown: languageName(props.shown) })}
+          </p>
+        }
+      >
+        <p class="font-medium text-amber-900">
+          {m.articles_fallbackTitle({ language: languageName(props.requested) })}
+        </p>
+        <p class="mt-1 text-amber-800">
+          {m.articles_fallbackBody({ shown: languageName(props.shown) })}
+        </p>
+      </Show>
+    </aside>
   )
 }
 

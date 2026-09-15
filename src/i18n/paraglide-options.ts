@@ -39,6 +39,8 @@ export const paraglideOptions: ParaglideVitePluginOptions = {
       localized: [
         ['fr', ':protocol://:domain(.*)::port?/fr/:path(.*)?'],
         ['ht', ':protocol://:domain(.*)::port?/ht/:path(.*)?'],
+        ['en', ':protocol://:domain(.*)::port?/en/:path(.*)?'],
+        ['es', ':protocol://:domain(.*)::port?/es/:path(.*)?'],
       ] as Array<[string, string]>,
     },
   ],
