@@ -585,16 +585,15 @@ describe('what a reader gets', () => {
   })
 
   /**
-   * A reader on the Spanish interface is not waiting for a translation.
+   * The fallback works for every interface language, not just the two the
+   * movement happens to write in most.
    *
-   * English and Spanish are interface languages only: the movement deliberates
-   * and publishes in Creole and French, so this fallback is permanent, not a
-   * gap. The page tells the two cases apart on exactly these fields, and the
-   * wording differs — "not yet available in Creole" is an invitation, and
-   * saying the same thing about Spanish would promise a translation nobody has
-   * decided to make.
+   * English and Spanish are not a lesser tier — an article may be written in
+   * them — so a Spanish reader with no Spanish version is in exactly the
+   * position a Creole reader with no Creole version is in, and the page says
+   * the same thing to both. `requestedLang` is what drives that banner.
    */
-  it('serves a reader whose interface language the movement does not publish in', async () => {
+  it('falls back for any interface language, keeping what the reader asked for', async () => {
     const author = await makeUser()
     const senior = await makeUser('senior_member')
     const { slug } = await writeAndPublish(author, senior, { lang: 'fr' })
@@ -605,6 +604,22 @@ describe('what a reader gets', () => {
     expect(read.value.requestedLang).toBe('es')
     expect(read.value.lang).toBe('fr')
     expect(read.value.html).toContain('Le premier paragraphe.')
+  })
+
+  it('publishes an article written in a diaspora language like any other', async () => {
+    const author = await makeUser()
+    const senior = await makeUser('senior_member')
+    const { slug } = await writeAndPublish(author, senior, {
+      lang: 'en',
+      title: 'The economy of the country',
+      text: 'The first paragraph.',
+    })
+
+    const read = await articles.getReadableArticle({ slug, lang: 'en', viewer: null })
+    expect(read.ok).toBe(true)
+    if (!read.ok) return
+    expect(read.value.lang).toBe('en')
+    expect(read.value.requestedLang).toBe('en')
   })
 })
 

@@ -1,5 +1,5 @@
 import { createSignal, For, Show } from 'solid-js'
-import { CONTENT_LANGS, type ContentLang, LOCALE_LABELS } from '../../i18n'
+import { LOCALE_LABELS, LOCALES, type Locale } from '../../i18n'
 import type { ImportErrorCode, ImportResult } from '../../lib/docx-actions'
 import { importDocx } from '../../lib/docx-actions'
 import type { ImportReport } from '../../lib/html-to-prosemirror'
@@ -124,10 +124,10 @@ export default function ImportPanel(props: Props) {
             name="lang"
             class="h-10 rounded-md border border-neutral-300 px-3 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
           >
-            <For each={CONTENT_LANGS}>
+            <For each={LOCALES}>
               {(lang) => (
                 <option value={lang} selected={lang === props.lang}>
-                  {LOCALE_LABELS[lang as ContentLang]}
+                  {LOCALE_LABELS[lang as Locale]}
                 </option>
               )}
             </For>

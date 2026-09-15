@@ -9,66 +9,47 @@ unrelated jobs, and it worked only because the two answers happened to be the
 same. Adding a language that answers one and not the other is what separated
 them.
 
-## The two lists
+## One list, after a detour
 
-`LOCALES` is what the **interface** speaks: the chrome, the forms, the emails,
-the URL prefix. It is now `fr`, `ht`, `en`, `es`.
+`LOCALES` is `fr`, `ht`, `en`, `es`, and an article may be written, reviewed and
+published in any of them.
 
-`CONTENT_LANGS` is what the **movement** writes and deliberates in. It is `fr`
-and `ht`, and it is not a subset by accident.
+This phase first shipped two lists — interface locales, and a narrower
+`CONTENT_LANGS` of `fr` and `ht` — gating every article write behind the second.
+The reasoning ran: `deliberation.ts` publishes a language only once an assigned
+contradictor has argued *in that language*, a circle deliberating in Creole and
+French has nobody to staff a Spanish adversarial review, therefore a Spanish
+draft is writing with no way out and the platform should not offer it.
 
-Before this phase, `LOCALES` drove both. It filled the author's language
-checklist on `/write`, the "which language is this file" picker in the DOCX
-importer, and — through `localeOf` in `article-actions.ts` — the language every
-article write was filed under. Adding `en` and `es` to that one list would have:
+That was wrong, and it was reverted. **Nothing in the manifesto bans an article
+in English or Spanish.** The constraint already enforces itself — a translation
+no contradictor reads simply never publishes — so the second gate bought nothing
+and took a decision away from KLE. `CLAUDE.md` warns against *simplifying* a
+manifesto rule without a decision from the movement; adding one nobody asked for
+is the same error, and easier to miss, because the code reads as more careful
+afterwards.
 
-- put two permanent "not written yet" boxes on every author's checklist;
-- offered Spanish in the importer;
-- and, worst, let an English-reading author's save create an **English
-  translation** whenever they did not name a language, because the fallback was
-  the request's own locale.
+What survives from the detour is the question it was asking, answered the other
+way and recorded in D22, plus a db test that an article written in English
+publishes like any other.
 
-That last one is not cosmetic. `deliberation.ts` publishes a language only once
-a contradictor has argued *in that language*. A Spanish translation is a draft
-the review circle has no one to staff and `decide()` can never publish — a piece
-of writing with no way out. The rule is in the manifesto, not in the code, so
-the code has to stop offering what the process cannot finish.
+## The fallback banner says the same thing in four languages
 
-So `contentLangOf` replaced `localeOf`, `resolveRequestContentLang()` sits
-beside `resolveRequestLocale()` for every write path that must name a language
-without being told one, and `isContentLang` guards the editor's `?lang=` search
-param and the importer's form field.
+A reader who asks for a language this article does not have is looking at a gap
+an author may close — whichever language it is. "Not yet available in English.
+You are reading it in French" is exactly as true as the Creole version, because
+English is not a tier the site has decided never to fill.
 
-**Promoting a language from interface to content is a decision for KLE**, not a
-change somebody makes because the two lists looked asymmetrical. The test in
-`src/i18n/messages.test.ts` asserts the asymmetry on purpose, so merging them
-again fails loudly.
+The interim design had two banners: a gap message for Creole and French, and a
+standing "KLE publishes in Creole and French" for English and Spanish. That
+second message stated as policy something that was only ever a prediction about
+who writes. It is gone, along with the `isContentLang` branch on the reading view
+and the note on the index — which is also 0.45 KB of message text the budgeted
+page no longer carries.
 
-## The fallback experience
-
-The banner already existed: a Creole reader landing on a French-only article got
-`articles_fallbackTitle` — "Not yet available in Creole" — and the article.
-
-For a Spanish reader that sentence is a lie of implication. It says a
-translation is pending. None is. KLE deliberates and publishes in Creole and
-French; English and Spanish exist so the diaspora can use the site, and no
-article is waiting to be translated into them. Shown on every article forever,
-"not yet available in Spanish" promises something nobody has decided to do.
-
-So the page tells the two situations apart:
-
-- **A gap** — the reader asked for a content language this article lacks. "Not
-  yet available in {language}. You are reading it in {shown}." An author may
-  close it tomorrow, and the wording is an invitation.
-- **A standing fact** — the reader's interface language is not one the movement
-  publishes in. "KLE publishes in Creole and French. This article is in
-  {shown}." One sentence, no heading, because it is not news.
-
-`FallbackNote` in `articles/$slug.tsx` branches on `isContentLang(requested)`.
-The index carries the same fact once at the top rather than implying it with a
-chip on every card — and the per-card language chip stays, because which of the
-two languages a given piece is in is worth **more** to a diaspora reader than to
-anyone else: it is how they choose what they can read.
+The per-card language chip on the index stays. It is worth more to a diaspora
+reader than to anyone else: which of the languages a given piece is in is how
+they choose what they can read.
 
 ## Locales are not free, and the docs said they were
 
@@ -88,8 +69,7 @@ Measured, on the reading view:
 |---|---|
 | before phase 6 | 98.8 KB |
 | four locales, no other change | 99.0 KB |
-| four locales with real translations | 99.4 KB |
-| plus the fallback note | **99.6 KB** |
+| four locales with real translations | **99.4 KB** |
 
 The 0.2 KB step is the URL-pattern table. The step after it is the one that
 matters, and the first measurement hid it: the probe used copies of `fr.json`
@@ -103,8 +83,10 @@ documented as working only "in SSR/SSG environment without client-side routing"
 and as not to be relied on in production. This app has client-side routing. Not
 taken.
 
-**The reading view is at 99.6 KB against a 100 KB budget: 0.4 KB of headroom.**
-The next thing added to that page has to find bytes before it spends them.
+**The reading view is at 99.4 KB against a 100 KB budget: 0.6 KB of headroom.**
+The interim two-banner design took it to 99.6 KB; dropping that message gave
+0.2 KB back. The next thing added to that page has to find bytes before it
+spends them.
 
 ## Adding `en` broke two things that had nothing to do with `en`
 
@@ -139,13 +121,14 @@ landing page is reached unprefixed. The same reasoning applies, but overriding
 Better Auth's callback is a change to the auth flow, not to the locale registry,
 and it belongs with the P0 that retires the mock Google path.
 
-**Content in English or Spanish.** Nothing here makes it possible, on purpose.
-If KLE decides to publish in a third language, the change is one entry in
-`CONTENT_LANGS` — and a circle that can staff a contradictor in it.
+**Seeded or written content in English or Spanish.** Possible from the first
+day — the editor, the importer and the review flow all offer all four languages —
+but none exists yet, and the demo seed does not create any. Whether the movement
+writes in them is KLE's call, not the platform's.
 
-**A fifth locale.** The registry now costs about 0.2 KB of URL-pattern table
-plus roughly 0.2 KB of message text on the reading view. There is 0.4 KB of
-headroom. Another locale does not fit until something comes off that page.
+**A fifth locale.** The registry costs about 0.2 KB of URL-pattern table plus
+roughly 0.2 KB of message text on the reading view. There is 0.6 KB of headroom.
+One more locale fits; two do not, until something comes off that page.
 
 ## Tests
 

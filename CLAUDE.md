@@ -19,7 +19,7 @@ before touching auth, uploads, or anything that reads a dossier.
 
 **2. First-load weight is a feature, not a nicety.** Readers arrive on slow,
 metered Haitian mobile data. The budget is **under 100 KB gzipped** of client
-JS for an article page, and after phase 6 it has about **0.4 KB** of headroom —
+JS for an article page, and after phase 6 it has about **0.6 KB** of headroom —
 the next thing added to that page has to find bytes before it spends them.
 Measure before and after any dependency addition:
 
@@ -197,15 +197,15 @@ for content nobody reviews.
 creates no row. Asking for what is *new* leaves it on screen in every tab that
 already had it, which is the one case moderation exists for.
 
-**The interface speaks four languages; the movement publishes in two.**
-`LOCALES` is `fr, ht, en, es` — chrome, forms, emails, URL prefix.
-`CONTENT_LANGS` is `fr, ht` — what an article may be written, reviewed and
-published in. Never use `LOCALES` to offer a *content* language. `deliberation.ts`
-publishes a language only once a contradictor has argued in it, so a Spanish
-translation is a draft no reviewer is assigned to and `decide()` can never carry.
-Every write path that names a language falls back to `resolveRequestContentLang()`,
-not `resolveRequestLocale()` — otherwise an author reading the interface in
-English files an English article by saving (D22).
+**Any interface language is also a content language.** `LOCALES` is
+`fr, ht, en, es` and an article may be written, reviewed and published in any of
+them — one list, not two. Phase 6 briefly split it on the reasoning that the
+circle could not staff a Spanish contradictor; that was a restriction nobody
+asked for and it was reverted (D22). The constraint enforces itself: `decide()`
+publishes a language only once a contradictor has argued in it, so a translation
+nobody reviews never goes live, and no second gate is needed. Most articles will
+be in Creole and French because that is who writes them, which is a fact about
+the movement and not a rule the platform should encode.
 
 **An unprefixed URL is a decision, not a default.** Paraglide resolves `url`,
 then cookie, then the browser's `Accept-Language`. A URL with no locale prefix

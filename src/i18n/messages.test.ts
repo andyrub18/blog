@@ -1,15 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import {
-  CONTENT_LANGS,
-  DEFAULT_CONTENT_LANG,
-  DEFAULT_LOCALE,
-  isContentLang,
-  isLocale,
-  LOCALE_LABELS,
-  LOCALES,
-} from './index'
+import { DEFAULT_LOCALE, isLocale, LOCALE_LABELS, LOCALES } from './index'
 import { paraglideOptions } from './paraglide-options'
 
 type Bundle = Record<string, string>
@@ -64,36 +56,6 @@ describe('locale registry', () => {
       .flatMap((p) => p.localized as Array<[string, string]>)
       .map(([locale]) => locale)
     expect([...prefixed].sort()).toEqual([...LOCALES].sort())
-  })
-})
-
-/**
- * The interface speaks more languages than the movement writes in.
- *
- * These two lists were one list until phase 6, and the reason they are not any
- * more is governance, not presentation: `deliberation.ts` publishes a language
- * only once a contradictor has argued in it, so a content language the circle
- * cannot staff is a draft with no way out. The assertions below are what stops
- * the lists being merged again by somebody who reads the asymmetry as an
- * oversight.
- */
-describe('content languages', () => {
-  it('are a subset of the interface locales', () => {
-    for (const lang of CONTENT_LANGS) {
-      expect(LOCALES).toContain(lang)
-    }
-  })
-
-  it('include the default content language', () => {
-    expect(CONTENT_LANGS).toContain(DEFAULT_CONTENT_LANG)
-  })
-
-  it('do not include the diaspora interface locales', () => {
-    expect(isContentLang('fr')).toBe(true)
-    expect(isContentLang('ht')).toBe(true)
-    expect(isContentLang('en')).toBe(false)
-    expect(isContentLang('es')).toBe(false)
-    expect(isContentLang(null)).toBe(false)
   })
 })
 

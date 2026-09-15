@@ -100,7 +100,7 @@ minimal hydration there, and spend interactivity on the forum and the editor.
 | **3 · Review** | Submissions, assigned contradictors, qualified-majority decisions | **Done** — `phases/02-ARTICLES-REVIEW.md` |
 | **4 · Import** | DOCX pipeline | **Done** — `phases/03-DOCUMENT-IMPORT.md` |
 | **5 · Forum** | Threads on articles, moderated after the fact | **Done** — `phases/04-FORUM.md` |
-| **6 · `en` + `es`** | Interface locales for the diaspora, split from the content languages, and the fallback experience | **Done** — `phases/05-LOCALES.md` |
+| **6 · `en` + `es`** | Two more languages for the diaspora — interface and articles alike — and the fallback experience | **Done** — `phases/05-LOCALES.md` |
 
 Phase 1 comes before articles because the role rename is cheap now and expensive
 once articles exist and carry authorship.
