@@ -16,6 +16,7 @@ test.skip(!process.env.E2E_DATABASE, 'requires E2E_DATABASE and seeded accounts'
 const PUBLISHED = 'sitiyasyon-ekonomik-nan-peyi-a'
 const FRENCH_ONLY = 'leducation-comme-priorite'
 const INTERNAL_DRAFT = 'note-interne-cercle-economie'
+const LONG_FORM = 'reforme-de-ladministration-publique'
 
 test('a public article is readable with no account at all', async ({ page }) => {
   // Reach is the point (DECISIONS.md, D1). If this ever needs a session, the
@@ -71,4 +72,54 @@ test('an article page carries no editor', async ({ page }) => {
   // The budget's largest single win: TipTap is 100+ KB gzipped and a reader on
   // metered Haitian mobile data must never download it.
   expect(scripts.filter((url) => /ArticleEditor/i.test(url))).toEqual([])
+})
+
+/**
+ * Long-form work, and what makes it readable.
+ *
+ * Nothing caps an article's length, so a policy proposal is one article rather
+ * than a PDF nobody can read on a phone. The contents list and the anchor per
+ * section are the difference between a page that is long and a document
+ * somebody can work through — and between a forum post arguing with the whole
+ * text and one arguing with a named section.
+ */
+test('a long article carries a contents list, and every entry lands on a section', async ({
+  page,
+}) => {
+  await page.goto(`/fr/articles/${LONG_FORM}`)
+  const contents = page.getByRole('navigation', { name: /Sommaire/i })
+  await expect(contents).toBeVisible()
+
+  const links = contents.getByRole('link')
+  const count = await links.count()
+  expect(count).toBeGreaterThanOrEqual(3)
+
+  // Every entry must point at a heading this page actually rendered. A list of
+  // links that quietly go nowhere is the failure mode worth testing for.
+  for (let index = 0; index < count; index += 1) {
+    const href = await links.nth(index).getAttribute('href')
+    expect(href).toMatch(/^#[a-z0-9-]+$/)
+    await expect(page.locator(`${href} `.trim())).toBeVisible()
+  }
+})
+
+test('following a contents entry moves the reader to that section', async ({ page }) => {
+  await page.goto(`/fr/articles/${LONG_FORM}`)
+  await page
+    .getByRole('navigation', { name: /Sommaire/i })
+    .getByRole('link', {
+      name: /Indicateurs de réussite/i,
+    })
+    .click()
+  await expect(page).toHaveURL(/#indicateurs-de-reussite$/)
+  await expect(
+    page.getByRole('heading', { name: /Indicateurs de réussite/i }),
+  ).toBeInViewport()
+})
+
+test('a short article carries no contents list', async ({ page }) => {
+  // Three headings before the list earns its place: below that it is longer
+  // than the reading it saves.
+  await page.goto(`/fr/articles/${PUBLISHED}`)
+  await expect(page.getByRole('navigation', { name: /Sommaire/i })).toHaveCount(0)
 })

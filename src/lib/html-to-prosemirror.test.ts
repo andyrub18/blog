@@ -86,7 +86,13 @@ describe('what an author keeps', () => {
   it('maps Word headings below the page title', () => {
     const html = roundTrip('<h1>Diagnostic</h1><h2>Recettes</h2><h5>Détail</h5>')
     // The article title is the page's h1, so a document cannot emit its own.
-    expect(html).toBe('<h2>Diagnostic</h2><h2>Recettes</h2><h4>Détail</h4>')
+    // Levels are the subject here; the anchor ids headings also carry are
+    // tested in `prosemirror.test.ts`.
+    expect([...html.matchAll(/<h(\d)[^>]*>([^<]+)</g)].map((m) => [m[1], m[2]])).toEqual([
+      ['2', 'Diagnostic'],
+      ['2', 'Recettes'],
+      ['4', 'Détail'],
+    ])
   })
 
   it('keeps emphasis that has a meaning in our format', () => {

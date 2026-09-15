@@ -68,7 +68,8 @@ logic** (server functions) → **auth** (Better Auth) → **components** (Solid)
 - `src/lib/session.server.ts` — server only: `getSession`, `requireUser`,
   `requireRole`, `redirectIfAuthenticated`.
 - `src/lib/prosemirror.ts` — the article document format: the node/mark
-  allowlist, the parser and the server-side HTML renderer. Pure, no IO. Test it.
+  allowlist, the parser, the server-side HTML renderer and the heading outline
+  behind the table of contents. Pure, no IO. Test it.
 - `src/lib/articles.ts` — article business logic. `src/lib/article-actions.ts` —
   the server functions, each re-checking the caller.
 - `src/lib/docx.ts` — the DOCX import pipeline. **Server only.**
@@ -128,8 +129,13 @@ a node type without asking what it lets an author put in another reader's
 browser. There is no image node and no raw-HTML node, both on purpose.
 
 **The reading view renders on the server and ships no JavaScript of its own.**
-`fetchArticle` returns HTML and deliberately strips the ProseMirror document
-from the payload — sending both would put the same article on the wire twice, on
+That includes the table of contents: `renderOutlineToHtml` emits the `<nav>` as
+markup and `articles.ts` prepends it, rather than sending the outline as data
+for a `<For>` to render. Written as a component it measured 0.3 KB against a
+budget with 0.6 KB left, and plain `<a href="#…">` also works for a reader whose
+bundle has not arrived — on a slow connection, exactly the reader facing the
+longest document. `fetchArticle` returns HTML and deliberately strips the
+ProseMirror document from the payload — sending both would put the same article on the wire twice, on
 the one page the budget exists for. `innerHTML` on that string is safe *because*
 the renderer wrote every tag and escaped every author-supplied character; it
 would not be safe for HTML from anywhere else.

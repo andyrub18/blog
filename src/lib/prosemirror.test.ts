@@ -7,6 +7,7 @@ import {
   isSafeHref,
   parseDocument,
   readingTimeMinutes,
+  renderDocument,
   renderDocumentToHtml,
 } from './prosemirror'
 
@@ -90,7 +91,14 @@ describe('parseDocument', () => {
         { type: 'heading', attrs: { level: 3 }, content: [text('Juste')] },
       ),
     )
-    expect(html).toBe('<h2>Trop haut</h2><h4>Trop bas</h4><h3>Juste</h3>')
+    // The levels are the rule; headings also carry an anchor id, which is
+    // tested on its own below.
+    expect([...html.matchAll(/<h(\d)/g)].map((match) => match[1])).toEqual([
+      '2',
+      '4',
+      '3',
+    ])
+    expect(html).toContain('>Trop haut</h2>')
   })
 
   it('stops walking a document nested past any plausible depth', () => {
@@ -345,5 +353,94 @@ describe('tables', () => {
     expect(parsed.ok).toBe(true)
     if (!parsed.ok) return
     expect(parsed.doc.content?.[0]?.attrs).toBeUndefined()
+  })
+})
+
+/**
+ * Headings carry anchors, and the contents list is built from the same walk.
+ *
+ * The rule under test is that a reader can link to one section of a long
+ * document and land on it. The failure that matters is not an ugly id — it is a
+ * contents entry pointing at an anchor the markup never emitted, which is
+ * silent: the list renders, the link does nothing, and only a reader finds out.
+ */
+describe('heading anchors and the outline', () => {
+  const heading = (level: number, value: string) => ({
+    type: 'heading',
+    attrs: { level },
+    content: [textNode(value)],
+  })
+
+  function outlineOf(input: unknown) {
+    const parsed = parseDocument(input)
+    if (!parsed.ok) throw new Error(`expected a document, got ${parsed.code}`)
+    return renderDocument(parsed.doc)
+  }
+
+  it('gives every heading an id derived from its text', () => {
+    const { html, outline } = outlineOf(
+      doc(heading(2, 'Réforme de la fonction publique'), para(textNode('Texte.'))),
+    )
+    expect(html).toContain('<h2 id="reforme-de-la-fonction-publique">')
+    expect(outline).toEqual([
+      {
+        level: 2,
+        text: 'Réforme de la fonction publique',
+        id: 'reforme-de-la-fonction-publique',
+      },
+    ])
+  })
+
+  it('folds Creole accents the way article slugs do', () => {
+    const { outline } = outlineOf(doc(heading(2, 'Sitiyasyon ekonomik nan peyi a')))
+    expect(outline[0].id).toBe('sitiyasyon-ekonomik-nan-peyi-a')
+  })
+
+  it('never emits the same id twice, even against a heading that looks like a suffix', () => {
+    const { outline } = outlineOf(
+      doc(heading(2, 'Conclusion'), heading(2, 'Conclusion 2'), heading(2, 'Conclusion')),
+    )
+    const ids = outline.map((entry) => entry.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(ids).toEqual(['conclusion', 'conclusion-2', 'conclusion-3'])
+  })
+
+  it('falls back to a usable id for a heading with no sluggable text', () => {
+    const { html, outline } = outlineOf(doc(heading(2, '???'), heading(3, '!!!')))
+    expect(outline.map((entry) => entry.id)).toEqual(['section', 'section-2'])
+    expect(html).toContain('id="section"')
+  })
+
+  /**
+   * The one that guards the whole feature. Whatever the walk does, every
+   * contents entry must name an anchor the markup actually wrote — in the same
+   * order, so the list reads as the document reads.
+   */
+  it('never lists an anchor the markup did not emit', () => {
+    const { html, outline } = outlineOf(
+      doc(
+        heading(2, 'Diagnostic'),
+        para(textNode('Le premier paragraphe.')),
+        heading(3, 'Constat'),
+        heading(3, 'Constat'),
+        heading(4, 'Détail — chiffré'),
+        heading(2, 'Diagnostic'),
+      ),
+    )
+    expect(outline).toHaveLength(5)
+    const emitted = [...html.matchAll(/<h[234] id="([^"]+)"/g)].map((match) => match[1])
+    expect(emitted).toEqual(outline.map((entry) => entry.id))
+  })
+
+  it('keeps documents independent, so concurrent renders cannot share anchors', () => {
+    const first = outlineOf(doc(heading(2, 'Conclusion')))
+    const second = outlineOf(doc(heading(2, 'Conclusion')))
+    expect(first.outline[0].id).toBe('conclusion')
+    expect(second.outline[0].id).toBe('conclusion')
+  })
+
+  it('leaves a document with no headings without an outline', () => {
+    const { outline } = outlineOf(doc(para(textNode('Juste un paragraphe.'))))
+    expect(outline).toEqual([])
   })
 })

@@ -90,7 +90,7 @@ function ArticlePage() {
               </p>
 
               {/*
-               * Safe because this string was produced by `renderDocumentToHtml`
+               * Safe because this string was produced by `renderDocument`
                * on the server, from a document parsed against the allowlist in
                * `lib/prosemirror.ts` on the way in and again on the way out. No
                * author-supplied text reaches it without `escapeHtml`, and the

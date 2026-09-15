@@ -135,7 +135,7 @@ describe('an imported document, stored', () => {
     expect(parsed.ok).toBe(true)
     if (!parsed.ok) return
     const html = prosemirror.renderDocumentToHtml(parsed.doc)
-    expect(html).toContain('<h2>Diagnostic</h2>')
+    expect(html).toContain('>Diagnostic</h2>')
     expect(html).toContain('<div class="article-table">')
     expect(html).toContain('Année')
     expect(html).toContain('inconnu')

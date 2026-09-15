@@ -13,6 +13,8 @@
  * the editor runs on a computer we do not control.
  */
 
+import { slugify } from './validation'
+
 export type Mark = { type: string; attrs?: Record<string, string> }
 
 export type DocNode = {
@@ -270,6 +272,54 @@ export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ESCAPES[char] as string)
 }
 
+/** One heading, as the table of contents sees it. */
+export type OutlineEntry = {
+  level: number
+  text: string
+  /** The `id` on the rendered heading, and the fragment that scrolls to it. */
+  id: string
+}
+
+export type RenderedDocument = {
+  html: string
+  outline: Array<OutlineEntry>
+}
+
+/**
+ * Unique anchors for a document's headings.
+ *
+ * Derived from the heading text, not its position, because these end up in URLs
+ * people paste into WhatsApp: `#reforme-de-la-fonction-publique` survives being
+ * read aloud and `#section-7` does not. `slugify` folds Creole's `è` and
+ * French's `é` the same way it does for article slugs, so both languages give a
+ * plain ASCII fragment.
+ *
+ * The cost of deriving them from text is that renaming a heading on a published
+ * article breaks links people have already shared — the same class of problem
+ * `article_revision` exists to make visible. The alternative, positional ids,
+ * breaks on every insertion instead, which happens more often.
+ *
+ * Collisions are resolved against every id already handed out rather than a
+ * count per base, so a document with "Conclusion", "Conclusion" and
+ * "Conclusion 2" gets three distinct ids instead of two that clash.
+ */
+function createAnchors(): (text: string) => string {
+  const used = new Set<string>()
+  return (text) => {
+    const base = slugify(text) || 'section'
+    let id = base
+    for (let n = 2; used.has(id); n += 1) id = `${base}-${n}`
+    used.add(id)
+    return id
+  }
+}
+
+/** Carried down the render so one walk produces the markup and the outline. */
+type RenderContext = {
+  anchor: (text: string) => string
+  outline: Array<OutlineEntry>
+}
+
 const MARK_TAGS: Record<string, string> = {
   bold: 'strong',
   italic: 'em',
@@ -304,16 +354,21 @@ const BLOCK_TAGS: Record<string, string> = {
   tableRow: 'tr',
 }
 
-function renderNode(node: DocNode): string {
+function renderNode(node: DocNode, ctx: RenderContext): string {
   if (node.type === 'text') return renderMarks(node.text ?? '', node.marks)
   if (node.type === 'hardBreak') return '<br />'
   if (node.type === 'horizontalRule') return '<hr />'
 
-  const children = (node.content ?? []).map(renderNode).join('')
+  const children = (node.content ?? []).map((child) => renderNode(child, ctx)).join('')
 
   if (node.type === 'heading') {
     const level = Number(node.attrs?.level ?? MIN_HEADING_LEVEL)
-    return `<h${level}>${children}</h${level}>`
+    // Assigned here, mid-render, so the outline can never disagree with the
+    // markup: one walk, one sequence of anchors, no second traversal to drift.
+    const text = docToPlainText(node)
+    const id = ctx.anchor(text)
+    ctx.outline.push({ level, text, id })
+    return `<h${level} id="${escapeHtml(id)}">${children}</h${level}>`
   }
 
   if (node.type === 'codeBlock') {
@@ -354,9 +409,59 @@ function renderNode(node: DocNode): string {
  * has been through `escapeHtml`, and because the only attributes emitted are
  * ones this function writes itself.
  */
+export function renderDocument(doc: DocNode): RenderedDocument {
+  if (doc.type !== 'doc') return { html: '', outline: [] }
+  // A fresh assigner per document, never module state: SSR renders concurrent
+  // requests, and a shared set would hand one reader's article the anchors of
+  // another's.
+  const ctx: RenderContext = { anchor: createAnchors(), outline: [] }
+  const html = (doc.content ?? []).map((node) => renderNode(node, ctx)).join('')
+  return { html, outline: ctx.outline }
+}
+
+/**
+ * How many headings a document needs before a contents list earns its place.
+ *
+ * Three. Below that the list is longer than the reading it saves, and it would
+ * appear on the ordinary two-section article this site mostly carries.
+ */
+export const MIN_OUTLINE_HEADINGS = 3
+
+/**
+ * The contents list, as server-rendered markup.
+ *
+ * Written here rather than as a component on the article page, and that is the
+ * point rather than an optimisation: the reading view ships no JavaScript of
+ * its own, and a `<For>` over the outline would have been JavaScript of its
+ * own — about 0.3 KB against a budget with 0.6 KB left. Plain `<a href="#...">`
+ * uses the browser's own fragment navigation, so it also works for a reader
+ * whose bundle has not arrived, which on a slow connection is exactly the
+ * reader facing the longest document.
+ *
+ * The label is a parameter because this module is pure and knows nothing about
+ * locales; `articles.ts` passes the translated string.
+ *
+ * Safe for `innerHTML` on the same terms as the rest of this module: every tag
+ * here is written by this function, and the only text that reaches it is the
+ * heading text, escaped, plus ids this module generated from `slugify`.
+ */
+export function renderOutlineToHtml(outline: Array<OutlineEntry>, label: string): string {
+  if (outline.length < MIN_OUTLINE_HEADINGS) return ''
+  const items = outline
+    .map(
+      (entry) =>
+        `<li class="toc-l${entry.level}"><a href="#${escapeHtml(entry.id)}">${escapeHtml(entry.text)}</a></li>`,
+    )
+    .join('')
+  // A paragraph, not a heading: this list sits inside the article's prose, and
+  // an `<h2>` here would join the document's own outline and compete with the
+  // sections it is listing.
+  return `<nav class="article-toc" aria-label="${escapeHtml(label)}"><p class="article-toc-label">${escapeHtml(label)}</p><ol>${items}</ol></nav>`
+}
+
+/** The markup alone, for callers with no use for the outline. */
 export function renderDocumentToHtml(doc: DocNode): string {
-  if (doc.type !== 'doc') return ''
-  return (doc.content ?? []).map(renderNode).join('')
+  return renderDocument(doc).html
 }
 
 /** An empty document, for a new translation. */
