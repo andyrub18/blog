@@ -217,14 +217,27 @@ async function confirmMember(userId: string): Promise<void> {
     .where(eq(userTable.id, userId))
 }
 
-/** A ProseMirror document with a couple of paragraphs, the shape the editor produces. */
-function demoDocument(paragraphs: Array<string>) {
+/**
+ * A ProseMirror document, the shape the editor produces.
+ *
+ * A bare string is a paragraph; `{ heading }` is a section title. Long-form
+ * work is the case the contents list exists for, and a seed made only of
+ * paragraphs would never produce one.
+ */
+type DemoBlock = string | { heading: string; level?: number }
+
+function demoDocument(blocks: Array<DemoBlock>) {
   return {
     type: 'doc',
-    content: paragraphs.map((text) => ({
-      type: 'paragraph',
-      content: [{ type: 'text', text }],
-    })),
+    content: blocks.map((block) =>
+      typeof block === 'string'
+        ? { type: 'paragraph', content: [{ type: 'text', text: block }] }
+        : {
+            type: 'heading',
+            attrs: { level: block.level ?? 2 },
+            content: [{ type: 'text', text: block.heading }],
+          },
+    ),
   }
 }
 
@@ -236,7 +249,7 @@ type DemoArticle = {
     status: 'draft' | 'published'
     title: string
     summary: string
-    paragraphs: Array<string>
+    paragraphs: Array<DemoBlock>
   }>
 }
 
@@ -272,6 +285,66 @@ const ARTICLES: ReadonlyArray<DemoArticle> = [
         paragraphs: [
           'Dyagnostik la anvan : san yon leve kanpe nou tout dakò sou li, chak pwopozisyon ap defann yon pwoblèm diferan.',
           'Solisyon yo, resous yo mande ak risk nou idantifye yo vini apre.',
+        ],
+      },
+    ],
+  },
+  {
+    /**
+     * The long-form case: a policy proposal with sections, not an essay.
+     *
+     * Nothing caps an article's length, so a fifty-page proposal is one
+     * article. This one is short enough to seed and structured enough to
+     * produce a contents list, which is the thing that makes a long document
+     * navigable rather than merely long — and the only article here that
+     * exercises it.
+     */
+    slug: 'reforme-de-ladministration-publique',
+    visibility: 'public',
+    translations: [
+      {
+        lang: 'fr',
+        status: 'published',
+        title: "Proposition pour la réforme de l'administration publique",
+        summary:
+          "Un diagnostic de l'administration, ce que nous proposons, les moyens que cela demande et la manière dont nous saurons si cela a marché.",
+        paragraphs: [
+          "Ce texte est une proposition soumise au cercle, pas une position arrêtée. Il suit les cinq champs que le mouvement exige de toute proposition documentée.",
+          { heading: 'Diagnostic' },
+          "L'administration publique haïtienne ne manque pas de textes ; elle manque de continuité. Un fonctionnaire compétent voit son service réorganisé à chaque changement de ministre, et le savoir accumulé part avec lui.",
+          "Sans état des lieux partagé, chaque proposition défend un problème différent. Celui-ci part de trois constats vérifiables.",
+          { heading: 'Ce que nous proposons', level: 2 },
+          "Trois mesures, dans l'ordre où elles doivent être prises.",
+          { heading: 'Un corps administratif protégé du cycle politique', level: 3 },
+          "Les postes techniques cessent d'être des nominations. Le recrutement se fait sur concours publié, et la révocation demande un motif écrit et versé au dossier.",
+          { heading: 'Une mémoire administrative écrite', level: 3 },
+          "Chaque service publie une note de passation à chaque changement de responsable. Sans cela, la compétence d'un service est la mémoire d'une personne.",
+          { heading: 'Moyens et calendrier' },
+          "La première mesure ne demande pas de budget nouveau : elle demande de publier ce qui existe déjà. La deuxième demande un archiviste par ministère.",
+          { heading: 'Risques identifiés' },
+          "Le risque principal est qu'un corps protégé devienne un corps fermé. La réponse proposée est la publication des concours et des motifs de révocation.",
+          { heading: 'Indicateurs de réussite' },
+          "Une priorité que personne ne peut vérifier est une intention. Nous mesurerons la part des postes techniques pourvus sur concours, et le nombre de services ayant publié une note de passation.",
+        ],
+      },
+      {
+        lang: 'ht',
+        status: 'published',
+        title: 'Pwopozisyon pou refòm administrasyon piblik la',
+        summary:
+          'Yon dyagnostik sou administrasyon an, sa nou pwopoze, mwayen sa mande ak kijan n ap konnen si li mache.',
+        paragraphs: [
+          'Tèks sa a se yon pwopozisyon nou soumèt bay sèk la, se pa yon pozisyon ki fin deside.',
+          { heading: 'Dyagnostik' },
+          'Administrasyon piblik ayisyen an pa manke tèks ; li manke kontinyite. Chak fwa gen yon nouvo minis, yo reòganize sèvis yo, epi konesans ki te ranmase a ale ak moun ki pati a.',
+          { heading: 'Sa nou pwopoze' },
+          'Twa mezi, nan lòd yo dwe pran yo.',
+          { heading: 'Mwayen ak kalandriye' },
+          'Premye mezi a pa mande yon nouvo bidjè : li mande pou nou pibliye sa ki deja egziste.',
+          { heading: 'Risk nou idantifye' },
+          'Pi gwo risk la se yon kò ki pwoteje ka vin yon kò ki fèmen.',
+          { heading: 'Endikatè siksè' },
+          'Yon priyorite pèsonn pa ka verifye se yon entansyon. N ap mezire konbyen pòs teknik yo bay apre yon konkou.',
         ],
       },
     ],

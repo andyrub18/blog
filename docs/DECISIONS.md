@@ -336,3 +336,42 @@ reader's browser or the message it came in.
 Not yet applied to the email-verification callback, which Better Auth builds;
 that is an auth-flow change and belongs with the P0 that retires the mock Google
 sign-in path.
+
+## D24 — Long-form work is an article, not a PDF
+
+A proposal for reforming the public administration is fifty pages and does not
+fit the shape of an essay. It is still one article: nothing caps a body's
+length, and `article_translation.content_json` holds a document of any size.
+
+Publishing it as a PDF instead was considered and refused. A typeset PDF is
+200 KB–2 MB against a reading view budgeted at 100 KB of client JS for readers
+on metered Haitian mobile data, and a fixed A4 column is unreadable on the phone
+most of them arrive with. Three further things break, and they matter more:
+
+- **Review.** `decide()` diffs ProseMirror JSON between rounds, and that diffing
+  is what the adversarial stage runs on (D10). The document most in need of a
+  contradictor would be the one format a contradictor cannot work in.
+- **Argument.** A forum post can link to `#indicateurs-de-reussite`. It cannot
+  link to page 23 of a PDF, and a proposal lives or dies on people arguing with
+  a named section rather than the whole text.
+- **Reach**, which is the point (D1). A PDF is far worse at it than HTML.
+
+What makes a long article navigable rather than merely long is the contents list
+and an anchor per heading, both added here. Anchors are derived from the heading
+text, so they survive being pasted into WhatsApp; the cost is that renaming a
+heading on a published article breaks links already shared, which is the same
+class of problem `article_revision` exists to make visible.
+
+A typeset PDF remains legitimate as a **companion download** — KLE's own work, so
+no rights question; a deliberate download, so outside the budget; served as an
+attachment, never inline. When built, it belongs on `article_translation` (the
+French and Creole PDFs are different documents), carries the `article_revision`
+it was built from, and stops being served when the article has moved on: a stale
+companion is a published position nobody decided on, and "no PDF" is recoverable
+where "wrong PDF" is not.
+
+**What would flip the PDF-only question:** a document whose substance is layout —
+a budget annexe of dense tables, or work where the mathematics is the argument.
+The allowlist has no image or math node, so such a document cannot be carried as
+an article today either way. `pandoc --mathml` is the cheap answer for the second
+case, because MathML is text and renders natively with no client JavaScript.

@@ -198,7 +198,7 @@ describe('converting a real document', () => {
     if (!converted.ok) return
     const html = renderDocumentToHtml(converted.doc)
     // The article title is the page's h1, so a Heading 1 lands at h2.
-    expect(html).toContain('<h2>Diagnostic</h2>')
+    expect(html).toContain('>Diagnostic</h2>')
     expect(html).toContain('<p>Le premier constat porte sur les recettes.</p>')
     expect(html).toContain('<strong>Un point important.</strong>')
     expect(html).toContain('<div class="article-table">')

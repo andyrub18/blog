@@ -38,6 +38,9 @@ body {
   font-weight: 700;
   line-height: 1.3;
   margin-top: 2rem;
+  /* Following a contents link lands on the heading, not with the heading jammed
+     against the top edge of the screen. */
+  scroll-margin-top: 1.5rem;
 }
 
 .article-prose h2 {
@@ -115,6 +118,55 @@ body {
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+/*
+ * The contents list on a long document.
+ *
+ * Server-rendered into the article HTML by `renderOutlineToHtml`, not a
+ * component: the reading view ships no JavaScript of its own, and a 50-page
+ * proposal is the page least able to afford any. Selectors are scoped under
+ * `.article-prose` so they outrank the prose list rules above rather than
+ * depending on source order.
+ */
+.article-prose .article-toc {
+  background: var(--color-neutral-50);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  padding: 1rem;
+}
+
+.article-prose .article-toc-label {
+  color: var(--color-neutral-900);
+  font-weight: 600;
+  margin: 0;
+}
+
+.article-prose .article-toc ol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  list-style: none;
+  margin-top: 0.5rem;
+  padding-left: 0;
+}
+
+.article-prose .article-toc a {
+  color: #00209f;
+  text-decoration: none;
+}
+
+.article-prose .article-toc a:hover {
+  text-decoration: underline;
+}
+
+.article-prose .article-toc .toc-l3 {
+  padding-left: 1rem;
+}
+
+.article-prose .article-toc .toc-l4 {
+  padding-left: 2rem;
 }
 
 /*

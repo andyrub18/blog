@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { and, desc, eq, inArray, like, ne } from 'drizzle-orm'
 import { DEFAULT_LOCALE, type Locale } from '../i18n'
+import { m } from '../paraglide/messages'
 import {
   type ArticleVisibility,
   article,
@@ -15,7 +16,8 @@ import {
   docToPlainText,
   parseDocument,
   readingTimeMinutes,
-  renderDocumentToHtml,
+  renderDocument,
+  renderOutlineToHtml,
 } from './prosemirror'
 import {
   isValidArticleSummary,
@@ -584,6 +586,21 @@ export async function getReadableArticle(input: {
   // could have been changed by something other than `saveTranslation`.
   const doc = parsed.ok ? parsed.doc : { type: 'doc', content: [] }
 
+  /**
+   * One pass gives the markup and the heading outline together, so a contents
+   * entry can never point at an anchor the markup did not emit.
+   *
+   * The contents list is prepended here rather than sent as data for the page
+   * to render, because the reading view ships no JavaScript of its own. A
+   * 50-page proposal is one article — nothing caps a body's length — and a
+   * contents list with a URL per section is what makes it navigable rather than
+   * merely long. It is also what lets a forum post argue with section 4.2
+   * instead of with the whole document.
+   */
+  const rendered = renderDocument(doc)
+  const html =
+    renderOutlineToHtml(rendered.outline, m.articles_contents()) + rendered.html
+
   return {
     ok: true,
     value: {
@@ -596,7 +613,7 @@ export async function getReadableArticle(input: {
       title: chosen.title,
       summary: chosen.summary,
       doc,
-      html: renderDocumentToHtml(doc),
+      html,
       readingMinutes: readingTimeMinutes(doc),
       publishedAt: chosen.publishedAt,
       availableLangs: rows.map((row) => row.lang).sort(),
