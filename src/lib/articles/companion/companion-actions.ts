@@ -84,7 +84,11 @@ export const removeCompanionPdf = createServerFn({ method: 'POST' })
     const { removeCompanion } = await import('./companion')
     const result = await removeCompanion({ actor, ...data })
     if (!result.ok) return result
-    return { ok: true, state: { state: 'none' } }
+    // Read back: removing the working PDF leaves the published one in place.
+    const { companionState } = await import('./companion')
+    const state = await companionState({ actor, ...data })
+    if (!state.ok) return state
+    return { ok: true, state: state.value }
   })
 
 export const fetchCompanionState = createServerFn({ method: 'GET' })

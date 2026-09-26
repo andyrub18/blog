@@ -50,6 +50,7 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
+  await harness.db.delete(schema.articleVersion)
   await harness.db.delete(schema.articleCompanion)
   await harness.db.delete(schema.articleDecision)
   await harness.db.delete(schema.articleReview)
@@ -201,10 +202,29 @@ async function liveWithPdf(pages = 3) {
   return { author, people, articleId, slug, submissionId }
 }
 
+/** Where the author's working PDF stands. */
 async function stateOf(actor: Viewer, articleId: string) {
   const result = await companion.companionState({ actor, articleId, lang: 'fr' })
   if (!result.ok) throw new Error(result.code)
-  return result.value.state
+  return result.value.working.state
+}
+
+/** The version readers are shown, and the PDF it carries. */
+async function publishedVersion(articleId: string) {
+  const [row] = await harness.db
+    .select({
+      number: schema.articleVersion.number,
+      submissionId: schema.articleVersion.submissionId,
+      companionId: schema.articleVersion.companionId,
+    })
+    .from(schema.articleTranslation)
+    .innerJoin(
+      schema.articleVersion,
+      eq(schema.articleVersion.id, schema.articleTranslation.publishedVersionId),
+    )
+    .where(eq(schema.articleTranslation.articleId, articleId))
+    .limit(1)
+  return row ?? null
 }
 
 async function storedFiles(articleId: string): Promise<Array<string>> {
@@ -279,15 +299,17 @@ describe('who may attach one', () => {
   })
 })
 
-describe('the circle approves it with the text (D29)', () => {
-  it('is offered to readers once the round that reviewed it accepts the language', async () => {
-    const { author, articleId, submissionId } = await liveWithPdf()
+describe('a PDF goes to readers inside an approved version (D29, D31)', () => {
+  it('is offered to readers once the version it belongs to is approved', async () => {
+    const { articleId, submissionId } = await liveWithPdf()
     const servable = await companion.servableCompanion(articleId, 'fr')
-    expect(servable?.approvedInSubmissionId).toBe(submissionId)
-    expect(await stateOf(author, articleId)).toBe('approved')
+    const version = await publishedVersion(articleId)
+    expect(version?.submissionId).toBe(submissionId)
+    expect(servable?.id).toBe(version?.companionId)
+    expect(servable?.version).toBe(1)
   })
 
-  /** The whole point of option A: nobody publishes a PDF alone. */
+  /** Nobody publishes a PDF alone. */
   it('is not offered when attached to an article that is already live', async () => {
     const author = await makeUser()
     const { articleId } = await draft(author)
@@ -299,28 +321,20 @@ describe('the circle approves it with the text (D29)', () => {
     expect(await stateOf(author, articleId)).toBe('awaitingReview')
   })
 
-  it('is shown to reviewers, and is in review, while its round is open', async () => {
+  it('goes into the version when it was attached before the language was submitted', async () => {
     const author = await makeUser()
     const { articleId } = await draft(author)
     await attach(author, articleId)
-    const submissionId = await submit(author, articleId)
-
+    await submit(author, articleId)
     expect(await stateOf(author, articleId)).toBe('inReview')
-    const [view] = await companion.reviewCompanions({
-      id: submissionId,
-      articleId,
-      langs: ['fr'],
-      submittedAt: new Date(),
-      revisionIds: null,
-    })
-    expect(view.state).toBe('underReview')
   })
 
   /**
    * The circle can only vouch for a file it was given. One attached after the
-   * round was submitted is not what the reviewers read.
+   * language was submitted is not in that version, so that decision cannot
+   * publish it.
    */
-  it('does not approve a PDF attached after the round was submitted', async () => {
+  it('stays out of a version submitted before it was attached', async () => {
     const author = await makeUser()
     const people = await circle()
     const { articleId } = await draft(author)
@@ -334,7 +348,7 @@ describe('the circle approves it with the text (D29)', () => {
     expect(await stateOf(author, articleId)).toBe('awaitingReview')
   })
 
-  it('approves it in the next round instead', async () => {
+  it('goes to readers with the next version instead', async () => {
     const author = await makeUser()
     const people = await circle()
     const { articleId } = await draft(author)
@@ -344,16 +358,17 @@ describe('the circle approves it with the text (D29)', () => {
     const second = await submit(author, articleId)
     await decideRound(people, second)
 
-    expect(
-      (await companion.servableCompanion(articleId, 'fr'))?.approvedInSubmissionId,
-    ).toBe(second)
+    const version = await publishedVersion(articleId)
+    expect(version).toMatchObject({ number: 2, submissionId: second })
+    expect(version?.companionId).not.toBeNull()
   })
 
   /**
    * The circle reviewed text A with PDF A. The author drafting B meanwhile
-   * changes neither: the decision publishes A (D30), and PDF A describes A.
+   * changes neither: the version carries A and its PDF, and that is what goes
+   * live (D30, D31).
    */
-  it('approves the PDF with the text it was reviewed with, whatever was drafted since', async () => {
+  it('goes live with the text it was reviewed with, whatever was drafted since', async () => {
     const author = await makeUser()
     const people = await circle()
     const { articleId } = await draft(author)
@@ -363,18 +378,16 @@ describe('the circle approves it with the text (D29)', () => {
 
     await decideRound(people, submissionId)
 
-    expect(
-      (await companion.servableCompanion(articleId, 'fr'))?.approvedInSubmissionId,
-    ).toBe(submissionId)
-    expect(await stateOf(author, articleId)).toBe('approved')
+    expect((await publishedVersion(articleId))?.submissionId).toBe(submissionId)
+    expect(await companion.servableCompanion(articleId, 'fr')).not.toBeNull()
   })
 
   /**
-   * The mirror case: a PDF made from an earlier text than the one submitted.
-   * The record matters as much as the reader here — "approved in round N" has
-   * to mean the circle accepted the text this PDF describes.
+   * The mirror case: a PDF made from an earlier text than the one submitted
+   * describes something the circle is not being asked to approve, so the
+   * version does not carry it.
    */
-  it('does not approve a PDF of an earlier text than the one submitted', async () => {
+  it('is left out of a version whose text it does not describe', async () => {
     const author = await makeUser()
     const people = await circle()
     const { articleId } = await draft(author)
@@ -383,49 +396,44 @@ describe('the circle approves it with the text (D29)', () => {
     await decideRound(people, await submit(author, articleId))
 
     expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
+    expect((await publishedVersion(articleId))?.companionId).toBeNull()
     expect(await stateOf(author, articleId)).toBe('stale')
-    const [row] = await harness.db.select().from(schema.articleCompanion)
-    expect(row.approvedInSubmissionId).toBeNull()
   })
 
-  it('does not approve a PDF in a language the circle refused', async () => {
+  it('is not published with a version the circle refused', async () => {
     const author = await makeUser()
     const { articleId } = await draft(author)
     await attach(author, articleId)
     await decideRound(await circle(), await submit(author, articleId), 'object')
 
-    const [row] = await harness.db.select().from(schema.articleCompanion)
-    expect(row.approvedInSubmissionId).toBeNull()
+    expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
+    const [version] = await harness.db.select().from(schema.articleVersion)
+    expect(version.outcome).toBe('refused')
   })
 
   /**
-   * A better-typeset version of an approved PDF is still a new file nobody has
-   * reviewed. Readers lose the old one when it is replaced, and get the new one
-   * when a round approves it — the editor warns before that happens.
+   * The published version keeps its own file. A better-typeset PDF attached
+   * afterwards is a new file nobody has reviewed: it goes with the next
+   * version, and until that version is approved readers keep the one they had.
    */
-  it('withdraws an approved PDF from readers when it is replaced, until the next round', async () => {
-    const { author, people, articleId } = await liveWithPdf()
+  it('keeps serving the published PDF when the author attaches a new one', async () => {
+    const { author, people, articleId } = await liveWithPdf(3)
     await attach(author, articleId, 5)
-    expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
+    expect((await companion.servableCompanion(articleId, 'fr'))?.pageCount).toBe(3)
 
     await decideRound(people, await submit(author, articleId))
     expect((await companion.servableCompanion(articleId, 'fr'))?.pageCount).toBe(5)
   })
 })
 
-describe('the published text moves on, the PDF stops', () => {
-  /**
-   * A draft is not a change readers see (D30), so it retires nothing: the
-   * approved PDF still describes the approved text on the page.
-   */
+describe('the published text moves on, the PDF with it', () => {
   it('stays with readers while the author drafts changes', async () => {
     const { author, articleId } = await liveWithPdf()
     await save(author, articleId, 'Le texte, corrigé après la publication.')
     expect(await companion.servableCompanion(articleId, 'fr')).not.toBeNull()
-    expect(await stateOf(author, articleId)).toBe('approved')
   })
 
-  it('is withdrawn when a round publishes a new text without a new PDF', async () => {
+  it('is withdrawn when a version with a new text and no new PDF is approved', async () => {
     const { author, people, articleId } = await liveWithPdf()
     await save(author, articleId, 'Le texte, corrigé après la publication.')
     await decideRound(people, await submit(author, articleId))
@@ -436,8 +444,13 @@ describe('the published text moves on, the PDF stops', () => {
 })
 
 describe('the record', () => {
-  it('keeps a replaced PDF’s row, closed, with the round that approved it', async () => {
-    const { author, articleId, submissionId } = await liveWithPdf()
+  /**
+   * A file a version carries is part of the record — reviewers of a later
+   * round compare against it, and the published one is being served — so its
+   * bytes stay when the author replaces it.
+   */
+  it('keeps a replaced PDF, closed, while a version carries it', async () => {
+    const { author, articleId } = await liveWithPdf()
     await attach(author, articleId, 5)
 
     const rows = await harness.db
@@ -446,22 +459,28 @@ describe('the record', () => {
       .where(eq(schema.articleCompanion.articleId, articleId))
     expect(rows).toHaveLength(2)
     const [closed] = rows.filter((row) => row.supersededAt !== null)
-    const [open] = rows.filter((row) => row.supersededAt === null)
-    expect(closed.storagePath).toBeNull()
     expect(closed.supersededBy).toBe(author.id)
-    expect(closed.approvedInSubmissionId).toBe(submissionId)
+    expect(closed.storagePath).not.toBeNull()
     expect(closed.sha256).toMatch(/^[0-9a-f]{64}$/)
-    expect(open.approvedInSubmissionId).toBeNull()
+    expect(await storedFiles(articleId)).toHaveLength(2)
+  })
+
+  it('lets go of a replaced PDF no version carries', async () => {
+    const author = await makeUser()
+    const { articleId } = await draft(author)
+    await attach(author, articleId, 3)
+    await attach(author, articleId, 5)
     expect(await storedFiles(articleId)).toHaveLength(1)
   })
 
-  it('closes the row on removal and stops serving it', async () => {
+  it('removing the working PDF leaves the published one where it is', async () => {
     const { author, articleId } = await liveWithPdf()
     expect(
       await companion.removeCompanion({ actor: author, articleId, lang: 'fr' }),
     ).toEqual({ ok: true, value: null })
-    expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
-    expect(await storedFiles(articleId)).toEqual([])
+    expect(await companion.servableCompanion(articleId, 'fr')).not.toBeNull()
+    expect(await stateOf(author, articleId)).toBe('none')
+    expect(await storedFiles(articleId)).toHaveLength(1)
   })
 })
 

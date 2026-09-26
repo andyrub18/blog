@@ -6,6 +6,7 @@ import {
   article,
   articleRevision,
   articleTranslation,
+  articleVersion,
   type ForumPostStatus,
   forumModeration,
   forumPost,
@@ -124,9 +125,10 @@ async function readableArticle(
     .from(article)
     .innerJoin(articleTranslation, eq(articleTranslation.articleId, article.id))
     .innerJoin(
-      articleRevision,
-      eq(articleRevision.id, articleTranslation.publishedRevisionId),
+      articleVersion,
+      eq(articleVersion.id, articleTranslation.publishedVersionId),
     )
+    .innerJoin(articleRevision, eq(articleRevision.id, articleVersion.revisionId))
     .where(
       and(
         eq(article.slug, slug),

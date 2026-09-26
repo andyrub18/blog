@@ -118,11 +118,14 @@ test('the circle reads the PDF with the text, and readers get the file it approv
 
   // The reviewer reads the text as it was submitted — what an acceptance
   // publishes (D30) — on the same page as the PDF that goes with it.
-  await expect(
-    page
-      .getByTestId('submitted-text')
-      .getByText(/budget publié en entier mais illisible/i),
-  ).toBeVisible({ timeout: 15_000 })
+  const version = page.getByTestId('submitted-version')
+  await expect(version.getByText(/Version 1 soumise · Français/i)).toBeVisible({
+    timeout: 15_000,
+  })
+  // A first version has nothing before it to compare with, and says so.
+  await expect(version.getByText(/Première version : rien à comparer/i)).toBeVisible()
+  await version.getByText(/Texte complet de la version/i).click()
+  await expect(version.getByText(/budget publié en entier mais illisible/i)).toBeVisible()
 
   // The reviewer is shown the PDF under review, and can take it home to check.
   const section = page.getByTestId('review-companion')
@@ -151,8 +154,13 @@ test('the circle reads the PDF with the text, and readers get the file it approv
     .locator('[name="decisionRationale"]')
     .fill('Le diagnostic tient, et le PDF dit ce que dit le texte.')
   await page.getByRole('button', { name: /Enregistrer la décision/i }).click()
-  await expect(page.getByText(/Acceptée/i).first()).toBeVisible({ timeout: 15_000 })
-  await expect(section.getByText(/approuvé par cette décision/i)).toBeVisible()
+  // Wait for the recorded decision itself. `/Acceptée/i` alone also matches
+  // the decide form's hint ("les langues acceptées…"), which is on the page
+  // before anyone decides — so the wait passed at once and the rest of the test
+  // raced the decision it was meant to follow.
+  const decision = page.getByRole('heading', { name: /^La décision$/i })
+  await expect(decision).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText(/^Acceptée/)).toBeVisible()
 
   // A reader with no account now gets the link, and the approved file.
   const visitorContext = await browser.newContext()

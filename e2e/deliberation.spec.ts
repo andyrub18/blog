@@ -117,7 +117,13 @@ test('a senior member records the decision, and the circle publishes the article
     .fill('Le diagnostic tient et les indicateurs proposés sont vérifiables.')
   await page.getByRole('button', { name: /Enregistrer la décision/i }).click()
 
-  await expect(page.getByText(/Acceptée/i).first()).toBeVisible({ timeout: 15_000 })
+  // Wait for the recorded decision itself. `/Acceptée/i` alone also matches
+  // the decide form's hint ("les langues acceptées…"), which is on the page
+  // before anyone decides — so the wait passed at once and the rest of the test
+  // raced the decision it was meant to follow.
+  const decision = page.getByRole('heading', { name: /^La décision$/i })
+  await expect(decision).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText(/^Acceptée/)).toBeVisible()
   await expect(page.getByText(/par consensus/i)).toBeVisible()
 
   // The point of the decision: a reader with no account can now read it.

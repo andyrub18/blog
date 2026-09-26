@@ -644,6 +644,8 @@ The companion is protected from both by its revision check. The text is not.
 
 *Decided in D30:* the text follows the same rule.
 
+*Superseded in its mechanism by D31:* the approval stamp and the "attached before submission" timing rule are gone. A version records which PDF it carries, and the PDF is approved exactly when its version is. The rule itself — the circle reviews the PDF with the text — stands.
+
 ## D30 — A published text changes only through the circle
 
 KLEA's decision: **the text must be protected, and a modification must be
@@ -692,3 +694,73 @@ nothing needs stopping, since the edits cannot reach readers. There is no way to
 discard a draft and return the working copy to the published text, and no view
 of what changed between the published text and the draft; both would help an
 author and a panel, and neither is needed for the rule to hold.
+
+*Superseded in its mechanism by D31:* `published_revision_id` and `revision_ids` became versions (`published_version_id`, `article_version`). The rule — readers see only what the circle approved — stands, and the missing view of what changed now exists.
+
+## D31 — Versions: what the circle approved, numbered, and what changed
+
+KLEA's decision: **the text has versions, per language, and the highest
+approved version is the one published; a version covers the text and the
+companion PDF together.** Readers see which version they are reading, and what
+changed. Changes are shown against the previous version, whatever its outcome.
+
+**A version is made when a language is submitted,** not on every save — every
+save is still a revision, and forty saves are not forty versions. It freezes the
+two things the circle reviews: the text, and the author's PDF if it was made from
+exactly that text. The round's decision approves or refuses the version as a
+whole; a withdrawn round leaves its versions `withdrawn`. Numbers are per
+language, from 1, and every submitted version takes one whatever becomes of it,
+so "version 3" means the same thing to an author, a reviewer and a reader.
+
+**The published version is the highest approved one.** `decide()` pins
+`article_translation.published_version_id` to the version it approves; because
+an article has one open round at a time, the version approved now is always the
+highest approved. Readers — the reading view, the index, the discussion page, the
+PDF download — read through that pointer and nothing else.
+
+**Two comparisons, deliberately different.**
+
+- **The circle** sees version *n* against version *n − 1* whatever became of it,
+  as decided: what the author changed in answer to the objections, even when the
+  last round refused. The review page shows it for each language, with the full
+  text of the version below and its PDF to download.
+- **Readers** see approved versions only, each against the previous *approved*
+  one. This was not asked for in so many words, and is the one place the rule
+  was applied narrowly: a refused version was never published, and comparing a
+  reader's version against it would print the refused text as the "removed" side
+  of a change — publishing it after the circle refused it, which D30 forbids.
+  `versions.db.test.ts` asserts that no refused text reaches a reader's history.
+
+**How changes are shown.** `diff.ts`, pure and server-side: both documents are
+flattened into blocks (headings, paragraphs, list items, table rows), the blocks
+are aligned — so a paragraph inserted at the top does not make every later
+paragraph look changed — and a block removed and replaced by one of the same kind
+is compared word by word. A block whose words are the same but whose formatting
+changed is marked, not hidden. Long unchanged stretches are collapsed with one
+block of context either side. PDFs are compared by their hash: unchanged,
+changed, added or removed; a content comparison of two PDFs would be unreliable
+and is not attempted. Every character of author text is escaped by `diff.ts`
+itself, which is what makes its output safe for `innerHTML`.
+
+**The PDF gets simpler.** It is approved exactly when its version is — the
+separate approval stamp and the "attached before submission" timing rule of D29
+are gone, replaced by the version recording which file it carries. Replacing or
+removing the working PDF no longer withdraws the published one: a file stays on
+disk for as long as any version refers to it.
+
+**Cost to readers: nothing, net.** The version line and the history link are
+markup in the article's HTML. The history page is a route of its own, and a route
+costs every page about 0.5 KB of route tree; the budget said to find the bytes
+first. They were found in `/auth/verify`, a page nothing had linked to since the
+verification email started landing on Better Auth's own endpoint (D27) — and it
+imported the Better Auth client into the graph every page shares. Removing it
+took the reading view from 99.0 KB to 98.8 KB with the history page included.
+
+**Existing data.** Migration `0012_article_versions` makes every published
+language version 1, approved, carrying the PDF readers were being given, and every
+language of an open round the next version, pending, carrying the PDF the round
+had from the start. `0013` then drops what versions replace — the D30 pins and
+the D29 approval columns. Both are tested against rows in the shape they had
+before them (`migrations.db.test.ts`, which can now stop the schema at any
+migration): the harness alone runs migrations on an empty database, where a
+wrong backfill does nothing, right or wrong.

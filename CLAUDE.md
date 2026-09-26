@@ -19,7 +19,7 @@ before touching auth, uploads, or anything that reads a dossier.
 
 **2. First-load weight is a feature, not a nicety.** Readers arrive on slow,
 metered Haitian mobile data. The budget is **under 100 KB gzipped** of client
-JS for an article page, and it currently has about **1.0 KB** of headroom — the
+JS for an article page, and it currently has about **1.2 KB** of headroom — the
 next thing added to that page has to find bytes before it spends them.
 Measure before and after any dependency addition:
 
@@ -104,6 +104,11 @@ when the choice is hard.
   JPEG; pure. `src/lib/articles/companion/companion.ts` — attaching, retiring and serving
   companions. **Server only.** `src/lib/articles/companion/companion-actions.ts` — its server
   functions. `src/routes/api/companion/$.ts` — the reader's download.
+- `src/lib/articles/versions.ts` — versions: made on submission, settled by the
+  decision, and the two comparisons (the circle's and the readers'). **Server
+  only.** `src/lib/articles/diff.ts` — what changed between two documents, as
+  escaped markup; pure. `src/routes/_app/articles/$slug_/versions.tsx` — the
+  readers' version history.
 - `src/lib/forum/forum.ts` — the forum rules and queries. **Server only.**
   `src/lib/forum/forum-actions.ts` — its server functions. The post format's rules
   (length, normalising, paragraph splitting) live in `validation.ts`, because
@@ -233,23 +238,29 @@ re-saving it without object streams** (`searchable` in `pdf.test.ts`): the
 output is compressed, and a search of its raw bytes passes whether or not the
 secret is still there.
 
-**A companion is offered only once the circle approved it, and only while its
-revision is the newest.** `servableCompanion` is the single answer, used by the
-reading view's link and by the download route alike; approval is stamped only by
-`approveCompanions` inside `decide()`, for files attached before the round was
-submitted and made from the revision that round reviewed (D29, D30). Never
-serve a companion by id or by path, never add a second way to approve one, and
-never let an author's action stamp it. A newly published text retires it; a
-draft save does not, because readers do not see drafts.
-
-**Readers see `published_revision_id`, never the working copy.** The title,
+**Readers see the published version, never the working copy.** The title,
 summary and body on `article_translation` are the author's draft; what readers
-get is the revision a decision pinned (D30). Every reader-facing query — the
-reading view, the index, the discussion page — joins `article_revision` on
-`published_revision_id`, and a new one must too. Only `decide()` moves the pin,
-to the revision `submitForReview` recorded; a save never does. If you find
-yourself reading `articleTranslation.contentJson` for a reader, you are
-publishing unreviewed text.
+get is the version a decision approved — `published_version_id`, whose revision
+holds the text and whose companion is the PDF (D30, D31). Every reader-facing
+query — the reading view, the index, the discussion page, the PDF download —
+goes through that pointer, and a new one must too. Only `decide()` moves it, to
+the version `submitForReview` made; a save never does. If you find yourself
+reading `articleTranslation.contentJson` for a reader, you are publishing
+unreviewed text.
+
+**A version freezes text and PDF together, and the PDF has no approval of its
+own.** `createVersions` puts the author's current PDF into a version only if it
+was made from exactly the text being submitted; the version's outcome is the
+PDF's. `servableCompanion` is the single answer to "which PDF do readers get".
+Never serve a companion by id or by path, and never delete the bytes of a file a
+version carries — the published one is being served, and a later round's
+reviewers compare against it.
+
+**Readers never see a refused version.** The circle compares version *n* with
+*n − 1* whatever its outcome; readers compare approved with approved
+(`readerHistory`). A comparison against a refused version would print its text
+as the removed side of a change, which is publishing it after the circle said
+no (D31).
 
 **`article.status` is "is any language live", before it is the review stage.**
 Write it through `stageFor` in `article-review.ts`. Writing the stage directly
@@ -406,8 +417,9 @@ Three layers — three Vitest projects plus Playwright:
   sees the form — so sharing an account between tests makes them pass or fail on
   the order they happened to run in. `db:seed:demo` resets that state on every
   run rather than skipping what already exists, so one run does not leave the
-  next with an empty queue. It also clears `auth_throttle`, because repeated
-  sign-ins trip the per-IP limit and one run would lock out the next.
+  next with an empty queue. It also clears `auth_throttle` and Better Auth's
+  `rate_limit`, because repeated sign-ins trip the per-IP limit and repeated
+  verification links trip Better Auth's, and one run would lock out the next.
 
   **Call `waitForInteractive(page)` before the first click on a page.**
   Server-rendered markup is visible and clickable before the bundle runs, and a

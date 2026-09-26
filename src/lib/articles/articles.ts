@@ -8,6 +8,7 @@ import {
   articleRevision,
   articleSubmission,
   articleTranslation,
+  articleVersion,
   hasAtLeastRole,
   type Role,
   user,
@@ -264,7 +265,7 @@ export async function saveTranslation(
         // `status` is absent on purpose: saving an edit to a published article
         // must not silently unpublish it, and must not silently publish a draft.
         // Nor does saving change what readers see: they are shown
-        // `published_revision_id`, which only `decide()` moves (D30). This
+        // `published_version_id`, which only `decide()` moves (D30, D31). This
         // row is the author's working copy.
         set: { title, summary, contentJson: parsed.doc, updatedAt: now },
       })
@@ -335,26 +336,33 @@ export async function publishTranslation(input: {
 
   const now = new Date()
   await db.transaction(async (tx) => {
-    // Pins the text being published, as `decide()` does (D30). No endpoint
-    // reaches this function — publication goes through the circle — but the
-    // tests that use it must produce the same rows a decision would.
-    const [newest] = await tx
-      .select({ id: articleRevision.id })
-      .from(articleRevision)
+    // Makes and approves a version of the text being published, as a round's
+    // decision does (D31). No endpoint reaches this function — publication
+    // goes through the circle — but the tests that use it must produce the
+    // same rows a decision would.
+    const { createVersions } = await import('./versions')
+    await createVersions(tx, { id: null, articleId: input.articleId }, [input.lang], now)
+    const [version] = await tx
+      .select({ id: articleVersion.id })
+      .from(articleVersion)
       .where(
         and(
-          eq(articleRevision.articleId, input.articleId),
-          eq(articleRevision.lang, input.lang),
+          eq(articleVersion.articleId, input.articleId),
+          eq(articleVersion.lang, input.lang),
         ),
       )
-      .orderBy(desc(articleRevision.createdAt), desc(articleRevision.id))
+      .orderBy(desc(articleVersion.number))
       .limit(1)
+    await tx
+      .update(articleVersion)
+      .set({ outcome: 'approved', decidedAt: now })
+      .where(eq(articleVersion.id, version.id))
     await tx
       .update(articleTranslation)
       .set({
         status: 'published',
         publishedAt: now,
-        publishedRevisionId: newest?.id ?? null,
+        publishedVersionId: version.id,
         updatedAt: now,
       })
       .where(
@@ -403,7 +411,7 @@ export async function unpublishTranslation(input: {
       .set({
         status: 'draft',
         publishedAt: null,
-        publishedRevisionId: null,
+        publishedVersionId: null,
         updatedAt: now,
       })
       .where(
@@ -491,9 +499,10 @@ export async function listPublished(input: {
     .from(articleTranslation)
     .innerJoin(article, eq(article.id, articleTranslation.articleId))
     .innerJoin(
-      articleRevision,
-      eq(articleRevision.id, articleTranslation.publishedRevisionId),
+      articleVersion,
+      eq(articleVersion.id, articleTranslation.publishedVersionId),
     )
+    .innerJoin(articleRevision, eq(articleRevision.id, articleVersion.revisionId))
     .innerJoin(user, eq(user.id, article.authorId))
     .where(
       and(
@@ -564,6 +573,8 @@ export type ReadableArticle = {
   html: string
   readingMinutes: number
   publishedAt: Date | null
+  /** The number of the published version (D31). */
+  version: number
   /** Every language this article is published in, for the "read it in" links. */
   availableLangs: Array<string>
 }
@@ -593,21 +604,25 @@ export async function getReadableArticle(input: {
        * The revision the circle approved, not the working copy (D30). An
        * author may keep editing a published language; those saves are drafts
        * for the next round, and nothing a reader is shown changes until a
-       * decision publishes them. The inner join is the guarantee: a language
-       * with no approved revision has nothing to show.
+       * decision publishes them. The inner joins are the guarantee: a language
+       * with no approved version has nothing to show — and the version is the
+       * highest approved one, which `decide()` pins (D31).
        */
       revisionId: articleRevision.id,
       title: articleRevision.title,
       summary: articleRevision.summary,
       contentJson: articleRevision.contentJson,
       publishedAt: articleTranslation.publishedAt,
+      versionNumber: articleVersion.number,
+      versionApprovedAt: articleVersion.decidedAt,
     })
     .from(article)
     .innerJoin(articleTranslation, eq(articleTranslation.articleId, article.id))
     .innerJoin(
-      articleRevision,
-      eq(articleRevision.id, articleTranslation.publishedRevisionId),
+      articleVersion,
+      eq(articleVersion.id, articleTranslation.publishedVersionId),
     )
+    .innerJoin(articleRevision, eq(articleRevision.id, articleVersion.revisionId))
     .innerJoin(user, eq(user.id, article.authorId))
     .where(
       and(
@@ -661,7 +676,27 @@ export async function getReadableArticle(input: {
       })
     : ''
 
+  /**
+   * Which version this is, and a way to see what changed (D31) — readers asked
+   * to be able to tell whether an article has been modified since they read
+   * it. Markup, like the contents list, so the page ships nothing for it.
+   */
+  const { localizeHref } = await import('../../paraglide/runtime')
+  const versionHtml = renderVersionToHtml({
+    label: m.articles_versionLine({
+      number: String(chosen.versionNumber),
+      date: chosen.versionApprovedAt
+        ? new Intl.DateTimeFormat(input.lang, { dateStyle: 'long' }).format(
+            chosen.versionApprovedAt,
+          )
+        : '—',
+    }),
+    historyHref: localizeHref(`/articles/${input.slug}/versions`, { locale: input.lang }),
+    historyLabel: m.articles_versionHistory(),
+  })
+
   const html =
+    versionHtml +
     companionHtml +
     renderOutlineToHtml(rendered.outline, m.articles_contents()) +
     rendered.html
@@ -681,6 +716,7 @@ export async function getReadableArticle(input: {
       html,
       readingMinutes: readingTimeMinutes(doc),
       publishedAt: chosen.publishedAt,
+      version: chosen.versionNumber,
       availableLangs: rows.map((row) => row.lang).sort(),
     },
   }
@@ -694,6 +730,14 @@ export async function getReadableArticle(input: {
  * its own, and a plain link works before any bundle arrives. The size is on the
  * link because the reader is on metered data and should decide knowing it.
  */
+export function renderVersionToHtml(input: {
+  label: string
+  historyHref: string
+  historyLabel: string
+}): string {
+  return `<p class="article-version">${escapeHtml(input.label)} · <a href="${escapeHtml(input.historyHref)}">${escapeHtml(input.historyLabel)}</a></p>`
+}
+
 export function renderCompanionToHtml(input: {
   href: string
   label: string
@@ -812,9 +856,13 @@ export async function getEditableArticle(input: {
       summary: articleTranslation.summary,
       contentJson: articleTranslation.contentJson,
       status: articleTranslation.status,
-      publishedRevisionId: articleTranslation.publishedRevisionId,
+      publishedRevisionId: articleVersion.revisionId,
     })
     .from(articleTranslation)
+    .leftJoin(
+      articleVersion,
+      eq(articleVersion.id, articleTranslation.publishedVersionId),
+    )
     .where(
       and(
         eq(articleTranslation.articleId, input.articleId),
@@ -835,17 +883,20 @@ export async function getEditableArticle(input: {
     .orderBy(desc(articleRevision.createdAt), desc(articleRevision.id))
     .limit(1)
 
-  const [openRound] = await db
-    .select({ revisionIds: articleSubmission.revisionIds })
-    .from(articleSubmission)
+  // The version this language has in a round still open, if any.
+  const [openVersion] = await db
+    .select({ revisionId: articleVersion.revisionId })
+    .from(articleVersion)
+    .innerJoin(articleSubmission, eq(articleSubmission.id, articleVersion.submissionId))
     .where(
       and(
-        eq(articleSubmission.articleId, input.articleId),
+        eq(articleVersion.articleId, input.articleId),
+        eq(articleVersion.lang, input.lang),
         inArray(articleSubmission.status, ['open', 'in_review']),
       ),
     )
     .limit(1)
-  const submitted = openRound?.revisionIds?.[input.lang]
+  const submitted = openVersion?.revisionId
 
   const others = await db
     .select({ lang: articleTranslation.lang, status: articleTranslation.status })

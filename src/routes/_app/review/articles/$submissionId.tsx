@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
+import VersionChanges from '../../../../components/articles/VersionChanges'
 import LanguageSwitcher from '../../../../components/LanguageSwitcher'
 import { LOCALE_LABELS } from '../../../../i18n'
+import type { VersionOutcome } from '../../../../lib/db/schema'
 import {
   assignReviewerAction,
   decideSubmissionAction,
@@ -46,6 +48,13 @@ export const Route = createFileRoute('/_app/review/articles/$submissionId')({
   },
   component: Deliberation,
 })
+
+const VERSION_OUTCOME_MESSAGE: Record<VersionOutcome, () => string> = {
+  approved: m.deliberation_outcome_approved,
+  refused: m.deliberation_outcome_refused,
+  withdrawn: m.deliberation_outcome_withdrawn,
+  pending: m.deliberation_outcome_pending,
+}
 
 function languageName(code: string): string {
   return LOCALE_LABELS[code as keyof typeof LOCALE_LABELS] ?? code
@@ -158,104 +167,109 @@ function Deliberation() {
               </section>
 
               {/*
-               * The text itself, as submitted (D30) — what reviewers argue
-               * about and what an acceptance publishes. `innerHTML` is safe
-               * for the reason it is on the reading view: `renderDocument`
-               * wrote every tag and escaped every character the author typed.
+               * Each language's version, as submitted (D30, D31): what changed
+               * since the version before — whatever the circle made of that one,
+               * which is what a contradictor checks their objections against —
+               * then the PDF that goes with it, then the full text. `innerHTML`
+               * is safe for the reason it is on the reading view: `diff.ts` and
+               * `renderDocument` wrote every tag and escaped every character the
+               * author typed.
                */}
-              <For each={loaded().texts}>
-                {(text) => (
+              <For each={loaded().languages}>
+                {(version) => (
                   <section
                     class="rounded-lg border border-neutral-200 bg-white p-6"
-                    data-testid="submitted-text"
+                    data-testid="submitted-version"
                   >
                     <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">
-                      {m.deliberation_submittedText()} · {languageName(text.lang)}
+                      {m.deliberation_submittedVersion({
+                        number: String(version.number),
+                        lang: languageName(version.lang),
+                      })}
                     </p>
-                    <h2 class="mt-1 text-xl font-bold text-neutral-900">{text.title}</h2>
-                    <p class="mt-1 text-sm text-neutral-600">{text.summary}</p>
-                    <p class="mt-2 text-xs text-neutral-500">
-                      {m.deliberation_submittedTextHint()}
-                    </p>
-                    <Show when={text.changedSince}>
+                    <h2 class="mt-1 text-xl font-bold text-neutral-900">
+                      {version.title}
+                    </h2>
+                    <p class="mt-1 text-sm text-neutral-600">{version.summary}</p>
+                    <Show when={version.changedSince}>
                       <p class="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                         {m.deliberation_textChangedSince()}
                       </p>
                     </Show>
-                    <div class="article-prose mt-4" innerHTML={text.html} />
+
+                    <div class="mt-4" data-testid="version-changes">
+                      <Show
+                        when={version.comparison.previous}
+                        fallback={
+                          <p class="text-sm text-neutral-600">
+                            {m.deliberation_firstVersion()}
+                          </p>
+                        }
+                      >
+                        {(previous) => (
+                          <>
+                            <p class="text-sm font-medium text-neutral-800">
+                              {m.deliberation_comparedTo({
+                                number: String(previous().number),
+                                outcome: VERSION_OUTCOME_MESSAGE[previous().outcome](),
+                              })}
+                            </p>
+                            <VersionChanges comparison={version.comparison} />
+                          </>
+                        )}
+                      </Show>
+                    </div>
+
+                    <div
+                      class="mt-4 text-sm text-neutral-700"
+                      data-testid="review-companion"
+                    >
+                      <p class="font-medium text-neutral-800">
+                        {m.deliberation_companionTitle()}
+                      </p>
+                      <p class="text-xs text-neutral-500">
+                        {m.deliberation_companionHint()}
+                      </p>
+                      <Show
+                        when={version.companion}
+                        fallback={
+                          <p class="mt-1">
+                            {m.deliberation_companionNone({
+                              lang: languageName(version.lang),
+                            })}
+                          </p>
+                        }
+                      >
+                        {(companion) => (
+                          <p class="mt-1 flex flex-wrap items-center gap-2">
+                            <span>
+                              {m.deliberation_companionUnderReview({
+                                lang: languageName(version.lang),
+                                pages: String(companion().pageCount),
+                                size: formatMegabytes(companion().byteSize, getLocale()),
+                              })}
+                            </span>
+                            <a
+                              href={`/api/companion/review/${loaded().submission.id}/${version.lang}`}
+                              download
+                              class="font-medium text-[#00209F] hover:underline"
+                            >
+                              {m.deliberation_companionDownload()}
+                            </a>
+                          </p>
+                        )}
+                      </Show>
+                    </div>
+
+                    <details class="mt-4">
+                      <summary class="cursor-pointer text-sm font-medium text-[#00209F]">
+                        {m.deliberation_fullText()}
+                      </summary>
+                      <div class="article-prose mt-4" innerHTML={version.html} />
+                    </details>
                   </section>
                 )}
               </For>
-
-              {/*
-               * The PDF is reviewed with the text (D29): if this round accepts
-               * a language, the file listed as under review is what readers
-               * will download in the movement's name. Every language is listed,
-               * PDF or not, so a missing download reads as "there is none"
-               * rather than as a page that failed to load one.
-               */}
-              <section
-                class="rounded-lg border border-neutral-200 bg-white p-6"
-                data-testid="review-companion"
-              >
-                <h2 class="text-lg font-semibold text-neutral-900">
-                  {m.deliberation_companionTitle()}
-                </h2>
-                <p class="mt-1 text-sm text-neutral-600">
-                  {m.deliberation_companionHint()}
-                </p>
-                <ul class="mt-4 flex flex-col gap-2 text-sm text-neutral-700">
-                  <For each={loaded().companions}>
-                    {(companion) => {
-                      const lang = languageName(companion.lang)
-                      if (companion.state === 'none') {
-                        return <li>{m.deliberation_companionNone({ lang })}</li>
-                      }
-                      const values = {
-                        lang,
-                        pages: String(companion.pageCount),
-                        size: formatMegabytes(companion.byteSize, getLocale()),
-                      }
-                      const href = `/api/companion/review/${loaded().submission.id}/${companion.lang}`
-                      if (companion.state === 'underReview') {
-                        return (
-                          <li class="flex flex-wrap items-center gap-2">
-                            <span>{m.deliberation_companionUnderReview(values)}</span>
-                            <a
-                              href={href}
-                              download
-                              class="font-medium text-[#00209F] hover:underline"
-                            >
-                              {m.deliberation_companionDownload()}
-                            </a>
-                          </li>
-                        )
-                      }
-                      if (companion.state === 'approved') {
-                        return (
-                          <li class="flex flex-wrap items-center gap-2">
-                            <span>{m.deliberation_companionApproved(values)}</span>
-                            <a
-                              href={href}
-                              download
-                              class="font-medium text-[#00209F] hover:underline"
-                            >
-                              {m.deliberation_companionDownload()}
-                            </a>
-                          </li>
-                        )
-                      }
-                      return (
-                        <li class="text-amber-900">
-                          {companion.state === 'afterSubmission'
-                            ? m.deliberation_companionAfterSubmission({ lang })
-                            : m.deliberation_companionStale({ lang })}
-                        </li>
-                      )
-                    }}
-                  </For>
-                </ul>
-              </section>
 
               <section class="rounded-lg border border-neutral-200 bg-white p-6">
                 <h2 class="text-lg font-semibold text-neutral-900">

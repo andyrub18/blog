@@ -8,7 +8,6 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { article, articleRevision } from './article'
-import { articleSubmission } from './article-review'
 import { user } from './auth'
 
 /**
@@ -57,16 +56,6 @@ export const articleCompanion = pgTable(
     sha256: text('sha256').notNull(),
     uploadedBy: text('uploaded_by').references(() => user.id, { onDelete: 'set null' }),
     uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
-    /**
-     * The round whose decision approved this file for readers, and when. Null
-     * until then — an unapproved companion is visible to its author and to the
-     * circle, never to readers.
-     */
-    approvedInSubmissionId: text('approved_in_submission_id').references(
-      () => articleSubmission.id,
-      { onDelete: 'set null' },
-    ),
-    approvedAt: timestamp('approved_at', { withTimezone: true }),
     /** When it was replaced or removed, and by whom. Null while it is the current one. */
     supersededAt: timestamp('superseded_at', { withTimezone: true }),
     supersededBy: text('superseded_by').references(() => user.id, {

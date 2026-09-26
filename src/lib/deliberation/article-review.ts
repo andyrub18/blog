@@ -7,7 +7,6 @@ import {
   articleDecision,
   articleReview,
   articleReviewer,
-  articleRevision,
   articleSubmission,
   articleTranslation,
   type DecisionMethod,
@@ -110,34 +109,6 @@ async function stageFor(
   return live ? 'published' : stage
 }
 
-/**
- * The newest revision of each language: the text as it stands at this moment.
- *
- * Every save writes a revision, and a language cannot be submitted without
- * text, so each submitted language has one; a missing entry means the text
- * vanished between the check and the snapshot, and the round must not open.
- */
-async function newestRevisionIds(
-  tx: Tx,
-  articleId: string,
-  langs: Array<string>,
-): Promise<Record<string, string> | null> {
-  const ids: Record<string, string> = {}
-  for (const lang of langs) {
-    const [newest] = await tx
-      .select({ id: articleRevision.id })
-      .from(articleRevision)
-      .where(
-        and(eq(articleRevision.articleId, articleId), eq(articleRevision.lang, lang)),
-      )
-      .orderBy(desc(articleRevision.createdAt), desc(articleRevision.id))
-      .limit(1)
-    if (!newest) return null
-    ids[lang] = newest.id
-  }
-  return ids
-}
-
 class NoRevision extends Error {}
 
 function isSenior(viewer: Viewer): boolean {
@@ -211,23 +182,25 @@ export async function submitForReview(input: {
 
   try {
     await db.transaction(async (tx) => {
-      /**
-       * What the circle will read, fixed now (D30). The author may keep
-       * editing; this round reviews — and can only ever publish — the text as
-       * it was when they put it to the circle.
-       */
-      const revisionIds = await newestRevisionIds(tx, row.id, langs)
-      if (!revisionIds) throw new NoRevision()
       await tx.insert(articleSubmission).values({
         id,
         articleId: row.id,
         round,
         langs,
-        revisionIds,
         submittedBy: input.actor.id,
         status: 'open',
         ...documentation,
       })
+      /**
+       * What the circle will read, fixed now: the next version of each
+       * language, text and PDF together (D30, D31). The author may keep
+       * editing; this round reviews — and can only ever publish — the version
+       * made here.
+       */
+      const { createVersions } = await import('../articles/versions')
+      if (!(await createVersions(tx, { id, articleId: row.id }, langs, new Date()))) {
+        throw new NoRevision()
+      }
       await tx
         .update(article)
         .set({ status: await stageFor(tx, row.id, 'submitted'), updatedAt: new Date() })
@@ -581,7 +554,6 @@ export async function decide(input: {
       articleId: articleSubmission.articleId,
       status: articleSubmission.status,
       langs: articleSubmission.langs,
-      revisionIds: articleSubmission.revisionIds,
       submittedAt: articleSubmission.submittedAt,
       authorId: article.authorId,
       articlePublishedAt: article.publishedAt,
@@ -651,40 +623,15 @@ export async function decide(input: {
     })
 
     /**
-     * Publishing a language means pinning the revision this round reviewed
-     * (D30) — not the working copy, which the author may have edited since.
-     * Only a round submitted before snapshots existed has none recorded; the
-     * migration filled in every round that was open, so this fallback reaches
-     * nothing in practice, and exists so a decision never publishes no text.
+     * The decision is on this round's versions: each accepted language is
+     * published at its version — the text and PDF the circle was given, not
+     * the working copy the author may have edited since (D30, D31) — and each
+     * other language's version is recorded as refused.
      */
-    const reviewed =
-      submission.revisionIds ??
-      (await newestRevisionIds(tx, submission.articleId, submission.langs)) ??
-      {}
-    for (const language of accepted) {
-      await tx
-        .update(articleTranslation)
-        .set({
-          status: 'published',
-          publishedAt: now,
-          publishedRevisionId: reviewed[language.lang],
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(articleTranslation.articleId, submission.articleId),
-            eq(articleTranslation.lang, language.lang),
-          ),
-        )
-    }
-
-    // The companion PDFs the circle read with those languages go live with
-    // them, in the same transaction: approving a language and approving the
-    // file it was reviewed with are one decision (D29).
-    const { approveCompanions } = await import('../articles/companion/companion')
-    await approveCompanions(
+    const { settleVersions } = await import('../articles/versions')
+    await settleVersions(
       tx,
-      { ...submission, revisionIds: reviewed },
+      submission.id,
       accepted.map((language) => language.lang),
       now,
     )
@@ -737,6 +684,8 @@ export async function withdrawSubmission(input: {
       .update(articleSubmission)
       .set({ status: 'withdrawn' })
       .where(eq(articleSubmission.id, submission.id))
+    const { withdrawVersions } = await import('../articles/versions')
+    await withdrawVersions(tx, submission.id)
     // Back to a draft. The round stays on file: a withdrawn proposal is part of
     // the argument history too.
     await tx
@@ -821,7 +770,6 @@ export async function getSubmission(submissionId: string) {
       round: articleSubmission.round,
       status: articleSubmission.status,
       langs: articleSubmission.langs,
-      revisionIds: articleSubmission.revisionIds,
       submittedAt: articleSubmission.submittedAt,
       diagnosis: articleSubmission.diagnosis,
       solutions: articleSubmission.solutions,
@@ -866,68 +814,6 @@ export async function getSubmission(submissionId: string) {
     tallies: await tallySubmission(submissionId),
     decision: decision ?? null,
   }
-}
-
-export type SubmittedText = {
-  lang: string
-  title: string
-  summary: string
-  /** Server-rendered, like the reading view: `renderDocument` wrote every tag. */
-  html: string
-  /**
-   * The author has saved this language since submitting it. Those edits are
-   * not what the circle is reading and are not what this round can publish;
-   * reviewers are told, so nobody argues about a text they cannot see.
-   */
-  changedSince: boolean
-}
-
-/**
- * The text a round put to the circle, language by language (D30).
- *
- * This is what reviewers read and argue about, and what `decide()` publishes if
- * they accept it — the revision recorded at submission, not the author's working
- * copy. Before this, the submission page showed no text at all, and a panel
- * member who was not senior could not open the draft anywhere: the circle voted
- * on a document the platform never put in front of it.
- */
-export async function submittedTexts(submission: {
-  articleId: string
-  langs: Array<string>
-  revisionIds: Record<string, string> | null
-}): Promise<Array<SubmittedText>> {
-  const { db } = await import('../db')
-  const { parseDocument, renderDocument } = await import('../articles/prosemirror')
-  const texts: Array<SubmittedText> = []
-  for (const lang of submission.langs) {
-    const newest = await db
-      .select({
-        id: articleRevision.id,
-        title: articleRevision.title,
-        summary: articleRevision.summary,
-        contentJson: articleRevision.contentJson,
-      })
-      .from(articleRevision)
-      .where(
-        and(
-          eq(articleRevision.articleId, submission.articleId),
-          eq(articleRevision.lang, lang),
-        ),
-      )
-      .orderBy(desc(articleRevision.createdAt), desc(articleRevision.id))
-    const reviewedId = submission.revisionIds?.[lang] ?? newest[0]?.id
-    const reviewed = newest.find((revision) => revision.id === reviewedId)
-    if (!reviewed) continue
-    const parsed = parseDocument(reviewed.contentJson)
-    texts.push({
-      lang,
-      title: reviewed.title,
-      summary: reviewed.summary,
-      html: parsed.ok ? renderDocument(parsed.doc).html : '',
-      changedSince: newest[0]?.id !== reviewed.id,
-    })
-  }
-  return texts
 }
 
 /** Every round an article has been through, newest first. */

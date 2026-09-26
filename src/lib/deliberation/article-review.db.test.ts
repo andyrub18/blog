@@ -1055,8 +1055,12 @@ describe('the text the circle approved', () => {
     const load = async () => {
       const loaded = await review.getSubmission(submissionId)
       if (!loaded) throw new Error('no submission')
-      const [text] = await review.submittedTexts(loaded.submission)
-      return text
+      const { roundLanguages } = await import('../articles/versions')
+      const [version] = await roundLanguages(loaded.submission, {
+        unchanged: (n) => `${n}`,
+        reformatted: '',
+      })
+      return version
     }
 
     const before = await load()

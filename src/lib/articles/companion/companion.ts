@@ -3,7 +3,7 @@ import { createReadStream } from 'node:fs'
 import { mkdir, rm, stat, writeFile } from 'node:fs/promises'
 import { join, normalize, sep } from 'node:path'
 import { Readable } from 'node:stream'
-import { and, desc, eq, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import type { ArticleVisibility } from '../../db/schema'
 import {
   article,
@@ -11,6 +11,7 @@ import {
   articleRevision,
   articleSubmission,
   articleTranslation,
+  articleVersion,
   hasAtLeastRole,
 } from '../../db/schema'
 import { canEdit, canRead, type Viewer } from '../articles'
@@ -21,19 +22,17 @@ import { type PdfCleaning, type PdfError, preparePdf } from './pdf'
  *
  * **Server only.** Reaches the filesystem, the database and `pdf-lib`.
  *
- * The rule the whole module turns on: a companion is offered only while it was
- * made from the text readers are looking at — the language's *published*
- * revision (D30) — **and only once the circle has approved it** (D29). `servableCompanion` below is the one place that is
- * decided, and both the reading view's link and the download route go through
- * it, so the link can never point at a file the route would refuse — or the
- * other way round.
+ * A companion reaches readers as part of a **version** (D31). Submitting a
+ * language freezes its text and — if the author's current PDF was made from
+ * that text — its PDF into the next version; the round's decision approves or
+ * refuses the pair together; and readers are given the PDF of the published
+ * version. `servableCompanion` below is the one place that is decided, and both
+ * the reading view's link and the download route go through it.
  *
- * Approval happens in `decide()`, through `approveCompanions`: when a language
- * is accepted, the companion attached *before that round was submitted*, and
- * made from the very revision that round reviewed, is stamped with the round. The circle can
- * only vouch for a file it was given to read, so one attached after submission
- * — a replacement after publication included — waits for the next round.
- * Reviewers read it through `reviewCompanions` and `openCompanionForReview`.
+ * What the author attaches here is therefore a *working* PDF, the one the next
+ * version will carry. Replacing it does not touch what readers have: the
+ * published version keeps its own file, and a file stays on disk for as long as
+ * any version refers to it.
  *
  * Downloads are deliberately **not** logged. A dossier read is logged because it
  * is a privileged look at somebody's private file; this is a reader taking a
@@ -60,35 +59,23 @@ export type CompanionSummary = {
 }
 
 /**
- * What the author's editor shows about one language's companion.
+ * What the author's editor shows about the working PDF of one language.
  *
- * - `approved` — the circle approved it and it matches the text: readers get it
- *   while the language is published.
- * - `inReview` — attached before the round now open on this language: the
- *   circle is reading it with the text.
- * - `nextRound` — attached after that round was submitted: the circle is not
- *   reviewing it, and it will wait for the next round.
- * - `awaitingReview` — no round is open: it goes to the circle when this
- *   language is next submitted.
- * - `stale` — it describes neither the published text nor the text the author
- *   is working on: readers do not get it, and no round will approve it. Only a
- *   new PDF can replace it.
- *
- * Every state but `approved` means readers do not have it, and the editor says
- * which, because the author is the only person who can act on it. An approved
- * PDF stays `approved` while the author edits a draft: readers still see the
- * approved text (D30), and the PDF still describes it.
+ * - `inReview` — it is part of the version the circle is reviewing now.
+ * - `nextRound` — a round is open on this language, but this file is not the
+ *   one in its version (it came later, or replaced it): it will go with the
+ *   next version.
+ * - `awaitingReview` — no round is open: it goes with the next version.
+ * - `stale` — it was made from an earlier text than the author's current one,
+ *   so no version will carry it. Only a new PDF can replace it.
  */
-export type CompanionStatus =
-  | 'approved'
-  | 'inReview'
-  | 'nextRound'
-  | 'awaitingReview'
-  | 'stale'
+export type CompanionStatus = 'inReview' | 'nextRound' | 'awaitingReview' | 'stale'
 
-export type CompanionState =
-  | { state: 'none' }
-  | ({ state: CompanionStatus } & CompanionSummary)
+export type CompanionState = {
+  working: { state: 'none' } | ({ state: CompanionStatus } & CompanionSummary)
+  /** The PDF readers are given: the published version's. */
+  published: { version: number; pageCount: number; byteSize: number } | null
+}
 
 /** Read at call time so the database tests can point it at a temporary directory. */
 function uploadRoot(): string {
@@ -145,78 +132,47 @@ async function currentCompanion(db: Db | Tx, articleId: string, lang: string) {
 }
 
 /**
- * The companion readers may be given for one language, or null.
- *
- * Current, approved by the circle, and made from the revision readers are shown
- * — the published one, not the newest: an author editing a draft after
- * publication changes nothing readers see, so it retires nothing either (D30).
- * One query, so the answer cannot be assembled from two reads that straddle a
- * decision.
+ * The companion readers may be given for one language, or null: the PDF of the
+ * published version (D31). One query, so the answer cannot be assembled from two
+ * reads that straddle a decision.
  */
 export async function servableCompanion(articleId: string, lang: string) {
   const { db } = await import('../../db')
   const [row] = await db
-    .select()
-    .from(articleCompanion)
+    .select({
+      id: articleCompanion.id,
+      storagePath: articleCompanion.storagePath,
+      byteSize: articleCompanion.byteSize,
+      pageCount: articleCompanion.pageCount,
+      sha256: articleCompanion.sha256,
+      version: articleVersion.number,
+    })
+    .from(articleTranslation)
+    .innerJoin(
+      articleVersion,
+      eq(articleVersion.id, articleTranslation.publishedVersionId),
+    )
+    .innerJoin(articleCompanion, eq(articleCompanion.id, articleVersion.companionId))
     .where(
       and(
-        eq(articleCompanion.articleId, articleId),
-        eq(articleCompanion.lang, lang),
-        isNull(articleCompanion.supersededAt),
-        isNotNull(articleCompanion.approvedInSubmissionId),
-        eq(articleCompanion.revisionId, publishedRevision(articleId, lang)),
+        eq(articleTranslation.articleId, articleId),
+        eq(articleTranslation.lang, lang),
+        eq(articleTranslation.status, 'published'),
+        isNotNull(articleCompanion.storagePath),
       ),
     )
     .limit(1)
   return row ?? null
 }
 
-/** The revision readers are shown for one language, as a subquery. */
-function publishedRevision(articleId: string, lang: string) {
-  return sql`(select ${articleTranslation.publishedRevisionId} from ${articleTranslation}
-               where ${articleTranslation.articleId} = ${articleId}
-                 and ${articleTranslation.lang} = ${lang}
-                 and ${articleTranslation.status} = 'published')`
-}
-
-/**
- * Stamp the companions a decision approves. Called by `decide()`, inside its
- * transaction, with the languages the circle accepted.
- *
- * Approved: the current companion of an accepted language, attached no later
- * than the round was submitted, and made from the revision that round reviewed
- * — the file the circle was given to read, describing the text it accepted and
- * is publishing. Anything else is left unapproved and says so in the author's
- * editor.
- */
-export async function approveCompanions(
-  tx: Tx,
-  submission: {
-    id: string
-    articleId: string
-    submittedAt: Date
-    revisionIds: Record<string, string>
-  },
-  langs: Array<string>,
-  now: Date,
-): Promise<void> {
-  for (const lang of langs) {
-    const reviewed = submission.revisionIds[lang]
-    if (!reviewed) continue
-    await tx
-      .update(articleCompanion)
-      .set({ approvedInSubmissionId: submission.id, approvedAt: now })
-      .where(
-        and(
-          eq(articleCompanion.articleId, submission.articleId),
-          eq(articleCompanion.lang, lang),
-          isNull(articleCompanion.supersededAt),
-          isNull(articleCompanion.approvedInSubmissionId),
-          lte(articleCompanion.uploadedAt, submission.submittedAt),
-          eq(articleCompanion.revisionId, reviewed),
-        ),
-      )
-  }
+/** Whether any version carries this file — and so whether its bytes must stay. */
+async function inAnyVersion(db: Db | Tx, companionId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: articleVersion.id })
+    .from(articleVersion)
+    .where(eq(articleVersion.companionId, companionId))
+    .limit(1)
+  return row !== undefined
 }
 
 async function loadEditable(actor: Viewer, articleId: string) {
@@ -287,10 +243,17 @@ export async function attachCompanion(input: {
 
       const previous = await currentCompanion(tx, input.articleId, input.lang)
       if (previous) {
-        replaced = previous.storagePath
+        // A file a version carries is part of the record — the published one is
+        // being served — so only a file no version refers to is let go.
+        const keep = await inAnyVersion(tx, previous.id)
+        if (!keep) replaced = previous.storagePath
         await tx
           .update(articleCompanion)
-          .set({ supersededAt: now, supersededBy: input.actor.id, storagePath: null })
+          .set({
+            supersededAt: now,
+            supersededBy: input.actor.id,
+            ...(keep ? {} : { storagePath: null }),
+          })
           .where(eq(articleCompanion.id, previous.id))
       }
 
@@ -328,7 +291,11 @@ export async function attachCompanion(input: {
 
 class NoText extends Error {}
 
-/** Stop offering a language's companion. The row is closed, not deleted. */
+/**
+ * Take the working PDF away, so the next version carries none. The row is
+ * closed, not deleted, and a file a version carries keeps its bytes: removing
+ * the working PDF does not withdraw the published one.
+ */
 export async function removeCompanion(input: {
   actor: Viewer
   articleId: string
@@ -341,11 +308,16 @@ export async function removeCompanion(input: {
   const current = await currentCompanion(db, input.articleId, input.lang)
   if (!current) return { ok: false, code: 'NOT_FOUND' }
 
+  const keep = await inAnyVersion(db, current.id)
   await db
     .update(articleCompanion)
-    .set({ supersededAt: new Date(), supersededBy: input.actor.id, storagePath: null })
+    .set({
+      supersededAt: new Date(),
+      supersededBy: input.actor.id,
+      ...(keep ? {} : { storagePath: null }),
+    })
     .where(eq(articleCompanion.id, current.id))
-  await discard(current.storagePath)
+  if (!keep) await discard(current.storagePath)
   return { ok: true, value: null }
 }
 
@@ -359,132 +331,44 @@ export async function companionState(input: {
   if (!editable.ok) return editable
   const { db } = editable
 
+  const served = await servableCompanion(input.articleId, input.lang)
+  const published = served
+    ? { version: served.version, pageCount: served.pageCount, byteSize: served.byteSize }
+    : null
+
   const current = await currentCompanion(db, input.articleId, input.lang)
-  if (!current) return { ok: true, value: { state: 'none' } }
+  if (!current) return { ok: true, value: { working: { state: 'none' }, published } }
   const summary = {
     byteSize: current.byteSize,
     pageCount: current.pageCount,
     uploadedAt: current.uploadedAt,
   }
 
-  // Approved and still describing what readers see: live, whatever the author
-  // has been drafting since.
-  if (current.approvedInSubmissionId) {
-    const [translation] = await db
-      .select({ publishedRevisionId: articleTranslation.publishedRevisionId })
-      .from(articleTranslation)
-      .where(
-        and(
-          eq(articleTranslation.articleId, input.articleId),
-          eq(articleTranslation.lang, input.lang),
-        ),
-      )
-      .limit(1)
-    return {
-      ok: true,
-      value: {
-        state:
-          translation?.publishedRevisionId === current.revisionId ? 'approved' : 'stale',
-        ...summary,
-      },
-    }
-  }
-
-  // Not approved: it can only ever be approved for the text it describes, so
-  // it has to describe the text the author is working on.
+  // A version can only carry a PDF made from the text it freezes, which is the
+  // author's newest text.
   const latest = await latestRevisionId(db, input.articleId, input.lang)
   if (latest !== current.revisionId) {
-    return { ok: true, value: { state: 'stale', ...summary } }
+    return { ok: true, value: { working: { state: 'stale', ...summary }, published } }
   }
 
   const [open] = await db
-    .select({
-      submittedAt: articleSubmission.submittedAt,
-      langs: articleSubmission.langs,
-      revisionIds: articleSubmission.revisionIds,
-    })
-    .from(articleSubmission)
+    .select({ companionId: articleVersion.companionId })
+    .from(articleVersion)
+    .innerJoin(articleSubmission, eq(articleSubmission.id, articleVersion.submissionId))
     .where(
       and(
-        eq(articleSubmission.articleId, input.articleId),
+        eq(articleVersion.articleId, input.articleId),
+        eq(articleVersion.lang, input.lang),
         inArray(articleSubmission.status, ['open', 'in_review']),
       ),
     )
     .limit(1)
-  // In this round only if the round is reading the same text and had the file
-  // from the start — the two conditions `approveCompanions` will check.
-  const state: CompanionStatus = !open?.langs.includes(input.lang)
+  const state: CompanionStatus = !open
     ? 'awaitingReview'
-    : current.uploadedAt <= open.submittedAt &&
-        open.revisionIds?.[input.lang] === current.revisionId
+    : open.companionId === current.id
       ? 'inReview'
       : 'nextRound'
-  return { ok: true, value: { state, ...summary } }
-}
-
-/**
- * What reviewers are shown about each language of a round.
- *
- * - `underReview` — the file this round is reviewing; they can download it.
- * - `approved` — the file this round's decision approved.
- * - `afterSubmission` — a PDF exists, but was attached after the round was
- *   submitted. Not theirs to review; saying so stops a reviewer from assuming
- *   the absence of a download means there is no PDF.
- * - `stale` — the PDF describes a different revision than the one this round
- *   is reviewing, so it cannot be approved whatever the circle decides.
- */
-export type ReviewCompanion =
-  | { lang: string; state: 'none' }
-  | {
-      lang: string
-      state: 'underReview' | 'approved' | 'afterSubmission' | 'stale'
-      pageCount: number
-      byteSize: number
-    }
-
-export async function reviewCompanions(submission: {
-  id: string
-  articleId: string
-  langs: Array<string>
-  submittedAt: Date
-  revisionIds: Record<string, string> | null
-}): Promise<Array<ReviewCompanion>> {
-  const { db } = await import('../../db')
-  return Promise.all(
-    submission.langs.map(async (lang): Promise<ReviewCompanion> => {
-      const [approvedHere] = await db
-        .select()
-        .from(articleCompanion)
-        .where(
-          and(
-            eq(articleCompanion.articleId, submission.articleId),
-            eq(articleCompanion.lang, lang),
-            eq(articleCompanion.approvedInSubmissionId, submission.id),
-          ),
-        )
-        .limit(1)
-      if (approvedHere) {
-        return {
-          lang,
-          state: 'approved',
-          pageCount: approvedHere.pageCount,
-          byteSize: approvedHere.byteSize,
-        }
-      }
-
-      const current = await currentCompanion(db, submission.articleId, lang)
-      if (!current) return { lang, state: 'none' }
-      const sizes = { pageCount: current.pageCount, byteSize: current.byteSize }
-      const reviewed =
-        submission.revisionIds?.[lang] ??
-        (await latestRevisionId(db, submission.articleId, lang))
-      if (reviewed !== current.revisionId) return { lang, state: 'stale', ...sizes }
-      if (current.uploadedAt > submission.submittedAt) {
-        return { lang, state: 'afterSubmission', ...sizes }
-      }
-      return { lang, state: 'underReview', ...sizes }
-    }),
-  )
+  return { ok: true, value: { working: { state, ...summary }, published } }
 }
 
 /** Stream a stored file, or null if it is missing or escapes the upload root. */
@@ -508,7 +392,7 @@ export type ReviewDownload =
   | { ok: false; status: 403 | 404 }
 
 /**
- * A member's download of the PDF a round is reviewing — or approved.
+ * A member's download of the PDF a round's version carries (D31).
  *
  * The same audience as the submission page itself: any member. The circle is
  * the movement's members, and the PDF is part of what they are deliberating on.
@@ -529,40 +413,21 @@ export async function openCompanionForReview(input: {
     return { ok: false, status: 403 }
   }
   const { db } = await import('../../db')
-  const [submission] = await db
+  const [row] = await db
     .select({
-      id: articleSubmission.id,
-      articleId: articleSubmission.articleId,
-      langs: articleSubmission.langs,
-      submittedAt: articleSubmission.submittedAt,
-      revisionIds: articleSubmission.revisionIds,
+      storagePath: articleCompanion.storagePath,
+      byteSize: articleCompanion.byteSize,
+      number: articleVersion.number,
       slug: article.slug,
     })
-    .from(articleSubmission)
-    .innerJoin(article, eq(article.id, articleSubmission.articleId))
-    .where(eq(articleSubmission.id, input.submissionId))
-    .limit(1)
-  if (!submission?.langs.includes(input.lang)) return { ok: false, status: 404 }
-
-  const [view] = await reviewCompanions({ ...submission, langs: [input.lang] })
-  if (view.state !== 'underReview' && view.state !== 'approved') {
-    return { ok: false, status: 404 }
-  }
-  const [row] = await db
-    .select()
-    .from(articleCompanion)
+    .from(articleVersion)
+    .innerJoin(articleCompanion, eq(articleCompanion.id, articleVersion.companionId))
+    .innerJoin(article, eq(article.id, articleVersion.articleId))
     .where(
-      view.state === 'approved'
-        ? and(
-            eq(articleCompanion.articleId, submission.articleId),
-            eq(articleCompanion.lang, input.lang),
-            eq(articleCompanion.approvedInSubmissionId, submission.id),
-          )
-        : and(
-            eq(articleCompanion.articleId, submission.articleId),
-            eq(articleCompanion.lang, input.lang),
-            isNull(articleCompanion.supersededAt),
-          ),
+      and(
+        eq(articleVersion.submissionId, input.submissionId),
+        eq(articleVersion.lang, input.lang),
+      ),
     )
     .limit(1)
   const body = row?.storagePath ? await streamStored(row.storagePath) : null
@@ -571,7 +436,7 @@ export async function openCompanionForReview(input: {
     ok: true,
     body,
     byteSize: row.byteSize,
-    filename: `${submission.slug}-${input.lang}-round.pdf`,
+    filename: `${row.slug}-${input.lang}-v${row.number}.pdf`,
   }
 }
 
