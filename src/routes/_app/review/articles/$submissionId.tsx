@@ -10,16 +10,16 @@ import {
   openDeliberationAction,
   recordVerdictAction,
   unassignReviewerAction,
-} from '../../../../lib/article-review-actions'
-import { MIN_REVIEWERS } from '../../../../lib/deliberation'
+} from '../../../../lib/deliberation/article-review-actions'
+import { MIN_REVIEWERS } from '../../../../lib/deliberation/deliberation'
 import {
   DELIBERATION_ERROR_MESSAGE,
   LANGUAGE_REASON_MESSAGE,
   METHOD_MESSAGE,
   OUTCOME_MESSAGE,
   SUBMISSION_STATUS_MESSAGE,
-} from '../../../../lib/deliberation-messages'
-import { formatMegabytes } from '../../../../lib/validation'
+} from '../../../../lib/deliberation/deliberation-messages'
+import { formatMegabytes } from '../../../../lib/shared/validation'
 import { m } from '../../../../paraglide/messages'
 import { getLocale } from '../../../../paraglide/runtime'
 

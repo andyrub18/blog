@@ -2,8 +2,8 @@ import { createFileRoute, Link } from '@tanstack/solid-router'
 import { For, Show } from 'solid-js'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import { LOCALE_LABELS } from '../../../i18n'
-import { fetchArticle } from '../../../lib/article-actions'
-import type { DiscussionTail as Tail } from '../../../lib/forum'
+import { fetchArticle } from '../../../lib/articles/article-actions'
+import type { DiscussionTail as Tail } from '../../../lib/forum/forum'
 import { m } from '../../../paraglide/messages'
 
 /**
@@ -92,7 +92,7 @@ function ArticlePage() {
               {/*
                * Safe because this string was produced by `renderDocument`
                * on the server, from a document parsed against the allowlist in
-               * `lib/prosemirror.ts` on the way in and again on the way out. No
+               * `lib/articles/prosemirror.ts` on the way in and again on the way out. No
                * author-supplied text reaches it without `escapeHtml`, and the
                * only attributes in it are ones the renderer writes itself.
                */}

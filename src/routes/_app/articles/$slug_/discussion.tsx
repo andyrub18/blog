@@ -2,7 +2,7 @@ import { createFileRoute, Link } from '@tanstack/solid-router'
 import { Show } from 'solid-js'
 import DiscussionThread from '../../../../components/forum/DiscussionThread'
 import LanguageSwitcher from '../../../../components/LanguageSwitcher'
-import { fetchDiscussion } from '../../../../lib/forum-actions'
+import { fetchDiscussion } from '../../../../lib/forum/forum-actions'
 import { m } from '../../../../paraglide/messages'
 
 /**

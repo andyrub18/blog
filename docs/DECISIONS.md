@@ -179,7 +179,7 @@ language into its optional one.
 
 Recorded here because it is the one governance rule in this codebase that the
 implementation invented. **It should be confirmed or replaced by a decision from
-KLEA**, and `MIN_LANGUAGE_SUPPORT` in `src/lib/deliberation.ts` is where it
+KLEA**, and `MIN_LANGUAGE_SUPPORT` in `src/lib/deliberation/deliberation.ts` is where it
 changes.
 
 ## D17 — No dependency ships before a feature needs it
@@ -463,7 +463,7 @@ round publishes a newer text.
 **Kept, not rebuilt — so what it may contain is narrower instead.** Everything
 else the platform ingests is rebuilt from an allowlist (D18). A companion cannot
 be: its typesetting is the reason it exists, and a PDF we regenerated would be
-worse than the author's own `pdflatex` output (D24). `lib/pdf.ts` therefore does
+worse than the author's own `pdflatex` output (D24). `lib/articles/companion/pdf.ts` therefore does
 two things and says so to the author afterwards:
 
 - **Refuses what can act** — JavaScript, launch, submit and import actions,

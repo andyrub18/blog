@@ -1,0 +1,470 @@
+/**
+ * The article document format: parse, validate, render.
+ *
+ * Pure functions, no IO and no framework, for two reasons. The first is the
+ * same reason `validation.ts` is pure — the editor and the server function must
+ * agree on what a document is, and the only way to be sure is to run the same
+ * code. The second is the perf budget: rendering an article happens on the
+ * server, so a reader downloads the finished HTML and none of this.
+ *
+ * It is also the security boundary for article content. Anything outside the
+ * allowlist below is dropped at parse time, before storage (DECISIONS.md, D10).
+ * Storing HTML instead would mean trusting whatever the editor produced, and
+ * the editor runs on a computer we do not control.
+ */
+
+import { slugify } from '../shared/validation'
+
+export type Mark = { type: string; attrs?: Record<string, string> }
+
+export type DocNode = {
+  type: string
+  attrs?: Record<string, string | number>
+  content?: Array<DocNode>
+  marks?: Array<Mark>
+  text?: string
+}
+
+/**
+ * What an article may contain.
+ *
+ * Deliberately short. Every node here has an obvious meaning in a political
+ * essay; anything that does not is a feature request, not an omission. Two
+ * absences are decisions rather than oversights:
+ *
+ * - **No `image`.** There is no upload path yet (DECISIONS.md, D11 puts
+ *   documents in managed object storage), and allowing an arbitrary `src` would
+ *   let an article make every reader's browser fetch a URL somebody else
+ *   controls — a reader-by-reader record of who read what, handed to a third
+ *   party. It arrives with the upload pipeline or not at all.
+ * - **No raw HTML node.** That is the hole this whole module exists to close.
+ */
+const BLOCK_NODES = [
+  'paragraph',
+  'heading',
+  'blockquote',
+  'bulletList',
+  'orderedList',
+  'listItem',
+  'codeBlock',
+  'horizontalRule',
+  /**
+   * Tables, added in phase 4 for the DOCX import.
+   *
+   * A table is the one Word structure that genuinely cannot be written as
+   * prose: a budget line against a year, an indicator against its target. The
+   * import would otherwise have to flatten them into paragraphs, which loses
+   * the thing the author was using a table to say.
+   *
+   * No column widths, no merged-cell spans beyond `colspan`/`rowspan`, no
+   * styling. Those are layout, and layout is what this document format
+   * deliberately does not carry.
+   */
+  'table',
+  'tableRow',
+  'tableHeader',
+  'tableCell',
+] as const
+
+const INLINE_NODES = ['text', 'hardBreak'] as const
+
+export const ALLOWED_NODES: ReadonlyArray<string> = [...BLOCK_NODES, ...INLINE_NODES]
+
+export const ALLOWED_MARKS = ['bold', 'italic', 'strike', 'code', 'link'] as const
+
+/**
+ * Headings start at level 2.
+ *
+ * The article title is the page's `h1`. A document that could emit its own
+ * would give the page two, which is wrong for a screen reader walking the
+ * outline and wrong for search engines. Levels are clamped rather than
+ * rejected, because an author who typed the wrong heading level should not lose
+ * their paragraph over it.
+ */
+export const MIN_HEADING_LEVEL = 2
+export const MAX_HEADING_LEVEL = 4
+
+/** Guards against a pathological document walking the renderer into a stack overflow. */
+const MAX_DEPTH = 20
+
+/** A cell spanning more than this is broken input, not a wide table. */
+const MAX_CELL_SPAN = 100
+
+export type ParseError = 'NOT_A_DOCUMENT' | 'EMPTY'
+
+export type ParseResult = { ok: true; doc: DocNode } | { ok: false; code: ParseError }
+
+/**
+ * Link targets we are willing to put in front of a reader.
+ *
+ * `javascript:` is the obvious one. `data:` is the one people forget: a
+ * `data:text/html` link opens an attacker-authored page in the reader's
+ * browser. Relative paths and anchors stay inside the site, so they are fine.
+ *
+ * Control characters are stripped before the check rather than after, because
+ * `java\tscript:` is the classic way past a prefix test — browsers ignore the
+ * whitespace, naive validators do not.
+ */
+export function isSafeHref(href: string): boolean {
+  const value = href.trim()
+  if (value === '') return false
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0
+    if (code < 0x20 || code === 0x7f) return false
+  }
+  if (value.startsWith('/') || value.startsWith('#')) return true
+  return /^(https?:|mailto:)/i.test(value)
+}
+
+function sanitizeMarks(marks: unknown): Array<Mark> | undefined {
+  if (!Array.isArray(marks)) return undefined
+  const kept: Array<Mark> = []
+  for (const mark of marks) {
+    if (!mark || typeof mark !== 'object') continue
+    const type = (mark as { type?: unknown }).type
+    if (typeof type !== 'string') continue
+    if (!(ALLOWED_MARKS as ReadonlyArray<string>).includes(type)) continue
+
+    if (type === 'link') {
+      const href = (mark as { attrs?: { href?: unknown } }).attrs?.href
+      // A link whose destination we will not follow becomes plain text rather
+      // than a dead anchor: the words the author wrote are still theirs.
+      if (typeof href !== 'string' || !isSafeHref(href)) continue
+      kept.push({ type: 'link', attrs: { href: href.trim() } })
+      continue
+    }
+    kept.push({ type })
+  }
+  return kept.length > 0 ? kept : undefined
+}
+
+function sanitizeNode(value: unknown, depth: number): DocNode | null {
+  if (depth > MAX_DEPTH) return null
+  if (!value || typeof value !== 'object') return null
+
+  const node = value as Record<string, unknown>
+  const type = node.type
+  if (typeof type !== 'string' || !ALLOWED_NODES.includes(type)) return null
+
+  if (type === 'text') {
+    if (typeof node.text !== 'string' || node.text === '') return null
+    const marks = sanitizeMarks(node.marks)
+    return marks
+      ? { type: 'text', text: node.text, marks }
+      : { type: 'text', text: node.text }
+  }
+
+  if (type === 'hardBreak' || type === 'horizontalRule') return { type }
+
+  const content: Array<DocNode> = []
+  if (Array.isArray(node.content)) {
+    for (const child of node.content) {
+      const parsed = sanitizeNode(child, depth + 1)
+      if (parsed) content.push(parsed)
+    }
+  }
+
+  const result: DocNode = { type, content }
+
+  if (type === 'heading') {
+    const raw = (node.attrs as { level?: unknown } | undefined)?.level
+    const level =
+      typeof raw === 'number' && Number.isFinite(raw)
+        ? Math.round(raw)
+        : MIN_HEADING_LEVEL
+    result.attrs = {
+      level: Math.min(MAX_HEADING_LEVEL, Math.max(MIN_HEADING_LEVEL, level)),
+    }
+  }
+
+  if (type === 'tableHeader' || type === 'tableCell') {
+    // Spans only, and only as small positive integers. A cell claiming to span
+    // a thousand columns is either broken or an attempt to make the renderer
+    // emit something enormous.
+    const attrs: Record<string, number> = {}
+    for (const key of ['colspan', 'rowspan'] as const) {
+      const raw = (node.attrs as Record<string, unknown> | undefined)?.[key]
+      const span = typeof raw === 'number' && Number.isFinite(raw) ? Math.round(raw) : 1
+      if (span > 1) attrs[key] = Math.min(MAX_CELL_SPAN, span)
+    }
+    if (Object.keys(attrs).length > 0) result.attrs = attrs
+  }
+
+  if (type === 'codeBlock') {
+    // The language only ever reaches the DOM inside a `language-…` class, and
+    // only if it looks like a language name. No highlighter ships to readers.
+    const raw = (node.attrs as { language?: unknown } | undefined)?.language
+    if (typeof raw === 'string' && /^[a-z0-9+#-]{1,20}$/i.test(raw)) {
+      result.attrs = { language: raw.toLowerCase() }
+    }
+  }
+
+  return result
+}
+
+/**
+ * Validate an untrusted document and return the version we are willing to store.
+ *
+ * Called on the server, on the way in. Unknown nodes, unknown marks and unsafe
+ * link targets are dropped rather than rejected: an author pasting from a word
+ * processor should get their text, not an error message about a node type they
+ * have never heard of.
+ */
+export function parseDocument(value: unknown): ParseResult {
+  if (!value || typeof value !== 'object') return { ok: false, code: 'NOT_A_DOCUMENT' }
+  if ((value as { type?: unknown }).type !== 'doc') {
+    return { ok: false, code: 'NOT_A_DOCUMENT' }
+  }
+
+  const content: Array<DocNode> = []
+  const raw = (value as { content?: unknown }).content
+  if (Array.isArray(raw)) {
+    for (const child of raw) {
+      const parsed = sanitizeNode(child, 1)
+      if (parsed) content.push(parsed)
+    }
+  }
+
+  const doc: DocNode = { type: 'doc', content }
+  if (docToPlainText(doc).trim() === '') return { ok: false, code: 'EMPTY' }
+  return { ok: true, doc }
+}
+
+/** The text of a document, for length checks, excerpts and reading time. */
+export function docToPlainText(doc: DocNode): string {
+  const parts: Array<string> = []
+  const walk = (node: DocNode) => {
+    if (node.type === 'text' && node.text) parts.push(node.text)
+    if (node.type === 'hardBreak') parts.push(' ')
+    for (const child of node.content ?? []) walk(child)
+    if (BLOCK_NODES.includes(node.type as never)) parts.push('\n')
+  }
+  walk(doc)
+  return parts
+    .join('')
+    .replace(/\n{2,}/g, '\n')
+    .trim()
+}
+
+/**
+ * Words per minute for the reading-time estimate.
+ *
+ * Low on purpose. These are dense political arguments read on a phone, often in
+ * the reader's second language, and an estimate that flatters the reader
+ * teaches them not to trust it.
+ */
+export const WORDS_PER_MINUTE = 180
+
+export function readingTimeMinutes(doc: DocNode): number {
+  const words = docToPlainText(doc).split(/\s+/).filter(Boolean).length
+  return Math.max(1, Math.round(words / WORDS_PER_MINUTE))
+}
+
+const ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}
+
+export function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => ESCAPES[char] as string)
+}
+
+/** One heading, as the table of contents sees it. */
+export type OutlineEntry = {
+  level: number
+  text: string
+  /** The `id` on the rendered heading, and the fragment that scrolls to it. */
+  id: string
+}
+
+export type RenderedDocument = {
+  html: string
+  outline: Array<OutlineEntry>
+}
+
+/**
+ * Unique anchors for a document's headings.
+ *
+ * Derived from the heading text, not its position, because these end up in URLs
+ * people paste into WhatsApp: `#reforme-de-la-fonction-publique` survives being
+ * read aloud and `#section-7` does not. `slugify` folds Creole's `è` and
+ * French's `é` the same way it does for article slugs, so both languages give a
+ * plain ASCII fragment.
+ *
+ * The cost of deriving them from text is that renaming a heading on a published
+ * article breaks links people have already shared — the same class of problem
+ * `article_revision` exists to make visible. The alternative, positional ids,
+ * breaks on every insertion instead, which happens more often.
+ *
+ * Collisions are resolved against every id already handed out rather than a
+ * count per base, so a document with "Conclusion", "Conclusion" and
+ * "Conclusion 2" gets three distinct ids instead of two that clash.
+ */
+function createAnchors(): (text: string) => string {
+  const used = new Set<string>()
+  return (text) => {
+    const base = slugify(text) || 'section'
+    let id = base
+    for (let n = 2; used.has(id); n += 1) id = `${base}-${n}`
+    used.add(id)
+    return id
+  }
+}
+
+/** Carried down the render so one walk produces the markup and the outline. */
+type RenderContext = {
+  anchor: (text: string) => string
+  outline: Array<OutlineEntry>
+}
+
+const MARK_TAGS: Record<string, string> = {
+  bold: 'strong',
+  italic: 'em',
+  strike: 's',
+  code: 'code',
+}
+
+function renderMarks(text: string, marks: Array<Mark> | undefined): string {
+  let html = escapeHtml(text)
+  // Applied outward from the text, so the first mark in the list ends up
+  // innermost — the order ProseMirror stores them in.
+  for (const mark of marks ?? []) {
+    if (mark.type === 'link') {
+      const href = escapeHtml(mark.attrs?.href ?? '')
+      // `noopener` is not decoration: without it a link opened in a new tab can
+      // reach back through `window.opener` and navigate the article away.
+      html = `<a href="${href}" rel="nofollow noopener noreferrer">${html}</a>`
+      continue
+    }
+    const tag = MARK_TAGS[mark.type]
+    if (tag) html = `<${tag}>${html}</${tag}>`
+  }
+  return html
+}
+
+const BLOCK_TAGS: Record<string, string> = {
+  paragraph: 'p',
+  blockquote: 'blockquote',
+  bulletList: 'ul',
+  orderedList: 'ol',
+  listItem: 'li',
+  tableRow: 'tr',
+}
+
+function renderNode(node: DocNode, ctx: RenderContext): string {
+  if (node.type === 'text') return renderMarks(node.text ?? '', node.marks)
+  if (node.type === 'hardBreak') return '<br />'
+  if (node.type === 'horizontalRule') return '<hr />'
+
+  const children = (node.content ?? []).map((child) => renderNode(child, ctx)).join('')
+
+  if (node.type === 'heading') {
+    const level = Number(node.attrs?.level ?? MIN_HEADING_LEVEL)
+    // Assigned here, mid-render, so the outline can never disagree with the
+    // markup: one walk, one sequence of anchors, no second traversal to drift.
+    const text = docToPlainText(node)
+    const id = ctx.anchor(text)
+    ctx.outline.push({ level, text, id })
+    return `<h${level} id="${escapeHtml(id)}">${children}</h${level}>`
+  }
+
+  if (node.type === 'codeBlock') {
+    const language = node.attrs?.language
+    const attr = language ? ` class="language-${escapeHtml(String(language))}"` : ''
+    return `<pre><code${attr}>${children}</code></pre>`
+  }
+
+  if (node.type === 'table') {
+    // Wrapped, because a wide table is the one thing on an article page allowed
+    // to scroll sideways. Without the wrapper it widens the whole page on a
+    // phone, which is the device most readers arrive on.
+    return `<div class="article-table"><table><tbody>${children}</tbody></table></div>`
+  }
+
+  if (node.type === 'tableHeader' || node.type === 'tableCell') {
+    const tag = node.type === 'tableHeader' ? 'th' : 'td'
+    const spans = (['colspan', 'rowspan'] as const)
+      .map((key) => (node.attrs?.[key] ? ` ${key}="${Number(node.attrs[key])}"` : ''))
+      .join('')
+    return `<${tag}${spans}>${children}</${tag}>`
+  }
+
+  const tag = BLOCK_TAGS[node.type]
+  if (!tag) return children
+  // An empty paragraph is the author's blank line; dropping it would silently
+  // reflow their text.
+  if (tag === 'p' && children === '') return '<p></p>'
+  return `<${tag}>${children}</${tag}>`
+}
+
+/**
+ * Render a stored document to HTML, on the server.
+ *
+ * This is what keeps an article page near zero client JavaScript: the reader
+ * gets finished markup, not a document plus a renderer to run it through. The
+ * output is safe to hand to `innerHTML` because every string that reaches it
+ * has been through `escapeHtml`, and because the only attributes emitted are
+ * ones this function writes itself.
+ */
+export function renderDocument(doc: DocNode): RenderedDocument {
+  if (doc.type !== 'doc') return { html: '', outline: [] }
+  // A fresh assigner per document, never module state: SSR renders concurrent
+  // requests, and a shared set would hand one reader's article the anchors of
+  // another's.
+  const ctx: RenderContext = { anchor: createAnchors(), outline: [] }
+  const html = (doc.content ?? []).map((node) => renderNode(node, ctx)).join('')
+  return { html, outline: ctx.outline }
+}
+
+/**
+ * How many headings a document needs before a contents list earns its place.
+ *
+ * Three. Below that the list is longer than the reading it saves, and it would
+ * appear on the ordinary two-section article this site mostly carries.
+ */
+export const MIN_OUTLINE_HEADINGS = 3
+
+/**
+ * The contents list, as server-rendered markup.
+ *
+ * Written here rather than as a component on the article page, and that is the
+ * point rather than an optimisation: the reading view ships no JavaScript of
+ * its own, and a `<For>` over the outline would have been JavaScript of its
+ * own — about 0.3 KB against a budget with 0.6 KB left. Plain `<a href="#...">`
+ * uses the browser's own fragment navigation, so it also works for a reader
+ * whose bundle has not arrived, which on a slow connection is exactly the
+ * reader facing the longest document.
+ *
+ * The label is a parameter because this module is pure and knows nothing about
+ * locales; `articles.ts` passes the translated string.
+ *
+ * Safe for `innerHTML` on the same terms as the rest of this module: every tag
+ * here is written by this function, and the only text that reaches it is the
+ * heading text, escaped, plus ids this module generated from `slugify`.
+ */
+export function renderOutlineToHtml(outline: Array<OutlineEntry>, label: string): string {
+  if (outline.length < MIN_OUTLINE_HEADINGS) return ''
+  const items = outline
+    .map(
+      (entry) =>
+        `<li class="toc-l${entry.level}"><a href="#${escapeHtml(entry.id)}">${escapeHtml(entry.text)}</a></li>`,
+    )
+    .join('')
+  // A paragraph, not a heading: this list sits inside the article's prose, and
+  // an `<h2>` here would join the document's own outline and compete with the
+  // sections it is listing.
+  return `<nav class="article-toc" aria-label="${escapeHtml(label)}"><p class="article-toc-label">${escapeHtml(label)}</p><ol>${items}</ol></nav>`
+}
+
+/** The markup alone, for callers with no use for the outline. */
+export function renderDocumentToHtml(doc: DocNode): string {
+  return renderDocument(doc).html
+}
+
+/** An empty document, for a new translation. */
+export function emptyDocument(): DocNode {
+  return { type: 'doc', content: [{ type: 'paragraph', content: [] }] }
+}

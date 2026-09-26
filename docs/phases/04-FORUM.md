@@ -186,7 +186,7 @@ know.
 
 ## What phase 5 built
 
-`src/lib/forum.ts` is the rules and `src/lib/forum-actions.ts` the endpoints;
+`src/lib/forum/forum.ts` is the rules and `src/lib/forum/forum-actions.ts` the endpoints;
 `src/components/forum/` is the thread and the box people type into. It follows
 the plan above, with three things worth recording.
 

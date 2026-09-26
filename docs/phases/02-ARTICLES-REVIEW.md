@@ -91,7 +91,7 @@ Migration `drizzle/0006_articles.sql` creates all seven tables above. The four r
 tables are empty and nothing writes to them yet; they are there because a review trail
 that begins halfway through the archive is not a review trail.
 
-**The document format is a module, not a library.** `src/lib/prosemirror.ts` is pure —
+**The document format is a module, not a library.** `src/lib/articles/prosemirror.ts` is pure —
 no IO, no framework — and does three things: `parseDocument` validates an untrusted
 document against an allowlist of nodes and marks, `renderDocumentToHtml` turns a stored
 document into HTML, and `docToPlainText` backs the reading-time estimate. It is the
@@ -103,7 +103,7 @@ Two absences in the allowlist are decisions. There is **no image node** — ther
 upload path yet (D11), and an arbitrary `src` would let an article make every reader's
 browser fetch a URL somebody else controls, handing a third party a record of who read
 what. And there is no raw-HTML node, which is the hole the module exists to close.
-`src/lib/prosemirror.test.ts` asserts the properties rather than the implementation: a
+`src/lib/articles/prosemirror.test.ts` asserts the properties rather than the implementation: a
 `javascript:` link becomes plain text, a scheme hidden behind a control character is
 refused, markup in a document stays text, and a code block is only ever labelled with
 something shaped like a language name.
@@ -189,8 +189,8 @@ phase-2 tables safe to write to: the languages a submission covers, one live
 submission per article and one decision per submission, and one verdict per
 reviewer *per language*.
 
-The arithmetic lives in `src/lib/deliberation.ts` — pure, no IO, no framework —
-and the flow that uses it in `src/lib/article-review.ts`. That split is not
+The arithmetic lives in `src/lib/deliberation/deliberation.ts` — pure, no IO, no framework —
+and the flow that uses it in `src/lib/deliberation/article-review.ts`. That split is not
 tidiness. The screens need to show a senior member the same quorum the server
 enforces, and a route that reaches the server module drags `node:crypto` and the
 database into the browser bundle. It was caught by the app failing to hydrate at

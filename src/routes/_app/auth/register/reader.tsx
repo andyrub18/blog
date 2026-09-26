@@ -5,7 +5,7 @@ import LanguageSwitcher from '../../../../components/LanguageSwitcher'
 import { m } from '../../../../paraglide/messages'
 
 const ensureGuest = createServerFn({ method: 'GET' }).handler(async () => {
-  const { redirectIfAuthenticated } = await import('../../../../lib/session.server')
+  const { redirectIfAuthenticated } = await import('../../../../lib/auth/session.server')
 
   await redirectIfAuthenticated()
 })

@@ -2,7 +2,7 @@ import { createFileRoute, Outlet } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 
 const ensureGuest = createServerFn({ method: 'GET' }).handler(async () => {
-  const { redirectIfAuthenticated } = await import('../../../lib/session.server')
+  const { redirectIfAuthenticated } = await import('../../../lib/auth/session.server')
 
   await redirectIfAuthenticated()
 })

@@ -93,7 +93,7 @@ export const articleTranslation = pgTable(
      *
      * It diffs cleanly between review rounds, which is what the adversarial
      * stage needs, and it cannot carry script: anything outside the schema in
-     * `lib/prosemirror.ts` is dropped when the document is parsed, on the
+     * `lib/articles/prosemirror.ts` is dropped when the document is parsed, on the
      * server, before it is ever stored.
      */
     contentJson: jsonb('content_json').notNull(),

@@ -1,5 +1,5 @@
 import { createSignal, Show } from 'solid-js'
-import { resendVerificationEmail } from '../../lib/auth-actions'
+import { resendVerificationEmail } from '../../lib/auth/auth-actions'
 import { m } from '../../paraglide/messages'
 
 type ResendState = 'idle' | 'sending' | 'sent' | 'failed'

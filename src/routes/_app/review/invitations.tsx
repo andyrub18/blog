@@ -5,8 +5,8 @@ import {
   fetchInvitations,
   issueInvitationAction,
   revokeInvitationAction,
-} from '../../../lib/governance-actions'
-import { GOVERNANCE_ERROR_MESSAGE } from '../../../lib/governance-messages'
+} from '../../../lib/membership/governance-actions'
+import { GOVERNANCE_ERROR_MESSAGE } from '../../../lib/membership/governance-messages'
 import { m } from '../../../paraglide/messages'
 
 export const Route = createFileRoute('/_app/review/invitations')({

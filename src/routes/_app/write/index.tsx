@@ -2,12 +2,15 @@ import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/solid-r
 import { createSignal, For, Show } from 'solid-js'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import { LOCALE_LABELS, LOCALES } from '../../../i18n'
-import { createArticleAction, fetchMyArticles } from '../../../lib/article-actions'
-import { ARTICLE_ERROR_MESSAGE } from '../../../lib/article-messages'
+import {
+  createArticleAction,
+  fetchMyArticles,
+} from '../../../lib/articles/article-actions'
+import { ARTICLE_ERROR_MESSAGE } from '../../../lib/articles/article-messages'
 import {
   MIN_ARTICLE_SUMMARY_CHARS,
   MIN_ARTICLE_TITLE_CHARS,
-} from '../../../lib/validation'
+} from '../../../lib/shared/validation'
 import { m } from '../../../paraglide/messages'
 
 /**

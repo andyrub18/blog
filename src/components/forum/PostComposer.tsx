@@ -3,7 +3,7 @@ import {
   MAX_FORUM_POST_CHARS,
   MIN_FORUM_POST_CHARS,
   normalizeForumPost,
-} from '../../lib/validation'
+} from '../../lib/shared/validation'
 import { m } from '../../paraglide/messages'
 
 /**

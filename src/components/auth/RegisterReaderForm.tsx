@@ -1,13 +1,13 @@
 import { useRouteContext, useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
-import { signUpReader } from '../../lib/auth-actions'
-import { SIGN_UP_ERROR_MESSAGE } from '../../lib/auth-messages'
+import { signUpReader } from '../../lib/auth/auth-actions'
+import { SIGN_UP_ERROR_MESSAGE } from '../../lib/auth/auth-messages'
 import {
   isValidEmail,
   isValidEssay,
   isValidName,
   isValidPassword,
-} from '../../lib/validation'
+} from '../../lib/shared/validation'
 import { m } from '../../paraglide/messages'
 import Turnstile from './Turnstile'
 import VerifyEmailNotice from './VerifyEmailNotice'

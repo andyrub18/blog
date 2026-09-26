@@ -18,7 +18,7 @@ export const rateLimit = pgTable('rate_limit', {
  *
  * Sign-in and sign-up run through server functions that call `auth.api.*`
  * in-process, so they never touch `/api/auth/*` and Better Auth's limiter — or
- * its captcha plugin — never runs for them. This table backs `lib/rate-limit.ts`.
+ * its captcha plugin — never runs for them. This table backs `lib/shared/rate-limit.ts`.
  *
  * Kept in Postgres rather than in memory on purpose: an in-memory counter
  * resets on every deploy and is per-instance, so an attacker gets a fresh

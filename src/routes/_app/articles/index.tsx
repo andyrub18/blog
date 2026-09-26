@@ -2,7 +2,7 @@ import { createFileRoute, Link } from '@tanstack/solid-router'
 import { For, Show } from 'solid-js'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import { LOCALE_LABELS } from '../../../i18n'
-import { fetchArticleIndex } from '../../../lib/article-actions'
+import { fetchArticleIndex } from '../../../lib/articles/article-actions'
 import { m } from '../../../paraglide/messages'
 
 /**

@@ -1,7 +1,7 @@
 import { useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
-import { type ApplyErrorCode, applyForMembership } from '../../lib/auth-actions'
-import { MAX_PDF_BYTES, MIN_CONTRIBUTION_PLAN_CHARS } from '../../lib/validation'
+import { type ApplyErrorCode, applyForMembership } from '../../lib/auth/auth-actions'
+import { MAX_PDF_BYTES, MIN_CONTRIBUTION_PLAN_CHARS } from '../../lib/shared/validation'
 import { m } from '../../paraglide/messages'
 import ApplicationFiled from './ApplicationFiled'
 

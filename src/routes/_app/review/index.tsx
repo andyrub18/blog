@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { For, Show } from 'solid-js'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
-import { fetchReviewQueue } from '../../../lib/review-actions'
+import { fetchReviewQueue } from '../../../lib/membership/review-actions'
 import { m } from '../../../paraglide/messages'
 
 export const Route = createFileRoute('/_app/review/')({

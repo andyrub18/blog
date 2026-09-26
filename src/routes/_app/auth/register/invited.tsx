@@ -2,7 +2,7 @@ import { createFileRoute, Link } from '@tanstack/solid-router'
 import { Show } from 'solid-js'
 import RegisterInvitedForm from '../../../../components/auth/RegisterInvitedForm'
 import LanguageSwitcher from '../../../../components/LanguageSwitcher'
-import { inspectInvitation } from '../../../../lib/governance-actions'
+import { inspectInvitation } from '../../../../lib/membership/governance-actions'
 import { m } from '../../../../paraglide/messages'
 
 /**

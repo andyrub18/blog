@@ -1,5 +1,5 @@
 import handler from '@tanstack/solid-start/server-entry'
-import { assertCaptchaConfigured } from './lib/captcha'
+import { assertCaptchaConfigured } from './lib/auth/captcha'
 import { paraglideMiddleware } from './paraglide/server.js'
 
 // Fail at boot, not at the first signup. A silently disabled bot defence looks
