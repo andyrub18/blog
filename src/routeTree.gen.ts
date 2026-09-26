@@ -26,6 +26,7 @@ import { Route as AppReviewPromotionsRouteImport } from './routes/_app/review/pr
 import { Route as AppWriteIndexRouteImport } from './routes/_app/write/index'
 import { Route as AppWriteArticleIdRouteImport } from './routes/_app/write/$articleId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiCompanionSplatRouteImport } from './routes/api/companion/$'
 import { Route as ApiDossierSplatRouteImport } from './routes/api/dossier/$'
 import { Route as AppArticlesSlugDiscussionRouteImport } from './routes/_app/articles/$slug_/discussion'
 import { Route as AppAuthRegisterIndexRouteImport } from './routes/_app/auth/register/index'
@@ -119,6 +120,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCompanionSplatRoute = ApiCompanionSplatRouteImport.update({
+  id: '/api/companion/$',
+  path: '/api/companion/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDossierSplatRoute = ApiDossierSplatRouteImport.update({
   id: '/api/dossier/$',
   path: '/api/dossier/$',
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/review/promotions': typeof AppReviewPromotionsRoute
   '/write/$articleId': typeof AppWriteArticleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/companion/$': typeof ApiCompanionSplatRoute
   '/api/dossier/$': typeof ApiDossierSplatRoute
   '/articles/': typeof AppArticlesIndexRoute
   '/review/': typeof AppReviewIndexRoute
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/review/promotions': typeof AppReviewPromotionsRoute
   '/write/$articleId': typeof AppWriteArticleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/companion/$': typeof ApiCompanionSplatRoute
   '/api/dossier/$': typeof ApiDossierSplatRoute
   '/articles': typeof AppArticlesIndexRoute
   '/review': typeof AppReviewIndexRoute
@@ -229,6 +237,7 @@ export interface FileRoutesById {
   '/_app/review/promotions': typeof AppReviewPromotionsRoute
   '/_app/write/$articleId': typeof AppWriteArticleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/companion/$': typeof ApiCompanionSplatRoute
   '/api/dossier/$': typeof ApiDossierSplatRoute
   '/_app/articles/': typeof AppArticlesIndexRoute
   '/_app/review/': typeof AppReviewIndexRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
     | '/review/promotions'
     | '/write/$articleId'
     | '/api/auth/$'
+    | '/api/companion/$'
     | '/api/dossier/$'
     | '/articles/'
     | '/review/'
@@ -282,6 +292,7 @@ export interface FileRouteTypes {
     | '/review/promotions'
     | '/write/$articleId'
     | '/api/auth/$'
+    | '/api/companion/$'
     | '/api/dossier/$'
     | '/articles'
     | '/review'
@@ -309,6 +320,7 @@ export interface FileRouteTypes {
     | '/_app/review/promotions'
     | '/_app/write/$articleId'
     | '/api/auth/$'
+    | '/api/companion/$'
     | '/api/dossier/$'
     | '/_app/articles/'
     | '/_app/review/'
@@ -325,6 +337,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiCompanionSplatRoute: typeof ApiCompanionSplatRoute
   ApiDossierSplatRoute: typeof ApiDossierSplatRoute
 }
 
@@ -447,6 +460,13 @@ declare module '@tanstack/solid-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/companion/$': {
+      id: '/api/companion/$'
+      path: '/api/companion/$'
+      fullPath: '/api/companion/$'
+      preLoaderRoute: typeof ApiCompanionSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/dossier/$': {
@@ -573,6 +593,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiCompanionSplatRoute: ApiCompanionSplatRoute,
   ApiDossierSplatRoute: ApiDossierSplatRoute,
 }
 export const routeTree = rootRouteImport

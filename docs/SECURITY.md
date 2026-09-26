@@ -71,7 +71,9 @@ forget — a legitimate senior member account that has been compromised or turne
    webroot with no serving route — the right default, but it will not survive a redeploy on
    cloud hosting. Move to S3-compatible object storage, private ACL, random UUID keys never
    derived from user input, access only through short-lived signed URLs minted for an
-   authorised senior member.
+   authorised senior member. Companion PDFs (D26) live under the same `./uploads` and
+   need the same move — public objects, but still written only through `companion.ts`,
+   which alone decides whether one is current.
 9. **Application-level encryption for the sensitive columns.** Provider disk encryption
    protects against a stolen drive; it does nothing against a leaked database dump, a SQL
    injection, or an over-broad backup. Envelope-encrypt the essays and dossier file keys
@@ -116,7 +118,10 @@ forget — a legitimate senior member account that has been compromised or turne
     against the HaveIBeenPwned k-anonymity range API — it never sends the password or its
     full hash, and it stops credential-stuffing at the source. Offer passkeys.
 21. **CSRF:** Better Auth covers its own endpoints; verify origin on our server functions.
-22. Optional but advisable: ClamAV scan on uploaded PDFs and DOCX files.
+22. Optional but advisable: ClamAV scan on uploaded PDFs and DOCX files. Companion PDFs
+    are the case where it matters most, because they are the one upload served to the
+    public; `lib/pdf.ts` refuses active content but parses with a library that is no
+    longer maintained (D26).
 
 ## P4 — Operations
 

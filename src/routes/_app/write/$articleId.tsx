@@ -11,6 +11,7 @@ import { createSignal, For, Show } from 'solid-js'
 import ArticleEditor, {
   type EditorHandle,
 } from '../../../components/editor/ArticleEditor'
+import CompanionPanel from '../../../components/editor/CompanionPanel'
 import ImportPanel from '../../../components/editor/ImportPanel'
 import SubmitPanel from '../../../components/editor/SubmitPanel'
 import { isLocale, LOCALE_LABELS, type Locale } from '../../../i18n'
@@ -119,6 +120,9 @@ function Editing(props: EditingProps) {
   const [savedAt, setSavedAt] = createSignal<string | null>(null)
   const [busy, setBusy] = createSignal<'save' | 'publish' | null>(null)
   const [error, setError] = createSignal('')
+  // Counts stored text changes, so the companion panel can re-check whether its
+  // PDF still matches: every save and every import writes a new revision.
+  const [textVersion, setTextVersion] = createSignal(0)
 
   async function save() {
     setBusy('save')
@@ -139,6 +143,7 @@ function Editing(props: EditingProps) {
       }
       setSavedAt(new Date(result.value.savedAt).toLocaleTimeString())
       setDirty(false)
+      setTextVersion((n) => n + 1)
       await props.onChanged()
     } catch {
       setError(m.write_errors_unexpected())
@@ -297,6 +302,7 @@ function Editing(props: EditingProps) {
           // marker the replacement itself sets.
           editor?.replace(imported)
           setDirty(false)
+          setTextVersion((n) => n + 1)
           await props.onChanged()
         }}
       />
@@ -313,6 +319,18 @@ function Editing(props: EditingProps) {
         ].sort()}
         rounds={props.rounds}
         onSubmitted={props.onChanged}
+      />
+
+      {/*
+       * Last, because it is made from the finished text: a companion attached
+       * before the final save is retired by that save.
+       */}
+      <CompanionPanel
+        articleId={props.article.articleId}
+        lang={props.article.lang}
+        published={props.article.translationStatus === 'published'}
+        dirty={dirty()}
+        textVersion={textVersion()}
       />
 
       <Show when={props.article.otherLangs.length > 0}>

@@ -24,14 +24,14 @@ must have before that page is interactive.
 | Page | Client JS, gzipped |
 |---|---|
 | Shared entry, on every page | **94.7 KB** |
-| `/articles/{slug}` — the reading view | **98.9 KB** |
-| `/articles` | 97.1 KB |
+| `/articles/{slug}` — the reading view | **99.0 KB** |
+| `/articles` | 97.2 KB |
 | `/` — the home page | 97.8 KB |
-| `/articles/{slug}/discussion` — the forum | 103.7 KB (opened from an article) |
-| `/write/{id}` — the editor, before TipTap loads | 113.4 KB (author screen) |
+| `/articles/{slug}/discussion` — the forum | 103.8 KB (opened from an article) |
+| `/write/{id}` — the editor, before TipTap loads | 118.7 KB (author screen) |
 | TipTap itself, fetched only when the editor mounts | +126 KB, in two chunks |
 
-**The budget is met, with 1.1 KB of headroom.** It was not, for three phases:
+**The budget is met, with 1.0 KB of headroom.** It was not, for three phases:
 the reading view peaked at 103.8 KB after phase 3. Two things fixed it, and a
 third gave 0.5 KB back afterwards — see the trend below.
 
@@ -111,6 +111,15 @@ minimal hydration there, and spend interactivity on the forum and the editor.
 | **4 · Import** | DOCX pipeline | **Done** — `phases/03-DOCUMENT-IMPORT.md` |
 | **5 · Forum** | Threads on articles, moderated after the fact | **Done** — `phases/04-FORUM.md` |
 | **6 · `en` + `es`** | Two more languages for the diaspora — interface and articles alike — and the fallback experience | **Done** — `phases/05-LOCALES.md` |
+
+After the phases:
+
+| Work | Scope | Status |
+|---|---|---|
+| Long-form reading | Heading anchors and a contents list | **Done** — D24 |
+| Companion PDF | The author's typeset PDF beside an article, cleaned, and retired when the text changes | **Done** — D26 |
+| Deployment gate | The three P0s below | **Next** |
+| Interface review | The whole organisation gives its opinion on the UI, then it is revised | After the deployment gate |
 
 Phase 1 comes before articles because the role rename is cheap now and expensive
 once articles exist and carry authorship.

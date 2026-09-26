@@ -24,6 +24,27 @@ export const MIN_ACCOUNT_AGE_YEARS = 13
 
 export const MAX_PDF_BYTES = 5 * 1024 * 1024
 
+/**
+ * The ceiling on a companion PDF (D24, D26).
+ *
+ * Larger than an application PDF because this is a typeset book-length
+ * document, possibly with figures, and the reader chooses to download it with
+ * its size printed next to the link. Not larger than this because the file is
+ * parsed and rewritten in memory on upload.
+ */
+export const MAX_COMPANION_BYTES = 20 * 1024 * 1024
+
+/**
+ * Megabytes, to one decimal, in the reader's number format — never "0".
+ *
+ * Here rather than beside the reading view because the author's editor shows
+ * the same number, and a reader told "1,3 Mo" should see what the author saw.
+ */
+export function formatMegabytes(bytes: number, locale: string): string {
+  const megabytes = Math.max(bytes / (1024 * 1024), 0.1)
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(megabytes)
+}
+
 export function isValidEmail(value: string): boolean {
   return EMAIL_RE.test(value.trim().toLowerCase())
 }

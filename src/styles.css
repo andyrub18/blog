@@ -226,3 +226,18 @@ body {
 .article-prose .ProseMirror td {
   position: relative;
 }
+
+/*
+ * The companion PDF link (D26). Quiet on purpose: it is the second way to read
+ * the article, not the first, and it sits above the contents list where a
+ * reader deciding whether to take the whole thing offline will see it.
+ */
+.article-prose .article-companion {
+  margin: 0 0 1.25rem;
+  font-size: 0.875rem;
+  color: #525252;
+}
+.article-prose .article-companion a {
+  font-weight: 600;
+  color: #00209f;
+}
