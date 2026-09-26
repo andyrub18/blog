@@ -271,6 +271,16 @@ of the thing that carries them (D23). The same shift is why `src/test/setup.ts`
 pins the locale — jsdom reports `en-US`, and without the pin every component test
 asserting a French string fails.
 
+**`/api/*` is outside locale routing — keep it that way, and test it by
+navigating.** Paraglide redirects any unprefixed *page navigation* to a
+localized path, and `/api/...` has no localized form: until `routeStrategies`
+excluded it, clicking the link in a verification email opened a 404, and so did
+a reviewer's dossier download (D28). A fetch is never redirected, so a test that
+fetches an API route proves nothing about a link to it. A new route under
+`/api` is covered by the exclusion; a new route that serves a person a file or a
+redirect from anywhere else needs the same treatment, and a test that
+`page.goto`s it.
+
 **Dates of birth are compared in UTC.** An `<input type="date">` value parses as
 UTC midnight; reading it with local getters shifts it a day in any timezone
 behind UTC, Haiti included, and silently changes a computed age.

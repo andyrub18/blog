@@ -117,9 +117,9 @@ site root and wrong for a link inside a message we wrote.
 ## What was not done
 
 **The verification email's callback.** Better Auth builds that URL, and its
-landing page is reached unprefixed. The same reasoning applies, but overriding
-Better Auth's callback is a change to the auth flow, not to the locale registry,
-and it belongs with the P0 that retires the mock Google path.
+landing page was reached unprefixed. Deferred to the P0 that retired the mock
+Google path, and done there: `sendVerification` in `auth-actions.ts` now passes
+a localized `callbackURL` (D23, D27).
 
 **Seeded or written content in English or Spanish.** Possible from the first
 day — the editor, the importer and the review flow all offer all four languages —

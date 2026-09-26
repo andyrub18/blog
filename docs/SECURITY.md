@@ -58,8 +58,8 @@ forget — a legitimate senior member account that has been compromised or turne
    cheap, auto-approved after email verification, and it grants forum access,
    so fake accounts are both easy to make and useful to an adversary.
 4. **Fix the orphaned-account bug** in `signUpMember` (see `phases/01-ENROLLMENT.md`).
-5. **Remove the mock Google path before launch.** `mockGoogleSignIn` returning
-   `NOT_IMPLEMENTED` is safe today; a half-finished OAuth path shipped to production is not.
+5. ~~**Remove the mock Google path before launch.**~~ Done (D27). There is no social
+   sign-in; an account is an email and a password, and nothing else authenticates.
 6. **Cookies and transport:** HTTPS only, HSTS, session cookie `httpOnly` + `secure` +
    `sameSite=lax`. The `lang` cookie is deliberately readable and that is fine.
 7. **Secrets:** `.env.local` and `uploads/` are correctly gitignored today — keep it that

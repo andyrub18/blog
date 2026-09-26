@@ -23,12 +23,12 @@ must have before that page is interactive.
 
 | Page | Client JS, gzipped |
 |---|---|
-| Shared entry, on every page | **94.7 KB** |
+| Shared entry, on every page | **94.8 KB** |
 | `/articles/{slug}` — the reading view | **99.0 KB** |
 | `/articles` | 97.2 KB |
 | `/` — the home page | 97.8 KB |
-| `/articles/{slug}/discussion` — the forum | 103.8 KB (opened from an article) |
-| `/write/{id}` — the editor, before TipTap loads | 118.7 KB (author screen) |
+| `/articles/{slug}/discussion` — the forum | 103.9 KB (opened from an article) |
+| `/write/{id}` — the editor, before TipTap loads | 118.8 KB (author screen) |
 | TipTap itself, fetched only when the editor mounts | +126 KB, in two chunks |
 
 **The budget is met, with 1.0 KB of headroom.** It was not, for three phases:
@@ -118,7 +118,7 @@ After the phases:
 |---|---|---|
 | Long-form reading | Heading anchors and a contents list | **Done** — D24 |
 | Companion PDF | The author's typeset PDF beside an article, cleaned, and retired when the text changes | **Done** — D26 |
-| Deployment gate | The three P0s below | **Next** |
+| Deployment gate | The three P0s below | **In progress** — mock Google sign-in retired (D27) |
 | Interface review | The whole organisation gives its opinion on the UI, then it is revised | After the deployment gate |
 
 Phase 1 comes before articles because the role rename is cheap now and expensive
@@ -148,7 +148,7 @@ From `SECURITY.md`, in order:
 2. **Turnstile keys** in the deployment environment. The code refuses to start
    without them in production, which is the intent, but it does mean the deploy
    fails until they are set.
-3. **Retire the mock Google sign-in path.**
+3. ~~**Retire the mock Google sign-in path.**~~ Done — there is no social sign-in (D27).
 
 None of these blocks development. In development the mailer prints to the console
 and the captcha is skipped; `ALLOW_INSECURE_LOCAL=true` covers a local production

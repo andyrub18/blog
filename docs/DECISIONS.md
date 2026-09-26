@@ -333,9 +333,9 @@ carries them. The general rule: **an unprefixed URL is a decision, not a
 default.** Before emitting one, ask whether the language should follow the
 reader's browser or the message it came in.
 
-Not yet applied to the email-verification callback, which Better Auth builds;
-that is an auth-flow change and belongs with the P0 that retires the mock Google
-sign-in path.
+The email-verification callback, which Better Auth builds, followed with the P0
+that retired the mock Google sign-in (D27): `sendVerification` in
+`auth-actions.ts` passes a `callbackURL` localized with the email's locale.
 
 ## D24 — Long-form work is an article, not a PDF
 
@@ -527,3 +527,65 @@ article HTML, like the contents list, so the reading view ships no new
 component. The 0.1 KB is the new API route's entry in the route tree. The
 author's `/write` page grew 5.3 KB, most of it 34 messages in four languages,
 on a screen the budget exempts.
+
+## D27 — No social sign-in
+
+The login page carried a "Continue with Google" button from the original
+scaffold. It was never wired: `mockGoogleSignIn` returned `NOT_IMPLEMENTED` and
+the button waited 400 ms and said Google sign-in was coming soon. It is removed,
+along with the server function and its messages, rather than finished.
+
+**The reason is the enrollment.** An account on this platform is not a
+convenience login; it is the thing the movement's admission process is attached
+to. A reader registers with a name, an email, a birth year and an essay, and
+verifies the address; a member is admitted on a dossier and a human decision.
+A one-click identity from an outside provider fits none of that — it would be a
+second door into accounts whose whole point is that there is one, deliberately
+narrow, way in. That is KLEA's call, made here.
+
+It also happens to be the safer arrangement for this threat model: a social
+login would put a record of who holds a KLEA account with a third party, and
+tie each member's access to an account the movement does not control. That is a
+consequence, not the reason.
+
+Removing the button also retired the `info` slot on the login form, which only
+ever showed "coming soon".
+
+The same change finished what D23 deferred to it: the verification email's
+link now lands in the email's language. Better Auth's link verifies at
+`/api/auth/verify-email` and then redirects to `callbackURL`, which defaulted to
+an unprefixed `/` — so the page after verifying came up in the browser's
+preferred language, not the email's. `sendVerification` in `auth-actions.ts` is
+now the single way the mail is sent, and passes a localized callback.
+
+## D28 — `/api/*` is outside locale routing, and is tested by navigating
+
+Found while checking D27's change by hand, not by any test: **no one could verify
+an email address by clicking the link in the verification email.** The link
+opened a 404.
+
+Paraglide's middleware, with the `url` strategy first, redirects a *page
+navigation* (`Sec-Fetch-Dest: document`) whose path has no locale prefix to the
+prefixed form. It applied that to API routes like any other path:
+`/api/auth/verify-email?token=…` was answered with a 307 to
+`/fr/api/auth/verify-email?token=…` — or `/ht/`, `/en/`, by cookie or browser —
+which does not exist. The same redirect broke a reviewer's click on a dossier
+download (those links are plain navigations) and anyone opening a companion
+PDF's URL directly. Clicking the PDF link on an article was spared only because
+it carries `download`, which browsers do not send as a page navigation.
+
+It stayed hidden for two reasons, both worth keeping in mind:
+
+- **Every test fetched these URLs; none navigated to them.** The middleware
+  never redirects a fetch. The companion e2e downloaded the PDF with
+  `page.request.get` and passed while the same URL, opened in a tab, 404'd.
+- **No verification email had actually been delivered.** The development Resend
+  key was set with a sender on an unverified domain, so every send failed
+  before anyone could click anything.
+
+The fix is Paraglide's own: `routeStrategies: [{ match: '/api/:path(.*)?',
+exclude: true }]` in `paraglide-options.ts`. Excluded routes still run inside a
+locale scope, pinned to the base locale; nothing under `/api` renders text for a
+person, and the verification email is sent from a server function, which keeps
+the request's real locale. `e2e/api-routes.spec.ts` navigates to each API route
+with a locale cookie set, and fails without the exclusion.

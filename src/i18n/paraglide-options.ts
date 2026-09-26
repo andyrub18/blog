@@ -33,6 +33,27 @@ export const paraglideOptions: ParaglideVitePluginOptions = {
    * French the implicit default in the URL. For a bilingual Haitian movement
    * neither language should be the one without a name.
    */
+  /**
+   * `/api/*` is not a page and has no localized form, so it is left alone.
+   *
+   * Without this, the `url` strategy treated every unprefixed path the same way:
+   * a browser *navigating* to `/api/auth/verify-email?token=…` — which is what
+   * clicking the link in a verification email is — was redirected with a 307 to
+   * `/fr/api/auth/verify-email`, which does not exist. Nobody could verify an
+   * address by clicking the link they were sent, a reviewer clicking a dossier
+   * download got a 404, and so did anyone opening a companion PDF's URL in a tab
+   * or from a forwarded link. (Clicking the PDF link on the article was spared
+   * only because it carries `download`, which a browser does not send as a page
+   * navigation.) A `fetch` is never redirected — the middleware only redirects
+   * `Sec-Fetch-Dest: document` — which is why every test that fetched these
+   * URLs passed. `e2e/api-routes.spec.ts` navigates instead.
+   *
+   * Excluded routes still run inside a locale scope, pinned to the base locale.
+   * Nothing under `/api` renders a message to a person: the verification email
+   * is sent from a server function, which keeps the request's real locale.
+   */
+  routeStrategies: [{ match: '/api/:path(.*)?', exclude: true }],
+
   urlPatterns: [
     {
       pattern: ':protocol://:domain(.*)::port?/:path(.*)?',

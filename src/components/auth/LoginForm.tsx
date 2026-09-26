@@ -16,8 +16,6 @@ export default function LoginForm() {
 
   const [submitting, setSubmitting] = createSignal(false)
   const [serverError, setServerError] = createSignal<string | null>(null)
-  const [googleLoading, setGoogleLoading] = createSignal(false)
-  const [info, setInfo] = createSignal<string | null>(null)
   const [errors, setErrors] = createSignal<FieldErrors>({})
   /**
    * The address of an account that exists but has never been verified.
@@ -54,7 +52,6 @@ export default function LoginForm() {
     const fd = new FormData(form)
     setSubmitting(true)
     setServerError(null)
-    setInfo(null)
     setUnverified(null)
     try {
       const result = await signInWithPassword({
@@ -80,15 +77,6 @@ export default function LoginForm() {
     }
   }
 
-  function onGoogleClick() {
-    setServerError(null)
-    setGoogleLoading(true)
-    setTimeout(() => {
-      setGoogleLoading(false)
-      setInfo(m.auth_login_googleSoon())
-    }, 400)
-  }
-
   return (
     <form
       class="flex flex-col gap-4"
@@ -96,24 +84,6 @@ export default function LoginForm() {
       novalidate
       aria-describedby="login-status"
     >
-      <button
-        type="button"
-        onClick={onGoogleClick}
-        disabled={googleLoading()}
-        class="flex h-11 items-center justify-center gap-3 rounded-md border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-800 transition-colors hover:bg-neutral-50 disabled:opacity-60"
-      >
-        <GoogleIcon />
-        <span>
-          {googleLoading() ? m.auth_login_submitting() : m.auth_login_googleContinue()}
-        </span>
-      </button>
-
-      <div class="flex items-center gap-3 text-xs uppercase tracking-wider text-neutral-500">
-        <div class="h-px flex-1 bg-neutral-200" />
-        <span>{m.auth_login_separator()}</span>
-        <div class="h-px flex-1 bg-neutral-200" />
-      </div>
-
       <label class="flex flex-col gap-1 text-sm">
         <span class="font-medium text-neutral-800">{m.auth_login_email()}</span>
         <input
@@ -158,24 +128,10 @@ export default function LoginForm() {
         <Show when={serverError()}>
           {(message) => <p class="text-[#D21034]">{message()}</p>}
         </Show>
-        <Show when={info()}>
-          {(message) => <p class="text-neutral-600">{message()}</p>}
-        </Show>
         <Show when={unverified()}>
           {(email) => <ResendVerification email={email()} />}
         </Show>
       </div>
     </form>
-  )
-}
-
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" class="shrink-0">
-      <path
-        fill="#EA4335"
-        d="M12 10.2v3.9h5.5c-.24 1.4-1.66 4.1-5.5 4.1-3.31 0-6-2.74-6-6.2s2.69-6.2 6-6.2c1.88 0 3.14.8 3.86 1.49l2.63-2.54C16.83 3.13 14.62 2.2 12 2.2 6.95 2.2 2.86 6.29 2.86 12s4.09 9.8 9.14 9.8c5.27 0 8.76-3.7 8.76-8.92 0-.6-.07-1.06-.16-1.52H12z"
-      />
-    </svg>
   )
 }

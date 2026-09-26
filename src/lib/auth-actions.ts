@@ -495,12 +495,6 @@ export const signOut = createServerFn({ method: 'POST' }).handler(
   },
 )
 
-export const mockGoogleSignIn = createServerFn({ method: 'POST' }).handler(
-  async (): Promise<{ ok: false; code: 'NOT_IMPLEMENTED' }> => {
-    return { ok: false, code: 'NOT_IMPLEMENTED' }
-  },
-)
-
 export const resendVerificationEmail = createServerFn({ method: 'POST' })
   .inputValidator((data: { email: string }) => {
     const email = (data?.email ?? '').trim().toLowerCase()
@@ -512,20 +506,39 @@ export const resendVerificationEmail = createServerFn({ method: 'POST' })
     const gate = await guard({ action: 'resendVerification' })
     if (!gate.ok) return { ok: false }
 
-    const [{ getRequest }, { auth }] = await Promise.all([
-      import('@tanstack/solid-start/server'),
-      import('./auth'),
-    ])
     try {
-      await auth.api.sendVerificationEmail({
-        body: { email: data.email },
-        headers: getRequest().headers,
-      })
+      await sendVerification(data.email)
       return { ok: true }
     } catch {
       return { ok: false }
     }
   })
+
+/**
+ * Send the verification email, with a link that lands in the email's language.
+ *
+ * Better Auth's link goes to `/api/auth/verify-email`, which verifies and then
+ * redirects to `callbackURL`. Left to its default that is `/`, unprefixed, so
+ * the page after verifying came up in whatever language the browser preferred
+ * — a Creole email opening an English site. The callback is localized with the
+ * same locale `sendVerificationEmail` in `auth.ts` renders the email in: both
+ * read the request scope (D23).
+ *
+ * The one way both send sites go through, so a third cannot forget it.
+ */
+async function sendVerification(email: string): Promise<void> {
+  const [{ getRequest }, { auth }, { resolveRequestLocale }, { localizeHref }] =
+    await Promise.all([
+      import('@tanstack/solid-start/server'),
+      import('./auth'),
+      import('./email/locale'),
+      import('../paraglide/runtime'),
+    ])
+  await auth.api.sendVerificationEmail({
+    body: { email, callbackURL: localizeHref('/', { locale: resolveRequestLocale() }) },
+    headers: getRequest().headers,
+  })
+}
 
 /**
  * Undo a member signup whose application could not be stored.
@@ -587,10 +600,7 @@ async function runSignUp(input: {
      */
     let verificationSent = true
     try {
-      await auth.api.sendVerificationEmail({
-        body: { email: input.email },
-        headers: getRequest().headers,
-      })
+      await sendVerification(input.email)
     } catch {
       verificationSent = false
     }
