@@ -5,7 +5,7 @@ Why decisions were made is in `DECISIONS.md`. What each phase contains is in
 
 ## The constraint: first-load weight
 
-Readers arrive on slow, metered Haitian mobile data. Someone hears about KLE,
+Readers arrive on slow, metered Haitian mobile data. Someone hears about KLEA,
 opens the site, and waits — that is the failure this project cannot afford.
 
 **Budget: under 100 KB gzipped of client JavaScript for an article page.**

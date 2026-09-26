@@ -23,7 +23,7 @@ import { user } from './auth'
  *
  * A binary approve/reject button would make this Medium with extra steps.
  * Building the documented submission, the assigned contradictors, the synthesis
- * and the qualified majority is the reason KLE needs its own platform.
+ * and the qualified majority is the reason KLEA needs its own platform.
  */
 
 export const SUBMISSION_STATUSES = ['open', 'in_review', 'decided', 'withdrawn'] as const

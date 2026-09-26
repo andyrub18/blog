@@ -33,7 +33,7 @@ import {
  * A documented submission, named members assigned to argue against it, verdicts
  * with written reasons, and an outcome the arithmetic decides rather than
  * whoever happens to be chairing. A binary approve/reject button would make this
- * Medium with extra steps; building *this* is the reason KLE needs its own
+ * Medium with extra steps; building *this* is the reason KLEA needs its own
  * platform.
  *
  * The arithmetic at the top is pure and tested on its own, the same way

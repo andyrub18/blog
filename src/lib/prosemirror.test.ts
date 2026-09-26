@@ -114,9 +114,9 @@ describe('parseDocument', () => {
 describe('link safety', () => {
   it('accepts the schemes an article legitimately links to', () => {
     for (const href of [
-      'https://kle.ht/manifeste',
+      'https://kleayiti.com/manifeste',
       'http://example.ht',
-      'mailto:kontak@kle.ht',
+      'mailto:kontak@kleayiti.com',
       '/articles/sitiyasyon-ekonomik',
       '#notes',
     ]) {
@@ -155,10 +155,10 @@ describe('link safety', () => {
 
   it('renders a safe link with rel attributes that cannot be overridden', () => {
     const html = render(
-      doc(para(text('manifeste', [{ type: 'link', attrs: { href: 'https://kle.ht' } }]))),
+      doc(para(text('manifeste', [{ type: 'link', attrs: { href: 'https://kleayiti.com' } }]))),
     )
     expect(html).toBe(
-      '<p><a href="https://kle.ht" rel="nofollow noopener noreferrer">manifeste</a></p>',
+      '<p><a href="https://kleayiti.com" rel="nofollow noopener noreferrer">manifeste</a></p>',
     )
   })
 

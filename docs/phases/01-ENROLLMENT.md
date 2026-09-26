@@ -180,7 +180,7 @@ The manifesto's six months apply to every member by the same rule.
 
 **Kept — the audit record.** `role_change` records the sponsor. If a sponsored member
 later turns out to be a problem, the movement can see who vouched and when. The manifesto
-commits KLE to *reddition de comptes*, and an invitation route with no trail is exactly
+commits KLEA to *reddition de comptes*, and an invitation route with no trail is exactly
 where that commitment would quietly fail.
 
 So: fewer forms, the same standards, and one named person accountable for the judgement.
@@ -244,5 +244,5 @@ access_event      (id, actor_id, resource_type, resource_id, action, ip, created
 
 `access_event` must record **every dossier file download**. That is how an insider leak is
 detected, and it is the only honest way to promise members that their CV is not being
-passed around. The manifesto commits KLE to *transparence totale* and *reddition de
+passed around. The manifesto commits KLEA to *transparence totale* and *reddition de
 comptes*; this table is that commitment in code.

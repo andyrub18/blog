@@ -4,22 +4,22 @@ export const DEMO_PASSWORD = 'demo-password-123'
 
 export const ACCOUNTS = {
   /** Senior member — reviews applications. */
-  senior: 'senior@kle.test',
+  senior: 'senior@kleayiti.test',
   /** Reader with no application; used by tests that only read the UI. */
-  reader: 'reader@kle.test',
+  reader: 'reader@kleayiti.test',
   /** Reader with a pending application, seeded; the reviewer tests decide it. */
-  applicant: 'applicant@kle.test',
+  applicant: 'applicant@kleayiti.test',
   /** Reader used by the test that actually submits an application. */
-  newcomer: 'newcomer@kle.test',
+  newcomer: 'newcomer@kleayiti.test',
   /** Member admitted seven months ago; their probation is due for a decision. */
-  probationer: 'probationer@kle.test',
+  probationer: 'probationer@kleayiti.test',
   /** Two more senior members, so three approvals — the floor — are reachable. */
-  senior2: 'senior2@kle.test',
-  senior3: 'senior3@kle.test',
+  senior2: 'senior2@kleayiti.test',
+  senior3: 'senior3@kleayiti.test',
   /** Member past their probation: the only kind who may be nominated. */
-  confirmed: 'confirmed@kle.test',
+  confirmed: 'confirmed@kleayiti.test',
   /** Reserved for the blocking test, so it does not lock another test out. */
-  blockable: 'blockable@kle.test',
+  blockable: 'blockable@kleayiti.test',
 } as const
 
 /**

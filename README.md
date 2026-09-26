@@ -1,6 +1,6 @@
-# KLE
+# KLEA
 
-Publishing platform for **KLE — *Konbit libète ak egalite***, a Haitian civic
+Publishing platform for **KLEA — *Konbit pou Libète ak Egalite an Ayiti***, a Haitian civic
 movement. Members propose articles, senior members review them through the
 movement's own deliberation process, and readers discuss them in a forum.
 

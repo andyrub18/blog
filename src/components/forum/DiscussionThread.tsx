@@ -17,7 +17,7 @@ import PostComposer from './PostComposer'
 /**
  * The live thread.
  *
- * Polling, not WebSockets — the roadmap's standing rule, and at KLE's scale a
+ * Polling, not WebSockets — the roadmap's standing rule, and at KLEA's scale a
  * request every fifteen seconds is cheaper to run and far cheaper to deploy
  * than a socket layer. What it must not be is cheap for us and expensive for
  * the reader, so the loop here is written around a metered connection:

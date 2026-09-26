@@ -88,7 +88,7 @@ test('a senior member issues an invitation and is shown the link once', async ({
   await page.goto('/fr/review/invitations')
   await waitForInteractive(page)
 
-  const address = `invite-${Date.now()}@kle.test`
+  const address = `invite-${Date.now()}@kleayiti.test`
   await page.locator('[name="email"]').fill(address)
   await page.locator('[name="note"]').fill(REASON)
   await page.getByRole('button', { name: /Émettre l'invitation/i }).click()
@@ -121,7 +121,7 @@ test('a senior member issues an invitation and is shown the link once', async ({
   await invited
     .locator('[name="essay"]')
     .fill(
-      'Je lis KLE depuis plusieurs mois et je veux participer au Cercle Economie, ' +
+      'Je lis KLEA depuis plusieurs mois et je veux participer au Cercle Economie, ' +
         'ou je pense pouvoir apporter une lecture chiffree des projets publics ' +
         'et aider a documenter ce qui est reellement finance.',
     )

@@ -68,7 +68,7 @@ test('a members-only article has no discussion for an anonymous reader', async (
 /**
  * Posting runs on the phone as well as the desktop, and that is deliberate.
  *
- * Most of KLE's readers arrive on a phone, so the composer on a narrow screen
+ * Most of KLEA's readers arrive on a phone, so the composer on a narrow screen
  * is the case that matters most, not a variant of the real one. It costs a
  * second sign-in per run, which is well inside the per-IP limit — that limit is
  * loose on purpose, because one Haitian address is routinely one cybercafé, and

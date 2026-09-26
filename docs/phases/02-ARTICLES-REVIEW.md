@@ -13,7 +13,7 @@ the first article does. Retrofitting a review process onto published content is 
 ## The point
 
 A binary approve/reject button would make this Medium with extra steps. The manifesto
-specifies a four-stage process, and building *that* is the reason KLE needs its own
+specifies a four-stage process, and building *that* is the reason KLEA needs its own
 platform instead of a Substack:
 
 1. **Documented submission** — a proposal must state the diagnosis, the solutions
@@ -231,7 +231,7 @@ accepted it. Withdrawing one stays a single editorial act, because a correction
 that needs three people and a week is a correction nobody makes; putting it back
 means another round.
 
-### One threshold KLE should confirm
+### One threshold KLEA should confirm
 
 The manifesto sets the quorum for the deliberation as a whole. It does not say
 what **one language** of a multilingual article needs on its own, and the
@@ -245,7 +245,7 @@ rejected because it would make a Creole translation unpublishable whenever only
 two of the assigned reviewers read Creole — quietly turning the movement's
 second language into its optional one. **This is a governance rule invented by
 the implementation and it should be confirmed or replaced by a decision from
-KLE.**
+KLEA.**
 
 ### Synthesis, and what is deliberately not built
 

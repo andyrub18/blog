@@ -24,7 +24,7 @@ draft is writing with no way out and the platform should not offer it.
 That was wrong, and it was reverted. **Nothing in the manifesto bans an article
 in English or Spanish.** The constraint already enforces itself — a translation
 no contradictor reads simply never publishes — so the second gate bought nothing
-and took a decision away from KLE. `CLAUDE.md` warns against *simplifying* a
+and took a decision away from KLEA. `CLAUDE.md` warns against *simplifying* a
 manifesto rule without a decision from the movement; adding one nobody asked for
 is the same error, and easier to miss, because the code reads as more careful
 afterwards.
@@ -41,7 +41,7 @@ You are reading it in French" is exactly as true as the Creole version, because
 English is not a tier the site has decided never to fill.
 
 The interim design had two banners: a gap message for Creole and French, and a
-standing "KLE publishes in Creole and French" for English and Spanish. That
+standing "KLEA publishes in Creole and French" for English and Spanish. That
 second message stated as policy something that was only ever a prediction about
 who writes. It is gone, along with the `isContentLang` branch on the reading view
 and the note on the index — which is also 0.45 KB of message text the budgeted
@@ -107,7 +107,7 @@ locale, which is what makes those tests about the component again.
 **The invitation link.** `governance-actions.ts` built it unprefixed, so a
 French invitation email opened an English registration form for anyone whose
 browser preferred English. It is now localized with the same locale the email
-was rendered in. A link KLE sends carries the language it was sent in; that is
+was rendered in. A link KLEA sends carries the language it was sent in; that is
 what `url`-first strategy is for.
 
 The rule this leaves behind: **an unprefixed URL is a decision, not a default.**
@@ -124,7 +124,7 @@ and it belongs with the P0 that retires the mock Google path.
 **Seeded or written content in English or Spanish.** Possible from the first
 day — the editor, the importer and the review flow all offer all four languages —
 but none exists yet, and the demo seed does not create any. Whether the movement
-writes in them is KLE's call, not the platform's.
+writes in them is KLEA's call, not the platform's.
 
 **A fifth locale.** The registry costs about 0.2 KB of URL-pattern table plus
 roughly 0.2 KB of message text on the reading view. There is 0.6 KB of headroom.
@@ -140,7 +140,7 @@ One more locale fits; two do not, until something comes off that page.
   does not publish in is served the article, in the base locale, with
   `requestedLang` preserved so the page can tell which note to show.
 - `e2e/locales.spec.ts` — both prefixes serve their interface; a Spanish reader
-  is told what KLE publishes in and *not* that a translation is pending; a
+  is told what KLEA publishes in and *not* that a translation is pending; a
   Creole reader on a French-only article still gets the gap wording; the
   switcher offers all four; and a Spanish article page still loads no editor and
   no forum script.

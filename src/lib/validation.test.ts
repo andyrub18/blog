@@ -34,7 +34,7 @@ describe('isValidEmail', () => {
   )
 
   it('ignores surrounding whitespace and case', () => {
-    expect(isValidEmail('  ANDERSON@KLE.HT  ')).toBe(true)
+    expect(isValidEmail('  ANDERSON@KLEA.HT  ')).toBe(true)
   })
 })
 

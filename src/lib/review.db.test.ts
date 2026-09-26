@@ -33,7 +33,7 @@ async function makeUser(role = 'reader') {
   await harness.db.insert(schema.user).values({
     id,
     name: role,
-    email: `${id}@kle.ht`,
+    email: `${id}@kleayiti.com`,
     emailVerified: true,
     role: role as 'reader',
     memberStatus: 'active',
@@ -72,7 +72,7 @@ describe('listQueue', () => {
     await applicationFor(applicant)
     const [item] = await review.listQueue()
     expect(item.applicantId).toBe(applicant)
-    expect(item.applicantEmail).toContain('@kle.ht')
+    expect(item.applicantEmail).toContain('@kleayiti.com')
   })
 
   it('drops an application once it has been decided', async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderVerificationEmail } from './templates'
 
-const URL_ = 'https://kle.ht/api/auth/verify-email?token=abc123'
+const URL_ = 'https://kleayiti.com/api/auth/verify-email?token=abc123'
 
 describe('renderVerificationEmail', () => {
   it('renders in French', () => {
@@ -55,7 +55,7 @@ describe('renderVerificationEmail', () => {
   it('escapes a hostile URL rather than breaking out of the attribute', () => {
     const mail = renderVerificationEmail({
       name: 'A',
-      url: 'https://kle.ht/?a="><script>alert(1)</script>',
+      url: 'https://kleayiti.com/?a="><script>alert(1)</script>',
       locale: 'fr',
     })
     expect(mail.html).not.toContain('<script>')
@@ -70,7 +70,7 @@ describe('renderVerificationEmail', () => {
   it('escapes an ampersand in the token so the link survives HTML parsing', () => {
     const mail = renderVerificationEmail({
       name: 'A',
-      url: 'https://kle.ht/v?token=a&callback=b',
+      url: 'https://kleayiti.com/v?token=a&callback=b',
       locale: 'fr',
     })
     expect(mail.html).toContain('token=a&amp;callback=b')
