@@ -34,7 +34,7 @@ export default defineConfig({
       // buckets every local caller together when no proxy sets
       // `x-forwarded-for`. Correctness of the flow is covered on chromium.
       testIgnore:
-        /(review|probation|governance|write|deliberation|import|companion)\.spec\.ts/,
+        /(review|probation|governance|write|deliberation|import|companion|protected-text)\.spec\.ts/,
     },
   ],
   webServer: process.env.E2E_BASE_URL

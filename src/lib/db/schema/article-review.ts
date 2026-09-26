@@ -60,6 +60,17 @@ export const articleSubmission = pgTable(
      * French; the Creole comes back as its own round when it exists.
      */
     langs: jsonb('langs').$type<Array<string>>().notNull(),
+    /**
+     * The exact revision of each language this round put to the circle,
+     * recorded when it was submitted (D30).
+     *
+     * The text is what the circle reviews, so the text is what it publishes:
+     * `decide()` publishes these revisions, not whatever the working copy says
+     * by the time the decision is taken. An author may keep editing while the
+     * circle deliberates; those edits are the next round's, and the review page
+     * says so. Null only on rounds submitted before this column existed.
+     */
+    revisionIds: jsonb('revision_ids').$type<Record<string, string>>(),
     submittedBy: text('submitted_by').references(() => user.id, { onDelete: 'set null' }),
     submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
     status: text('status').$type<SubmissionStatus>().notNull().default('open'),

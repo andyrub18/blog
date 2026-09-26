@@ -6,6 +6,7 @@ import {
   type ArticleVisibility,
   article,
   articleRevision,
+  articleSubmission,
   articleTranslation,
   hasAtLeastRole,
   type Role,
@@ -262,6 +263,9 @@ export async function saveTranslation(
         target: [articleTranslation.articleId, articleTranslation.lang],
         // `status` is absent on purpose: saving an edit to a published article
         // must not silently unpublish it, and must not silently publish a draft.
+        // Nor does saving change what readers see: they are shown
+        // `published_revision_id`, which only `decide()` moves (D30). This
+        // row is the author's working copy.
         set: { title, summary, contentJson: parsed.doc, updatedAt: now },
       })
 
@@ -331,9 +335,28 @@ export async function publishTranslation(input: {
 
   const now = new Date()
   await db.transaction(async (tx) => {
+    // Pins the text being published, as `decide()` does (D30). No endpoint
+    // reaches this function — publication goes through the circle — but the
+    // tests that use it must produce the same rows a decision would.
+    const [newest] = await tx
+      .select({ id: articleRevision.id })
+      .from(articleRevision)
+      .where(
+        and(
+          eq(articleRevision.articleId, input.articleId),
+          eq(articleRevision.lang, input.lang),
+        ),
+      )
+      .orderBy(desc(articleRevision.createdAt), desc(articleRevision.id))
+      .limit(1)
     await tx
       .update(articleTranslation)
-      .set({ status: 'published', publishedAt: now, updatedAt: now })
+      .set({
+        status: 'published',
+        publishedAt: now,
+        publishedRevisionId: newest?.id ?? null,
+        updatedAt: now,
+      })
       .where(
         and(
           eq(articleTranslation.articleId, input.articleId),
@@ -377,7 +400,12 @@ export async function unpublishTranslation(input: {
   await db.transaction(async (tx) => {
     const updated = await tx
       .update(articleTranslation)
-      .set({ status: 'draft', publishedAt: null, updatedAt: now })
+      .set({
+        status: 'draft',
+        publishedAt: null,
+        publishedRevisionId: null,
+        updatedAt: now,
+      })
       .where(
         and(
           eq(articleTranslation.articleId, input.articleId),
@@ -453,14 +481,19 @@ export async function listPublished(input: {
       slug: article.slug,
       visibility: article.visibility,
       lang: articleTranslation.lang,
-      title: articleTranslation.title,
-      summary: articleTranslation.summary,
+      // The approved text, never the working copy (D30).
+      title: articleRevision.title,
+      summary: articleRevision.summary,
       publishedAt: articleTranslation.publishedAt,
       articlePublishedAt: article.publishedAt,
       authorName: user.name,
     })
     .from(articleTranslation)
     .innerJoin(article, eq(article.id, articleTranslation.articleId))
+    .innerJoin(
+      articleRevision,
+      eq(articleRevision.id, articleTranslation.publishedRevisionId),
+    )
     .innerJoin(user, eq(user.id, article.authorId))
     .where(
       and(
@@ -556,13 +589,25 @@ export async function getReadableArticle(input: {
       articleStatus: article.status,
       authorName: user.name,
       lang: articleTranslation.lang,
-      title: articleTranslation.title,
-      summary: articleTranslation.summary,
-      contentJson: articleTranslation.contentJson,
+      /**
+       * The revision the circle approved, not the working copy (D30). An
+       * author may keep editing a published language; those saves are drafts
+       * for the next round, and nothing a reader is shown changes until a
+       * decision publishes them. The inner join is the guarantee: a language
+       * with no approved revision has nothing to show.
+       */
+      revisionId: articleRevision.id,
+      title: articleRevision.title,
+      summary: articleRevision.summary,
+      contentJson: articleRevision.contentJson,
       publishedAt: articleTranslation.publishedAt,
     })
     .from(article)
     .innerJoin(articleTranslation, eq(articleTranslation.articleId, article.id))
+    .innerJoin(
+      articleRevision,
+      eq(articleRevision.id, articleTranslation.publishedRevisionId),
+    )
     .innerJoin(user, eq(user.id, article.authorId))
     .where(
       and(
@@ -725,6 +770,16 @@ export type EditableArticle = {
   content: DocNode
   translationStatus: string
   otherLangs: Array<{ lang: string; status: string }>
+  /**
+   * The working copy differs from what readers are shown. Saves after
+   * publication are drafts; this is how the editor says so (D30).
+   */
+  hasUnpublishedChanges: boolean
+  /**
+   * A round covering this language is open, and the author has saved since
+   * submitting it. The circle is reading the submitted text; these edits wait.
+   */
+  changedSinceSubmission: boolean
 }
 
 /** One language of an article, open for editing. */
@@ -757,6 +812,7 @@ export async function getEditableArticle(input: {
       summary: articleTranslation.summary,
       contentJson: articleTranslation.contentJson,
       status: articleTranslation.status,
+      publishedRevisionId: articleTranslation.publishedRevisionId,
     })
     .from(articleTranslation)
     .where(
@@ -766,6 +822,30 @@ export async function getEditableArticle(input: {
       ),
     )
     .limit(1)
+
+  const [newest] = await db
+    .select({ id: articleRevision.id })
+    .from(articleRevision)
+    .where(
+      and(
+        eq(articleRevision.articleId, input.articleId),
+        eq(articleRevision.lang, input.lang),
+      ),
+    )
+    .orderBy(desc(articleRevision.createdAt), desc(articleRevision.id))
+    .limit(1)
+
+  const [openRound] = await db
+    .select({ revisionIds: articleSubmission.revisionIds })
+    .from(articleSubmission)
+    .where(
+      and(
+        eq(articleSubmission.articleId, input.articleId),
+        inArray(articleSubmission.status, ['open', 'in_review']),
+      ),
+    )
+    .limit(1)
+  const submitted = openRound?.revisionIds?.[input.lang]
 
   const others = await db
     .select({ lang: articleTranslation.lang, status: articleTranslation.status })
@@ -791,6 +871,11 @@ export async function getEditableArticle(input: {
       content: parsed?.ok ? parsed.doc : { type: 'doc', content: [] },
       translationStatus: translation?.status ?? 'new',
       otherLangs: others,
+      hasUnpublishedChanges:
+        translation?.status === 'published' &&
+        newest !== undefined &&
+        newest.id !== translation.publishedRevisionId,
+      changedSinceSubmission: submitted !== undefined && newest?.id !== submitted,
     },
   }
 }

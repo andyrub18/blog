@@ -97,16 +97,19 @@ export const fetchSubmission = createServerFn({ method: 'GET' })
     const actor = await currentActor()
     const { hasAtLeastRole } = await import('./db/schema')
     if (!hasAtLeastRole(actor.role, 'member')) return null
-    const [{ getSubmission }, { reviewCompanions }] = await Promise.all([
+    const [{ getSubmission, submittedTexts }, { reviewCompanions }] = await Promise.all([
       import('./article-review'),
       import('./companion'),
     ])
     const loaded = await getSubmission(data.submissionId)
     if (!loaded) return null
-    // The PDF is part of what the circle reviews (D29), so the page reviewers
-    // use shows it next to the text, language by language.
-    const companions = await reviewCompanions(loaded.submission)
-    return { ...loaded, companions }
+    // What the circle reviews is the submitted text and its PDF (D29, D30), so
+    // the page reviewers use shows both, language by language.
+    const [texts, companions] = await Promise.all([
+      submittedTexts(loaded.submission),
+      reviewCompanions(loaded.submission),
+    ])
+    return { ...loaded, texts, companions }
   })
 
 /** Who a senior member can put on a panel: members and above, the author aside. */

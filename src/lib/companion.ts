@@ -3,17 +3,7 @@ import { createReadStream } from 'node:fs'
 import { mkdir, rm, stat, writeFile } from 'node:fs/promises'
 import { join, normalize, sep } from 'node:path'
 import { Readable } from 'node:stream'
-import {
-  and,
-  desc,
-  eq,
-  inArray,
-  isNotNull,
-  isNull,
-  lte,
-  type SQL,
-  sql,
-} from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm'
 import { canEdit, canRead, type Viewer } from './articles'
 import type { ArticleVisibility } from './db/schema'
 import {
@@ -32,15 +22,15 @@ import { type PdfCleaning, type PdfError, preparePdf } from './pdf'
  * **Server only.** Reaches the filesystem, the database and `pdf-lib`.
  *
  * The rule the whole module turns on: a companion is offered only while it was
- * made from the text readers are looking at, **and only once the circle has
- * approved it** (D29). `servableCompanion` below is the one place that is
+ * made from the text readers are looking at — the language's *published*
+ * revision (D30) — **and only once the circle has approved it** (D29). `servableCompanion` below is the one place that is
  * decided, and both the reading view's link and the download route go through
  * it, so the link can never point at a file the route would refuse — or the
  * other way round.
  *
  * Approval happens in `decide()`, through `approveCompanions`: when a language
  * is accepted, the companion attached *before that round was submitted*, and
- * still made from the newest text, is stamped with the round. The circle can
+ * made from the very revision that round reviewed, is stamped with the round. The circle can
  * only vouch for a file it was given to read, so one attached after submission
  * — a replacement after publication included — waits for the next round.
  * Reviewers read it through `reviewCompanions` and `openCompanionForReview`.
@@ -80,11 +70,14 @@ export type CompanionSummary = {
  *   reviewing it, and it will wait for the next round.
  * - `awaitingReview` — no round is open: it goes to the circle when this
  *   language is next submitted.
- * - `stale` — the text was saved after it was attached. Readers never get it,
- *   and no round will approve it; only a new PDF can replace it.
+ * - `stale` — it describes neither the published text nor the text the author
+ *   is working on: readers do not get it, and no round will approve it. Only a
+ *   new PDF can replace it.
  *
  * Every state but `approved` means readers do not have it, and the editor says
- * which, because the author is the only person who can act on it.
+ * which, because the author is the only person who can act on it. An approved
+ * PDF stays `approved` while the author edits a draft: readers still see the
+ * approved text (D30), and the PDF still describes it.
  */
 export type CompanionStatus =
   | 'approved'
@@ -151,23 +144,14 @@ async function currentCompanion(db: Db | Tx, articleId: string, lang: string) {
   return row ?? null
 }
 
-/** The id of the newest revision of one language, as a subquery. */
-function newestRevision(
-  articleId: string | SQL | typeof articleCompanion.articleId,
-  lang: string | SQL | typeof articleCompanion.lang,
-) {
-  return sql`(select ${articleRevision.id} from ${articleRevision}
-               where ${articleRevision.articleId} = ${articleId}
-                 and ${articleRevision.lang} = ${lang}
-               order by ${articleRevision.createdAt} desc, ${articleRevision.id} desc
-               limit 1)`
-}
-
 /**
  * The companion readers may be given for one language, or null.
  *
- * Current, made from the newest revision, and approved by the circle. One
- * query, so the answer cannot be assembled from two reads that straddle a save.
+ * Current, approved by the circle, and made from the revision readers are shown
+ * — the published one, not the newest: an author editing a draft after
+ * publication changes nothing readers see, so it retires nothing either (D30).
+ * One query, so the answer cannot be assembled from two reads that straddle a
+ * decision.
  */
 export async function servableCompanion(articleId: string, lang: string) {
   const { db } = await import('./db')
@@ -180,11 +164,19 @@ export async function servableCompanion(articleId: string, lang: string) {
         eq(articleCompanion.lang, lang),
         isNull(articleCompanion.supersededAt),
         isNotNull(articleCompanion.approvedInSubmissionId),
-        eq(articleCompanion.revisionId, newestRevision(articleId, lang)),
+        eq(articleCompanion.revisionId, publishedRevision(articleId, lang)),
       ),
     )
     .limit(1)
   return row ?? null
+}
+
+/** The revision readers are shown for one language, as a subquery. */
+function publishedRevision(articleId: string, lang: string) {
+  return sql`(select ${articleTranslation.publishedRevisionId} from ${articleTranslation}
+               where ${articleTranslation.articleId} = ${articleId}
+                 and ${articleTranslation.lang} = ${lang}
+                 and ${articleTranslation.status} = 'published')`
 }
 
 /**
@@ -192,33 +184,39 @@ export async function servableCompanion(articleId: string, lang: string) {
  * transaction, with the languages the circle accepted.
  *
  * Approved: the current companion of an accepted language, attached no later
- * than the round was submitted, and still made from the newest text — the file
- * the circle was given to read, describing the text it accepted. Anything else
- * is left unapproved and says so in the author's editor.
+ * than the round was submitted, and made from the revision that round reviewed
+ * — the file the circle was given to read, describing the text it accepted and
+ * is publishing. Anything else is left unapproved and says so in the author's
+ * editor.
  */
 export async function approveCompanions(
   tx: Tx,
-  submission: { id: string; articleId: string; submittedAt: Date },
+  submission: {
+    id: string
+    articleId: string
+    submittedAt: Date
+    revisionIds: Record<string, string>
+  },
   langs: Array<string>,
   now: Date,
 ): Promise<void> {
-  if (langs.length === 0) return
-  await tx
-    .update(articleCompanion)
-    .set({ approvedInSubmissionId: submission.id, approvedAt: now })
-    .where(
-      and(
-        eq(articleCompanion.articleId, submission.articleId),
-        inArray(articleCompanion.lang, langs),
-        isNull(articleCompanion.supersededAt),
-        isNull(articleCompanion.approvedInSubmissionId),
-        lte(articleCompanion.uploadedAt, submission.submittedAt),
-        eq(
-          articleCompanion.revisionId,
-          newestRevision(articleCompanion.articleId, articleCompanion.lang),
+  for (const lang of langs) {
+    const reviewed = submission.revisionIds[lang]
+    if (!reviewed) continue
+    await tx
+      .update(articleCompanion)
+      .set({ approvedInSubmissionId: submission.id, approvedAt: now })
+      .where(
+        and(
+          eq(articleCompanion.articleId, submission.articleId),
+          eq(articleCompanion.lang, lang),
+          isNull(articleCompanion.supersededAt),
+          isNull(articleCompanion.approvedInSubmissionId),
+          lte(articleCompanion.uploadedAt, submission.submittedAt),
+          eq(articleCompanion.revisionId, reviewed),
         ),
-      ),
-    )
+      )
+  }
 }
 
 async function loadEditable(actor: Viewer, articleId: string) {
@@ -369,17 +367,41 @@ export async function companionState(input: {
     uploadedAt: current.uploadedAt,
   }
 
-  const latest = await latestRevisionId(db, input.articleId, input.lang)
-  if (latest !== current.revisionId)
-    return { ok: true, value: { state: 'stale', ...summary } }
+  // Approved and still describing what readers see: live, whatever the author
+  // has been drafting since.
   if (current.approvedInSubmissionId) {
-    return { ok: true, value: { state: 'approved', ...summary } }
+    const [translation] = await db
+      .select({ publishedRevisionId: articleTranslation.publishedRevisionId })
+      .from(articleTranslation)
+      .where(
+        and(
+          eq(articleTranslation.articleId, input.articleId),
+          eq(articleTranslation.lang, input.lang),
+        ),
+      )
+      .limit(1)
+    return {
+      ok: true,
+      value: {
+        state:
+          translation?.publishedRevisionId === current.revisionId ? 'approved' : 'stale',
+        ...summary,
+      },
+    }
+  }
+
+  // Not approved: it can only ever be approved for the text it describes, so
+  // it has to describe the text the author is working on.
+  const latest = await latestRevisionId(db, input.articleId, input.lang)
+  if (latest !== current.revisionId) {
+    return { ok: true, value: { state: 'stale', ...summary } }
   }
 
   const [open] = await db
     .select({
       submittedAt: articleSubmission.submittedAt,
       langs: articleSubmission.langs,
+      revisionIds: articleSubmission.revisionIds,
     })
     .from(articleSubmission)
     .where(
@@ -389,9 +411,12 @@ export async function companionState(input: {
       ),
     )
     .limit(1)
+  // In this round only if the round is reading the same text and had the file
+  // from the start — the two conditions `approveCompanions` will check.
   const state: CompanionStatus = !open?.langs.includes(input.lang)
     ? 'awaitingReview'
-    : current.uploadedAt <= open.submittedAt
+    : current.uploadedAt <= open.submittedAt &&
+        open.revisionIds?.[input.lang] === current.revisionId
       ? 'inReview'
       : 'nextRound'
   return { ok: true, value: { state, ...summary } }
@@ -405,8 +430,8 @@ export async function companionState(input: {
  * - `afterSubmission` — a PDF exists, but was attached after the round was
  *   submitted. Not theirs to review; saying so stops a reviewer from assuming
  *   the absence of a download means there is no PDF.
- * - `stale` — the text changed after the PDF was attached, so it cannot be
- *   approved whatever the circle decides.
+ * - `stale` — the PDF describes a different revision than the one this round
+ *   is reviewing, so it cannot be approved whatever the circle decides.
  */
 export type ReviewCompanion =
   | { lang: string; state: 'none' }
@@ -422,6 +447,7 @@ export async function reviewCompanions(submission: {
   articleId: string
   langs: Array<string>
   submittedAt: Date
+  revisionIds: Record<string, string> | null
 }): Promise<Array<ReviewCompanion>> {
   const { db } = await import('./db')
   return Promise.all(
@@ -449,8 +475,10 @@ export async function reviewCompanions(submission: {
       const current = await currentCompanion(db, submission.articleId, lang)
       if (!current) return { lang, state: 'none' }
       const sizes = { pageCount: current.pageCount, byteSize: current.byteSize }
-      const latest = await latestRevisionId(db, submission.articleId, lang)
-      if (latest !== current.revisionId) return { lang, state: 'stale', ...sizes }
+      const reviewed =
+        submission.revisionIds?.[lang] ??
+        (await latestRevisionId(db, submission.articleId, lang))
+      if (reviewed !== current.revisionId) return { lang, state: 'stale', ...sizes }
       if (current.uploadedAt > submission.submittedAt) {
         return { lang, state: 'afterSubmission', ...sizes }
       }
@@ -507,6 +535,7 @@ export async function openCompanionForReview(input: {
       articleId: articleSubmission.articleId,
       langs: articleSubmission.langs,
       submittedAt: articleSubmission.submittedAt,
+      revisionIds: articleSubmission.revisionIds,
       slug: article.slug,
     })
     .from(articleSubmission)

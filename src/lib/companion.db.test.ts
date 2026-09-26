@@ -311,6 +311,7 @@ describe('the circle approves it with the text (D29)', () => {
       articleId,
       langs: ['fr'],
       submittedAt: new Date(),
+      revisionIds: null,
     })
     expect(view.state).toBe('underReview')
   })
@@ -348,7 +349,11 @@ describe('the circle approves it with the text (D29)', () => {
     ).toBe(second)
   })
 
-  it('does not approve a PDF whose text changed during the review', async () => {
+  /**
+   * The circle reviewed text A with PDF A. The author drafting B meanwhile
+   * changes neither: the decision publishes A (D30), and PDF A describes A.
+   */
+  it('approves the PDF with the text it was reviewed with, whatever was drafted since', async () => {
     const author = await makeUser()
     const people = await circle()
     const { articleId } = await draft(author)
@@ -358,11 +363,27 @@ describe('the circle approves it with the text (D29)', () => {
 
     await decideRound(people, submissionId)
 
+    expect(
+      (await companion.servableCompanion(articleId, 'fr'))?.approvedInSubmissionId,
+    ).toBe(submissionId)
+    expect(await stateOf(author, articleId)).toBe('approved')
+  })
+
+  /**
+   * The mirror case: a PDF made from an earlier text than the one submitted.
+   * The record matters as much as the reader here — "approved in round N" has
+   * to mean the circle accepted the text this PDF describes.
+   */
+  it('does not approve a PDF of an earlier text than the one submitted', async () => {
+    const author = await makeUser()
+    const people = await circle()
+    const { articleId } = await draft(author)
+    await attach(author, articleId)
+    await save(author, articleId, 'Le texte, révisé avant la soumission.')
+    await decideRound(people, await submit(author, articleId))
+
     expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
     expect(await stateOf(author, articleId)).toBe('stale')
-    // And the record does not say otherwise. A stale file is never served
-    // whatever its stamp, so this is about the audit trail: "approved in round
-    // N" has to mean the circle accepted text this PDF actually describes.
     const [row] = await harness.db.select().from(schema.articleCompanion)
     expect(row.approvedInSubmissionId).toBeNull()
   })
@@ -392,10 +413,23 @@ describe('the circle approves it with the text (D29)', () => {
   })
 })
 
-describe('the text moves on, the PDF stops', () => {
-  it('is withdrawn from readers the moment the text is saved again', async () => {
+describe('the published text moves on, the PDF stops', () => {
+  /**
+   * A draft is not a change readers see (D30), so it retires nothing: the
+   * approved PDF still describes the approved text on the page.
+   */
+  it('stays with readers while the author drafts changes', async () => {
     const { author, articleId } = await liveWithPdf()
     await save(author, articleId, 'Le texte, corrigé après la publication.')
+    expect(await companion.servableCompanion(articleId, 'fr')).not.toBeNull()
+    expect(await stateOf(author, articleId)).toBe('approved')
+  })
+
+  it('is withdrawn when a round publishes a new text without a new PDF', async () => {
+    const { author, people, articleId } = await liveWithPdf()
+    await save(author, articleId, 'Le texte, corrigé après la publication.')
+    await decideRound(people, await submit(author, articleId))
+
     expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
     expect(await stateOf(author, articleId)).toBe('stale')
   })
@@ -494,9 +528,10 @@ describe('what a reader downloads', () => {
     expect(reloaded.getTitle()).toBe(TITLE)
   })
 
-  it('gives nobody a stale PDF, even from a link forwarded before the edit', async () => {
-    const { author, articleId, slug } = await liveWithPdf()
+  it('gives nobody a stale PDF, even from a link forwarded before the text changed', async () => {
+    const { author, people, articleId, slug } = await liveWithPdf()
     await save(author, articleId, 'Corrigé.')
+    await decideRound(people, await submit(author, articleId))
     expect(
       await companion.openCompanionDownload({ slug, lang: 'fr', viewer: null }),
     ).toEqual({
@@ -546,8 +581,8 @@ describe('what a reader downloads', () => {
 })
 
 describe('the reading view', () => {
-  it('links the approved PDF, with its size, and not once the text moves on', async () => {
-    const { author, articleId, slug } = await liveWithPdf()
+  it('links the approved PDF, with its size, until a new text is published', async () => {
+    const { author, people, articleId, slug } = await liveWithPdf()
     const read = async () => {
       const result = await articles.getReadableArticle({ slug, lang: 'fr', viewer: null })
       if (!result.ok) throw new Error(result.code)
@@ -558,7 +593,11 @@ describe('the reading view', () => {
     expect(withPdf).toContain(`href="/api/companion/${slug}/fr"`)
     expect(withPdf).toMatch(/3 pages · 0,\d Mo/)
 
+    // A draft changes nothing a reader sees, the link included.
     await save(author, articleId, 'Corrigé.')
+    expect(await read()).toContain('/api/companion/')
+
+    await decideRound(people, await submit(author, articleId))
     expect(await read()).not.toContain('/api/companion/')
   })
 })

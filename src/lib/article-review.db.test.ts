@@ -920,3 +920,160 @@ describe('a later round on a published article', () => {
     expect(await readable(slug)).toBe(true)
   })
 })
+
+/**
+ * The text readers see is the text the circle approved (D30).
+ *
+ * A round records the revision of each language it was given; the decision
+ * publishes exactly that revision. After publication the author's saves are a
+ * draft: readers keep the approved text until another round accepts a new one.
+ */
+describe('the text the circle approved', () => {
+  async function accepted(senior: Viewer, members: Array<Viewer>, submissionId: string) {
+    await panelOf(senior, submissionId, members)
+    for (const member of members) {
+      const said = await review.recordVerdict({
+        actor: member,
+        submissionId,
+        lang: 'fr',
+        verdict: 'support',
+        rationale: RATIONALE,
+      })
+      if (!said.ok) throw new Error(`recordVerdict: ${said.code}`)
+    }
+    const decided = await review.decide({
+      actor: senior,
+      submissionId,
+      rationale: RATIONALE,
+    })
+    if (!decided.ok) throw new Error(`decide: ${decided.code}`)
+  }
+
+  async function people() {
+    return {
+      author: await makeUser(),
+      senior: await makeUser('senior_member'),
+      members: [await makeUser(), await makeUser(), await makeUser()],
+    }
+  }
+
+  const edit = (
+    author: Viewer,
+    articleId: string,
+    text: string,
+    title = `${TITLE} (fr)`,
+  ) =>
+    articles.saveTranslation({
+      actor: author,
+      articleId,
+      lang: 'fr',
+      title,
+      summary: SUMMARY,
+      content: body(text),
+    })
+
+  async function reading(slug: string) {
+    const result = await articles.getReadableArticle({ slug, lang: 'fr', viewer: null })
+    if (!result.ok) throw new Error(result.code)
+    return result.value
+  }
+
+  it('publishes the text as it was submitted, not the edits made during the review', async () => {
+    const { author, senior, members } = await people()
+    const { articleId, slug, submissionId } = await submit(author, ['fr'])
+    await edit(author, articleId, 'Un paragraphe que personne n’a relu.')
+
+    await accepted(senior, members, submissionId)
+
+    const shown = await reading(slug)
+    expect(shown.html).toContain('Le texte en fr.')
+    expect(shown.html).not.toContain('personne n’a relu')
+  })
+
+  it('keeps showing readers the approved text while the author edits it', async () => {
+    const { author, senior, members } = await people()
+    const { articleId, slug, submissionId } = await submit(author, ['fr'])
+    await accepted(senior, members, submissionId)
+
+    await edit(author, articleId, 'Une correction non relue.', 'Un titre non relu')
+
+    const shown = await reading(slug)
+    expect(shown.title).toBe(`${TITLE} (fr)`)
+    expect(shown.html).toContain('Le texte en fr.')
+    expect(shown.html).not.toContain('non relue')
+    // The index card and the discussion page read the same approved text as
+    // the page they link to.
+    const [card] = await articles.listPublished({ lang: 'fr', viewer: null })
+    expect(card.title).toBe(`${TITLE} (fr)`)
+    const { getDiscussion } = await import('./forum')
+    const discussion = await getDiscussion({ slug, viewer: null })
+    expect(discussion.ok && discussion.value.title).toBe(`${TITLE} (fr)`)
+  })
+
+  it('publishes the edits once a new round accepts them', async () => {
+    const { author, senior, members } = await people()
+    const { articleId, slug, submissionId } = await submit(author, ['fr'])
+    await accepted(senior, members, submissionId)
+    await edit(author, articleId, 'La correction, relue cette fois.')
+
+    const second = await review.submitForReview({
+      actor: author,
+      articleId,
+      langs: ['fr'],
+      documentation: DOCUMENTATION,
+    })
+    if (!second.ok) throw new Error(second.code)
+    // The approved text stays up for the whole of the second review.
+    expect((await reading(slug)).html).toContain('Le texte en fr.')
+
+    await accepted(senior, members, second.value.submissionId)
+    expect((await reading(slug)).html).toContain('La correction, relue cette fois.')
+  })
+
+  it('tells the author when their draft differs from what readers see', async () => {
+    const { author, senior, members } = await people()
+    const { articleId, submissionId } = await submit(author, ['fr'])
+    await accepted(senior, members, submissionId)
+
+    const editable = async () => {
+      const result = await articles.getEditableArticle({
+        actor: author,
+        articleId,
+        lang: 'fr',
+      })
+      if (!result.ok) throw new Error(result.code)
+      return result.value
+    }
+    expect((await editable()).hasUnpublishedChanges).toBe(false)
+    await edit(author, articleId, 'Une correction.')
+    expect((await editable()).hasUnpublishedChanges).toBe(true)
+  })
+
+  it('shows reviewers the submitted text, and tells them when the author has edited since', async () => {
+    const { author } = await people()
+    const { articleId, submissionId } = await submit(author, ['fr'])
+    const load = async () => {
+      const loaded = await review.getSubmission(submissionId)
+      if (!loaded) throw new Error('no submission')
+      const [text] = await review.submittedTexts(loaded.submission)
+      return text
+    }
+
+    const before = await load()
+    expect(before.html).toContain('Le texte en fr.')
+    expect(before.changedSince).toBe(false)
+
+    await edit(author, articleId, 'Une version que le cercle ne lit pas.')
+    const after = await load()
+    expect(after.html).toContain('Le texte en fr.')
+    expect(after.html).not.toContain('ne lit pas')
+    expect(after.changedSince).toBe(true)
+
+    const editable = await articles.getEditableArticle({
+      actor: author,
+      articleId,
+      lang: 'fr',
+    })
+    expect(editable.ok && editable.value.changedSinceSubmission).toBe(true)
+  })
+})

@@ -10,7 +10,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { PDFDocument } from 'pdf-lib'
 import { auth } from '../src/lib/auth'
 import { attachCompanion } from '../src/lib/companion'
@@ -523,6 +523,10 @@ async function resetArticles(authorId: string, allAuthors: Array<string>): Promi
 
     for (const translation of entry.translations) {
       const content = demoDocument(translation.paragraphs)
+      // A published language shows its pinned revision, never its working copy
+      // (D30), so the revision's id is chosen first and used for both.
+      const revisionId = randomUUID()
+      const published = translation.status === 'published'
       await db.insert(articleTranslation).values({
         articleId: id,
         lang: translation.lang,
@@ -530,10 +534,11 @@ async function resetArticles(authorId: string, allAuthors: Array<string>): Promi
         summary: translation.summary,
         contentJson: content,
         status: translation.status,
-        publishedAt: translation.status === 'published' ? now : null,
+        publishedAt: published ? now : null,
+        publishedRevisionId: published ? revisionId : null,
       })
       await db.insert(articleRevision).values({
-        id: randomUUID(),
+        id: revisionId,
         articleId: id,
         lang: translation.lang,
         title: translation.title,
@@ -642,6 +647,7 @@ async function resetDeliberations(ids: Record<string, string>): Promise<void> {
       articleId: noPanel.id,
       round: 1,
       langs: ['fr'],
+      revisionIds: await submittedRevisions(noPanel.id, ['fr']),
       submittedBy: ids.confirmed,
       status: 'open',
       ...DOCUMENTATION,
@@ -684,6 +690,27 @@ async function resetDeliberations(ids: Record<string, string>): Promise<void> {
 }
 
 /**
+ * The text a seeded round puts to the circle: each language's newest revision,
+ * as `submitForReview` records it (D30).
+ */
+async function submittedRevisions(
+  articleId: string,
+  langs: Array<string>,
+): Promise<Record<string, string>> {
+  const ids: Record<string, string> = {}
+  for (const lang of langs) {
+    const [newest] = await db
+      .select({ id: articleRevision.id })
+      .from(articleRevision)
+      .where(and(eq(articleRevision.articleId, articleId), eq(articleRevision.lang, lang)))
+      .orderBy(desc(articleRevision.createdAt))
+      .limit(1)
+    if (newest) ids[lang] = newest.id
+  }
+  return ids
+}
+
+/**
  * A round in debate with every assigned reviewer's verdict recorded, so a
  * decision can be exercised in a single sign-in.
  */
@@ -697,6 +724,7 @@ async function debateReadyToDecide(
     articleId: articleId,
     round: 1,
     langs: ['fr'],
+    revisionIds: await submittedRevisions(articleId, ['fr']),
     submittedBy: ids.confirmed,
     status: 'in_review',
     ...DOCUMENTATION,

@@ -98,6 +98,8 @@ type EditingProps = {
     content: DocNode
     translationStatus: string
     otherLangs: Array<{ lang: string; status: string }>
+    hasUnpublishedChanges: boolean
+    changedSinceSubmission: boolean
   }
   canPublish: boolean
   rounds: Array<{
@@ -198,6 +200,28 @@ function Editing(props: EditingProps) {
           </Show>
         </div>
       </div>
+
+      {/*
+       * Published text is what the circle approved, and saving here does not
+       * change it (D30). Said up front, because an author who fixes a typo on
+       * a live article will otherwise go looking for the fix on the page and
+       * conclude the save failed.
+       */}
+      <Show when={props.article.translationStatus === 'published'}>
+        <p class="rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-700">
+          {m.write_publishedIsApproved()}
+        </p>
+      </Show>
+      <Show when={props.article.hasUnpublishedChanges}>
+        <p class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          {m.write_unpublishedChanges()}
+        </p>
+      </Show>
+      <Show when={props.article.changedSinceSubmission}>
+        <p class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          {m.write_changedSinceSubmission()}
+        </p>
+      </Show>
 
       <label class="flex flex-col gap-1 text-sm">
         <span class="font-medium text-neutral-800">{m.write_titleLabel()}</span>

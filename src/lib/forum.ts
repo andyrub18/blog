@@ -4,6 +4,7 @@ import type { Viewer } from './articles'
 import { canRead } from './articles'
 import {
   article,
+  articleRevision,
   articleTranslation,
   type ForumPostStatus,
   forumModeration,
@@ -117,10 +118,15 @@ async function readableArticle(
     .select({
       id: article.id,
       visibility: article.visibility,
-      title: articleTranslation.title,
+      // The approved title, not the working copy (D30).
+      title: articleRevision.title,
     })
     .from(article)
     .innerJoin(articleTranslation, eq(articleTranslation.articleId, article.id))
+    .innerJoin(
+      articleRevision,
+      eq(articleRevision.id, articleTranslation.publishedRevisionId),
+    )
     .where(
       and(
         eq(article.slug, slug),
