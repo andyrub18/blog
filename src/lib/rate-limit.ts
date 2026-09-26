@@ -73,6 +73,14 @@ export const RULES = {
    * argues in good faith and far short of what a flood needs.
    */
   forumPost: { limit: 15, windowSeconds: 10 * 60 },
+  /**
+   * Keyed to the account, like `docxImport`, and tighter than it.
+   *
+   * A companion upload parses and rewrites up to 20 MB in memory. Nobody attaches
+   * more than a handful of PDFs in an hour — a typo found, a figure redrawn —
+   * and ten is enough for an author fixing the same file over and over.
+   */
+  companionUpload: { limit: 10, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimitRule>
 
 export type RateLimitAction = keyof typeof RULES

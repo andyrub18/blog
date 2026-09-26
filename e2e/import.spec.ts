@@ -60,6 +60,19 @@ async function openDraft(page: import('@playwright/test').Page) {
   await page.locator('.ProseMirror').waitFor({ timeout: 30_000 })
 }
 
+/**
+ * The Word file input, found by the panel it belongs to.
+ *
+ * The write page has two file inputs since the companion PDF arrived, so
+ * `[name="file"]` alone no longer says which one is meant.
+ */
+function wordInput(page: import('@playwright/test').Page) {
+  return page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: /Importer un document Word/i }) })
+    .locator('[name="file"]')
+}
+
 test('a member imports a Word file and is told what survived it', async ({ page }) => {
   await signIn(page, ACCOUNTS.confirmed)
   await openDraft(page)
@@ -77,7 +90,7 @@ test('a member imports a Word file and is told what survived it', async ({ page 
       `<w:tr><w:tc>${para('2025')}</w:tc><w:tc>${para('inconnu')}</w:tc></w:tr></w:tbl>`,
   )
 
-  await page.locator('[name="file"]').setInputFiles({
+  await wordInput(page).setInputFiles({
     name: 'budget.docx',
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     buffer: file,
@@ -112,7 +125,7 @@ test('a file that is not a Word document is refused', async ({ page }) => {
 
   // `file.type` is set by the client and is trivially spoofed, so claim to be a
   // Word file while being a PDF.
-  await page.locator('[name="file"]').setInputFiles({
+  await wordInput(page).setInputFiles({
     name: 'article.docx',
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     buffer: Buffer.from('%PDF-1.4 not a word file at all'),

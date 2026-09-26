@@ -436,3 +436,94 @@ took 0.7 KB off the shared entry — `beforeLoad` resolves before the component,
 its server functions sit in the eager route tree, while a `loader` splits with
 its route. The reading view gained 0.5 KB of headroom from a fix to the
 application form.
+
+## D26 — The companion PDF: kept, not rebuilt, and offered only while it is true
+
+D24 decided that long-form work is an article and that a typeset PDF may sit
+beside it as a **companion**. This is how that was built, and the four choices
+that were not obvious.
+
+**Tied to a revision, served only while it matches.** An author attaches a PDF
+to one language; the row records the newest `article_revision` of that language
+at that moment. The reading view links it and `/api/companion/<slug>/<lang>`
+serves it only while that revision is still the newest — one query,
+`servableCompanion`, answers for both, so the link can never point at a file the
+route would refuse. Any save writes a revision, so any save retires the PDF,
+including a save that changed nothing: we compare revisions, not documents,
+because "the text moved on" should never depend on a diff being right. Stale is
+a 404, not a 410 and not the old file: a forwarded link to an outdated PDF gives
+nobody the outdated PDF. Publication writes no revision, so a PDF attached to
+the draft the circle reviewed goes live with it.
+
+**Kept, not rebuilt — so what it may contain is narrower instead.** Everything
+else the platform ingests is rebuilt from an allowlist (D18). A companion cannot
+be: its typesetting is the reason it exists, and a PDF we regenerated would be
+worse than the author's own `pdflatex` output (D24). `lib/pdf.ts` therefore does
+two things and says so to the author afterwards:
+
+- **Refuses what can act** — JavaScript, launch, submit and import actions,
+  links into other files, embedded files, forms, rich media, and any link that
+  is not `http`, `https` or `mailto`. Also refuses comments and other markup
+  annotations, for a different reason: a PDF that went round the circle can
+  carry reviewers' notes with reviewers' names in `/T`.
+- **Strips what identifies** — the information dictionary, every XMP packet,
+  Acrobat's `PieceInfo`, pdfTeX's `PTEX.*` keys (the absolute path of every
+  included figure, which on a laptop begins `/home/<username>`, and each
+  figure's own information dictionary), the EXIF inside embedded JPEGs
+  (`pdflatex` copies a photo's bytes verbatim, GPS position included), and every
+  object nothing references any more, which is where an incrementally saved file
+  keeps what each edit replaced.
+
+None of the stripped things is visible on the page, which is exactly why an
+author checking their own file would never find them — and SECURITY.md's case
+for a pseudonymous byline is worth nothing if the PDF beside the article names
+its author in its properties. The information dictionary is rebuilt with one
+entry, the article's title, so a reader's viewer shows that.
+
+Not attempted, and said in the code: white text, content hidden under an image,
+optional-content layers. Those are what the author put on the page.
+
+**Who may attach one: whoever may edit the text.** `canEdit`, the same rule as
+saving. No separate sign-off was added, because none is written down: the
+manifesto governs the text, and the text is still what the circle reviews and
+what `decide()` publishes. But this should be said plainly rather than left to
+be discovered: **nothing verifies that the PDF says what the reviewed text
+says.** It is the same trust the platform already extends to an author who edits
+a published translation after the decision, and the same controls apply — the
+row records who attached which file and when, and the next save retires it. If
+KLEA decides a companion needs a second person's attestation, that is a column
+and a button on this panel; it is KLEA's rule to make, not the platform's to
+presume.
+
+**Downloads are not logged; uploads are.** A dossier read is logged because it is
+a privileged look at someone's private file. This is a reader taking a public
+document home, and a list of who downloaded a political proposal is precisely the
+list the movement's adversaries would want to obtain. The accountable act is the
+upload, and it is recorded: rows are append-only like revisions — replacing or
+removing one closes it (`superseded_at`, `superseded_by`) rather than deleting
+it — and each carries the `sha256` of the served bytes, so anyone holding a copy
+of a disputed PDF can check whether KLEA served it. The superseded *bytes* are
+deleted; the record of them is not.
+
+**`pdf-lib` 1.17.1, not the maintained fork.** `pdf-lib` has not been released
+since 2022. `@cantoo/pdf-lib` is maintained, but brings an HTML parser and a
+colour library on open `>=` ranges, is 26 MB unpacked and releases every week or
+two — more supply chain than a server-side metadata pass needs, on a project that
+pins everything. The tradeoff is a parser nobody is patching, run on bytes from
+outside. It is bounded: only a member with edit rights can upload, at ten an hour,
+and the file is capped at 20 MB before it is parsed. What is not bounded is an
+object stream that inflates enormously — pdf-lib decompresses with no output
+limit — so a hostile member could cost the server memory. Revisit if uploads
+ever open wider than members, or move parsing into a worker with a heap limit.
+
+One trap met on the way, recorded because it fails silently: pdf-lib is compiled
+to ES5, where subclasses of `Error` do not survive `instanceof`. Catching
+`EncryptedPDFError` by class never matched, and an encrypted file was reported as
+unreadable. Encryption is now read from `doc.isEncrypted`; never `instanceof` a
+pdf-lib error.
+
+**Cost to readers: 0.1 KB.** The link is server-rendered markup prepended to the
+article HTML, like the contents list, so the reading view ships no new
+component. The 0.1 KB is the new API route's entry in the route tree. The
+author's `/write` page grew 5.3 KB, most of it 34 messages in four languages,
+on a screen the budget exempts.

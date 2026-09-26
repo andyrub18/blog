@@ -19,7 +19,7 @@ before touching auth, uploads, or anything that reads a dossier.
 
 **2. First-load weight is a feature, not a nicety.** Readers arrive on slow,
 metered Haitian mobile data. The budget is **under 100 KB gzipped** of client
-JS for an article page, and it currently has about **1.1 KB** of headroom — the
+JS for an article page, and it currently has about **1.0 KB** of headroom — the
 next thing added to that page has to find bytes before it spends them.
 Measure before and after any dependency addition:
 
@@ -75,6 +75,11 @@ logic** (server functions) → **auth** (Better Auth) → **components** (Solid)
 - `src/lib/docx.ts` — the DOCX import pipeline. **Server only.**
   `src/lib/html-to-prosemirror.ts` — HTML to our format, and the thing that makes
   an imported file safe.
+- `src/lib/pdf.ts` — preparing a companion PDF: what it refuses, what it
+  strips. **Server only.** `src/lib/jpeg.ts` — removing EXIF and friends from a
+  JPEG; pure. `src/lib/companion.ts` — attaching, retiring and serving
+  companions. **Server only.** `src/lib/companion-actions.ts` — its server
+  functions. `src/routes/api/companion/$.ts` — the reader's download.
 - `src/lib/forum.ts` — the forum rules and queries. **Server only.**
   `src/lib/forum-actions.ts` — its server functions. The post format's rules
   (length, normalising, paragraph splitting) live in `validation.ts`, because
@@ -150,9 +155,9 @@ a node type without asking what it lets an author put in another reader's
 browser. There is no image node and no raw-HTML node, both on purpose.
 
 **The reading view renders on the server and ships no JavaScript of its own.**
-That includes the table of contents: `renderOutlineToHtml` emits the `<nav>` as
-markup and `articles.ts` prepends it, rather than sending the outline as data
-for a `<For>` to render. Written as a component it measured 0.3 KB against a
+That includes the table of contents and the companion PDF link:
+`renderOutlineToHtml` and `renderCompanionToHtml` emit markup that `articles.ts`
+prepends, rather than sending the data for a component to render. Written as a component it measured 0.3 KB against a
 budget with 0.6 KB left, and plain `<a href="#…">` also works for a reader whose
 bundle has not arrived — on a slow connection, exactly the reader facing the
 longest document. `fetchArticle` returns HTML and deliberately strips the
@@ -191,6 +196,28 @@ file somebody emailed an author and a public page. It copies no tag through:
 every node comes from the allowlist in `prosemirror.ts`. Do not add a shortcut
 that passes HTML along, and do not add a tag to its tables without asking what
 it lets a document put in a reader's browser (D18).
+
+**A companion PDF is kept, not rebuilt — so it is refused if it can act and
+stripped of what identifies.** It is the one file the platform serves without
+having written it (D26). `preparePdf` refuses scripts, launch and submit
+actions, links into other files, embedded files, forms, and comments; it strips
+the information dictionary, XMP, `PieceInfo`, pdfTeX's `PTEX.*` keys (figure
+paths under `/home/<username>`), JPEG EXIF, and unreferenced objects. Do not
+loosen either list without asking what it lets a PDF put on a reader's machine
+or say about its author. When testing a removal, search the output **after
+re-saving it without object streams** (`searchable` in `pdf.test.ts`): the
+output is compressed, and a search of its raw bytes passes whether or not the
+secret is still there.
+
+**A companion is offered only while its revision is the newest.**
+`servableCompanion` is the single answer, used by the reading view's link and by
+the download route alike. Never serve a companion by id or by path, and never
+add a second way to decide it is current. Any save retires it — that is the
+rule working, not a bug to smooth over.
+
+**Never `instanceof` a `pdf-lib` error.** It is compiled to ES5, where `Error`
+subclasses lose their prototype; the check silently never matches. Read state
+instead (`doc.isEncrypted`), as `preparePdf` does.
 
 **Check a `.docx` before opening it, in this order:** `file.size` before the
 body is read, then `PK\x03\x04` (the MIME type is the client's), then the ZIP
