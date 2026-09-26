@@ -8,7 +8,7 @@
  * member account, and with it every applicant's CV.
  */
 import { randomUUID } from 'node:crypto'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { eq, inArray } from 'drizzle-orm'
 import { auth } from '../src/lib/auth'
@@ -479,6 +479,12 @@ async function resetArticles(authorId: string, allAuthors: Array<string>): Promi
     await db.delete(articleRevision).where(inArray(articleRevision.articleId, ids))
     await db.delete(articleTranslation).where(inArray(articleTranslation.articleId, ids))
     await db.delete(article).where(inArray(article.id, ids))
+    // The companion rows went with the revisions (the foreign key cascades);
+    // their files would not, and every run of the suite attaches one.
+    const uploadRoot = process.env.UPLOAD_ROOT ?? join(process.cwd(), 'uploads')
+    for (const id of ids) {
+      await rm(join(uploadRoot, 'companions', id), { recursive: true, force: true })
+    }
   }
 
   for (const entry of ARTICLES) {

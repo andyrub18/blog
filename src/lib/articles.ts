@@ -14,12 +14,14 @@ import {
 import {
   type DocNode,
   docToPlainText,
+  escapeHtml,
   parseDocument,
   readingTimeMinutes,
   renderDocument,
   renderOutlineToHtml,
 } from './prosemirror'
 import {
+  formatMegabytes,
   isValidArticleSummary,
   isValidArticleTitle,
   isValidSlug,
@@ -598,8 +600,26 @@ export async function getReadableArticle(input: {
    * instead of with the whole document.
    */
   const rendered = renderDocument(doc)
+
+  // Only a companion made from the text on this page is offered; a stale one is
+  // simply absent, the same answer the download route gives.
+  const { servableCompanion } = await import('./companion')
+  const companion = await servableCompanion(rows[0].articleId, chosen.lang)
+  const companionHtml = companion
+    ? renderCompanionToHtml({
+        href: `/api/companion/${input.slug}/${chosen.lang}`,
+        label: m.articles_companionDownload(),
+        meta: m.articles_companionMeta({
+          pages: String(companion.pageCount),
+          size: formatMegabytes(companion.byteSize, input.lang),
+        }),
+      })
+    : ''
+
   const html =
-    renderOutlineToHtml(rendered.outline, m.articles_contents()) + rendered.html
+    companionHtml +
+    renderOutlineToHtml(rendered.outline, m.articles_contents()) +
+    rendered.html
 
   return {
     ok: true,
@@ -619,6 +639,22 @@ export async function getReadableArticle(input: {
       availableLangs: rows.map((row) => row.lang).sort(),
     },
   }
+}
+
+/**
+ * The companion PDF's link, as markup (D26).
+ *
+ * Written into the article's HTML on the server for the reason the contents
+ * list is (see `getReadableArticle`): the reading view ships no JavaScript of
+ * its own, and a plain link works before any bundle arrives. The size is on the
+ * link because the reader is on metered data and should decide knowing it.
+ */
+export function renderCompanionToHtml(input: {
+  href: string
+  label: string
+  meta: string
+}): string {
+  return `<p class="article-companion"><a href="${escapeHtml(input.href)}" download>${escapeHtml(input.label)}</a> <span>${escapeHtml(input.meta)}</span></p>`
 }
 
 export type AuthoredArticle = {
