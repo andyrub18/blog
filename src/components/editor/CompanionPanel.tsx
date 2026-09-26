@@ -15,6 +15,12 @@ import { getLocale } from '../../paraglide/runtime'
 /**
  * Attaching the author's typeset PDF to one language of an article (D26).
  *
+ * The circle reviews it with the text, and readers get it only once a decision
+ * approves it (D29). So most of what this panel says is *where the file is* on
+ * the way to readers — in review, waiting for the next round, approved — since
+ * from the author's side every one of those looks like "I attached it and it
+ * is not on the page".
+ *
  * The sentence this panel exists to say is the stale one. A companion stops
  * being offered the moment the text is saved again — that is the rule, and it
  * is the right rule, but from the author's side it looks like the PDF vanished
@@ -127,6 +133,25 @@ export default function CompanionPanel(props: Props) {
     }
   }
 
+  /**
+   * One sentence per state, and every one but the first says why readers do not
+   * have the file — the author cannot act on a state they are not told about.
+   */
+  const describeState = (values: { pages: string; size: string }) => {
+    switch (state()?.state) {
+      case 'approved':
+        return props.published
+          ? m.companion_current(values)
+          : m.companion_approvedNotLive(values)
+      case 'inReview':
+        return m.companion_inReview(values)
+      case 'nextRound':
+        return m.companion_nextRound(values)
+      default:
+        return m.companion_awaitingReview(values)
+    }
+  }
+
   const hasCompanion = () => {
     const current = state()
     return current !== null && current.state !== 'none'
@@ -146,14 +171,11 @@ export default function CompanionPanel(props: Props) {
             {m.companion_stale()}
           </p>
         </Show>
-        <Show when={state()?.state === 'current' && summary()}>
-          {(values) => (
-            <p class="text-neutral-700">
-              {props.published
-                ? m.companion_current(values())
-                : m.companion_pending(values())}
-            </p>
-          )}
+        <Show when={state()?.state !== 'stale' && summary()}>
+          {(values) => <p class="text-neutral-700">{describeState(values())}</p>}
+        </Show>
+        <Show when={state()?.state === 'approved' && props.published}>
+          <p class="text-xs text-neutral-500">{m.companion_replaceWarning()}</p>
         </Show>
         <Show when={props.dirty}>
           <p class="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">

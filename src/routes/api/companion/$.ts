@@ -3,6 +3,12 @@ import { createFileRoute } from '@tanstack/solid-router'
 /**
  * A reader's download of a companion PDF: `/api/companion/<slug>/<lang>`.
  *
+ * Also the circle's: `/api/companion/review/<submissionId>/<lang>` serves the
+ * PDF a round is reviewing, to members only, and never cached (D29). One route
+ * rather than two because every route costs every page a few hundred bytes of
+ * route tree; the two shapes cannot collide, one having three segments and the
+ * other two.
+ *
  * Served as an attachment and never inline, with `nosniff` and a sandboxing
  * CSP besides: `pdf.ts` refuses active content, but a file we did not write is
  * handled as though that check could one day miss something.
@@ -17,30 +23,67 @@ export const Route = createFileRoute('/api/companion/$')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        const [slug, lang, ...rest] = String(params._splat ?? '')
+        const segments = String(params._splat ?? '')
           .split('/')
           .filter(Boolean)
         const [{ isLocale }, { isValidSlug }] = await Promise.all([
           import('../../../i18n'),
           import('../../../lib/validation'),
         ])
-        if (!slug || !lang || rest.length > 0 || !isValidSlug(slug) || !isLocale(lang)) {
-          return new Response('Not found', { status: 404 })
-        }
 
-        const [{ getSession }, { openCompanionDownload }] = await Promise.all([
+        const [{ getSession }, companion] = await Promise.all([
           import('../../../lib/session.server'),
           import('../../../lib/companion'),
         ])
-        const session = await getSession()
-        const viewer =
-          session?.user && session.user.memberStatus !== 'blocked'
+        const viewerOf = async () => {
+          const session = await getSession()
+          return session?.user && session.user.memberStatus !== 'blocked'
             ? {
                 id: session.user.id,
                 role: session.user.role,
                 memberStatus: session.user.memberStatus,
               }
             : null
+        }
+
+        if (segments.length === 3 && segments[0] === 'review') {
+          const [, submissionId, reviewLang] = segments
+          if (!isLocale(reviewLang)) return new Response('Not found', { status: 404 })
+          const review = await companion.openCompanionForReview({
+            submissionId,
+            lang: reviewLang,
+            viewer: await viewerOf(),
+          })
+          if (!review.ok) {
+            return new Response(review.status === 403 ? 'Forbidden' : 'Not found', {
+              status: review.status,
+            })
+          }
+          return new Response(review.body, {
+            headers: {
+              'content-type': 'application/pdf',
+              'content-length': String(review.byteSize),
+              'content-disposition': `attachment; filename="${review.filename}"`,
+              'x-content-type-options': 'nosniff',
+              'content-security-policy': "sandbox; default-src 'none'",
+              // Unpublished work behind a membership check.
+              'cache-control': 'private, no-store',
+            },
+          })
+        }
+
+        const [slug, lang] = segments
+        if (
+          segments.length !== 2 ||
+          !slug ||
+          !lang ||
+          !isValidSlug(slug) ||
+          !isLocale(lang)
+        ) {
+          return new Response('Not found', { status: 404 })
+        }
+        const { openCompanionDownload } = companion
+        const viewer = await viewerOf()
 
         const result = await openCompanionDownload({
           slug,

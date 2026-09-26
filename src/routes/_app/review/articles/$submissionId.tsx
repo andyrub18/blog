@@ -19,7 +19,9 @@ import {
   OUTCOME_MESSAGE,
   SUBMISSION_STATUS_MESSAGE,
 } from '../../../../lib/deliberation-messages'
+import { formatMegabytes } from '../../../../lib/validation'
 import { m } from '../../../../paraglide/messages'
+import { getLocale } from '../../../../paraglide/runtime'
 
 /**
  * One deliberation.
@@ -153,6 +155,76 @@ function Deliberation() {
                     )}
                   </For>
                 </dl>
+              </section>
+
+              {/*
+               * The PDF is reviewed with the text (D29): if this round accepts
+               * a language, the file listed as under review is what readers
+               * will download in the movement's name. Every language is listed,
+               * PDF or not, so a missing download reads as "there is none"
+               * rather than as a page that failed to load one.
+               */}
+              <section
+                class="rounded-lg border border-neutral-200 bg-white p-6"
+                data-testid="review-companion"
+              >
+                <h2 class="text-lg font-semibold text-neutral-900">
+                  {m.deliberation_companionTitle()}
+                </h2>
+                <p class="mt-1 text-sm text-neutral-600">
+                  {m.deliberation_companionHint()}
+                </p>
+                <ul class="mt-4 flex flex-col gap-2 text-sm text-neutral-700">
+                  <For each={loaded().companions}>
+                    {(companion) => {
+                      const lang = languageName(companion.lang)
+                      if (companion.state === 'none') {
+                        return <li>{m.deliberation_companionNone({ lang })}</li>
+                      }
+                      const values = {
+                        lang,
+                        pages: String(companion.pageCount),
+                        size: formatMegabytes(companion.byteSize, getLocale()),
+                      }
+                      const href = `/api/companion/review/${loaded().submission.id}/${companion.lang}`
+                      if (companion.state === 'underReview') {
+                        return (
+                          <li class="flex flex-wrap items-center gap-2">
+                            <span>{m.deliberation_companionUnderReview(values)}</span>
+                            <a
+                              href={href}
+                              download
+                              class="font-medium text-[#00209F] hover:underline"
+                            >
+                              {m.deliberation_companionDownload()}
+                            </a>
+                          </li>
+                        )
+                      }
+                      if (companion.state === 'approved') {
+                        return (
+                          <li class="flex flex-wrap items-center gap-2">
+                            <span>{m.deliberation_companionApproved(values)}</span>
+                            <a
+                              href={href}
+                              download
+                              class="font-medium text-[#00209F] hover:underline"
+                            >
+                              {m.deliberation_companionDownload()}
+                            </a>
+                          </li>
+                        )
+                      }
+                      return (
+                        <li class="text-amber-900">
+                          {companion.state === 'afterSubmission'
+                            ? m.deliberation_companionAfterSubmission({ lang })
+                            : m.deliberation_companionStale({ lang })}
+                        </li>
+                      )
+                    }}
+                  </For>
+                </ul>
               </section>
 
               <section class="rounded-lg border border-neutral-200 bg-white p-6">

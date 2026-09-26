@@ -209,11 +209,18 @@ re-saving it without object streams** (`searchable` in `pdf.test.ts`): the
 output is compressed, and a search of its raw bytes passes whether or not the
 secret is still there.
 
-**A companion is offered only while its revision is the newest.**
-`servableCompanion` is the single answer, used by the reading view's link and by
-the download route alike. Never serve a companion by id or by path, and never
-add a second way to decide it is current. Any save retires it — that is the
-rule working, not a bug to smooth over.
+**A companion is offered only once the circle approved it, and only while its
+revision is the newest.** `servableCompanion` is the single answer, used by the
+reading view's link and by the download route alike; approval is stamped only by
+`approveCompanions` inside `decide()`, for files attached before the round was
+submitted (D29). Never serve a companion by id or by path, never add a second
+way to approve one, and never let an author's action stamp it. Any save retires
+it — that is the rule working, not a bug to smooth over.
+
+**`article.status` is "is any language live", before it is the review stage.**
+Write it through `stageFor` in `article-review.ts`. Writing the stage directly
+took a published article off the site whenever another of its languages was
+submitted (D29).
 
 **Never `instanceof` a `pdf-lib` error.** It is compiled to ES5, where `Error`
 subclasses lose their prototype; the check silently never matches. Read state
