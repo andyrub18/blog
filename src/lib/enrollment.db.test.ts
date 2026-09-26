@@ -29,7 +29,7 @@ async function makeUser(overrides: Partial<typeof schema.user.$inferInsert> = {}
   await harness.db.insert(schema.user).values({
     id,
     name: 'Lektè',
-    email: `${id}@kle.ht`,
+    email: `${id}@kleayiti.com`,
     emailVerified: true,
     role: 'reader',
     memberStatus: 'active',

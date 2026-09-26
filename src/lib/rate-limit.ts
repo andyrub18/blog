@@ -38,7 +38,7 @@ export const RULES = {
   /**
    * Deliberately generous, and cleared by a successful sign-in.
    *
-   * Many of KLE's readers reach the site from a shared connection — a
+   * Many of KLEA's readers reach the site from a shared connection — a
    * cybercafé, an office, a mobile carrier behind NAT — so one address is one
    * neighbourhood, not one person. A tight per-IP limit would lock all of them
    * out together. The defence against credential stuffing is `signInPerEmail`

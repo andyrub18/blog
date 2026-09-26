@@ -39,7 +39,7 @@ async function makeUser(
   await harness.db.insert(schema.user).values({
     id,
     name: role,
-    email: `${id}@kle.ht`,
+    email: `${id}@kleayiti.com`,
     emailVerified: true,
     role,
     memberStatus: (overrides.memberStatus ?? 'active') as 'active',
@@ -456,7 +456,7 @@ describe('voting', () => {
     })
     const votes = await promotion.getVotes(promotionId)
     expect(votes).toHaveLength(1)
-    expect(votes[0].voterEmail).toContain('@kle.ht')
+    expect(votes[0].voterEmail).toContain('@kleayiti.com')
     expect(votes[0].rationale).toBe(REASON)
   })
 })
@@ -465,7 +465,7 @@ describe('invitations', () => {
   it('stores a hash, never the token', async () => {
     const senior = await makeUser('senior_member')
     const result = await invitationLib.issueInvitation({
-      email: 'nouvo@kle.ht',
+      email: 'nouvo@kleayiti.com',
       note: REASON,
       actorId: senior,
     })
@@ -481,7 +481,7 @@ describe('invitations', () => {
   it('accepts a fresh token', async () => {
     const senior = await makeUser('senior_member')
     const issued = await invitationLib.issueInvitation({
-      email: 'nouvo@kle.ht',
+      email: 'nouvo@kleayiti.com',
       note: REASON,
       actorId: senior,
     })
@@ -501,7 +501,7 @@ describe('invitations', () => {
     const senior = await makeUser('senior_member')
     const longAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     const issued = await invitationLib.issueInvitation({
-      email: 'nouvo@kle.ht',
+      email: 'nouvo@kleayiti.com',
       note: REASON,
       actorId: senior,
       now: longAgo,
@@ -516,7 +516,7 @@ describe('invitations', () => {
   it('refuses a withdrawn token', async () => {
     const senior = await makeUser('senior_member')
     const issued = await invitationLib.issueInvitation({
-      email: 'nouvo@kle.ht',
+      email: 'nouvo@kleayiti.com',
       note: REASON,
       actorId: senior,
     })
@@ -534,7 +534,7 @@ describe('invitations', () => {
     const first = await makeUser('reader')
     const second = await makeUser('reader')
     const issued = await invitationLib.issueInvitation({
-      email: 'nouvo@kle.ht',
+      email: 'nouvo@kleayiti.com',
       note: REASON,
       actorId: senior,
     })
@@ -575,7 +575,7 @@ describe('invitations', () => {
     const senior = await makeUser('senior_member')
     await expect(
       invitationLib.issueInvitation({
-        email: 'nouvo@kle.ht',
+        email: 'nouvo@kleayiti.com',
         note: 'ok',
         actorId: senior,
       }),
@@ -586,7 +586,7 @@ describe('invitations', () => {
     const senior = await makeUser('senior_member')
     const newcomer = await makeUser('reader')
     const issued = await invitationLib.issueInvitation({
-      email: 'nouvo@kle.ht',
+      email: 'nouvo@kleayiti.com',
       note: REASON,
       actorId: senior,
     })

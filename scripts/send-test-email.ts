@@ -22,7 +22,7 @@ const locale = isLocale(localeArg) ? localeArg : DEFAULT_LOCALE
 
 const message = renderVerificationEmail({
   name: 'Anderson',
-  url: 'https://kle.ht/api/auth/verify-email?token=TEST-TOKEN-NOT-REAL',
+  url: 'https://kleayiti.com/api/auth/verify-email?token=TEST-TOKEN-NOT-REAL',
   locale,
 })
 

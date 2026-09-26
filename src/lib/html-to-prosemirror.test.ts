@@ -50,9 +50,9 @@ describe('what cannot get through', () => {
   })
 
   it('keeps an https link and gives it rel attributes', () => {
-    const html = roundTrip('<p><a href="https://kle.ht">le manifeste</a></p>')
+    const html = roundTrip('<p><a href="https://kleayiti.com">le manifeste</a></p>')
     expect(html).toBe(
-      '<p><a href="https://kle.ht" rel="nofollow noopener noreferrer">le manifeste</a></p>',
+      '<p><a href="https://kleayiti.com" rel="nofollow noopener noreferrer">le manifeste</a></p>',
     )
   })
 
@@ -181,7 +181,7 @@ describe('the report', () => {
 describe('the result is always storable', () => {
   it('produces a document the schema accepts unchanged', () => {
     const { doc } = htmlToDocument(
-      '<h1>Titre</h1><p><a href="https://kle.ht">lien</a></p>' +
+      '<h1>Titre</h1><p><a href="https://kleayiti.com">lien</a></p>' +
         '<table><tr><th>a</th></tr><tr><td>b</td></tr></table>' +
         '<ul><li>x</li></ul><blockquote><p>citation</p></blockquote>',
     )

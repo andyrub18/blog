@@ -7,12 +7,12 @@ import { expect, test } from '@playwright/test'
 test.describe('language routing', () => {
   test('serves the French home page', async ({ page }) => {
     await page.goto('/fr')
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('KLE')
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('KLEA')
   })
 
   test('serves the Creole home page', async ({ page }) => {
     await page.goto('/ht')
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('KLE')
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('KLEA')
   })
 
   test('switching language keeps you on the same page', async ({ page }) => {

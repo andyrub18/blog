@@ -10,7 +10,7 @@
  * article in English or Spanish, and the constraint that worried us enforces
  * itself — `deliberation.ts` publishes a language only once a contradictor has
  * argued in it, so a translation nobody reviews simply never goes live. There
- * was no need for a second gate, and the gate took a choice away from KLE.
+ * was no need for a second gate, and the gate took a choice away from KLEA.
  *
  * English and Spanish are here for the diaspora — Haitians in Miami, Boston,
  * Montréal, Santo Domingo. Most articles will be written in Creole and French

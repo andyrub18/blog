@@ -12,7 +12,7 @@ open, and the forum is where a reader who is not a member gets to do that.
 
 ## What was decided before building
 
-Three of these are governance calls and were settled with KLE rather than
+Three of these are governance calls and were settled with KLEA rather than
 assumed. The fourth is arithmetic.
 
 **One discussion per article, each post tagged with the language its author was
@@ -25,7 +25,7 @@ filtered, without a migration.
 
 **Readers and above may post; anonymous visitors read.** This is the roles table
 in `01-ENROLLMENT.md` exactly. Reading a public article must never require an
-account (D1); saying something under KLE's article requires one that has
+account (D1); saying something under KLEA's article requires one that has
 verified an email address and passed a captcha. Restricting the forum to members
 was considered and rejected: it would empty the reader tier of its only purpose
 and contradict the enrollment path this project encourages — read first,

@@ -42,7 +42,7 @@ test.describe('login form', () => {
   })
 
   test('rejects a password below the minimum length', async ({ page }) => {
-    await page.getByLabel(/courriel/i).fill('lektè@kle.ht')
+    await page.getByLabel(/courriel/i).fill('lektè@kleayiti.com')
     await page.getByLabel(/mot de passe/i).fill('short')
     await page.getByRole('button', { name: /^se connecter$/i }).click()
     await expect(page.getByLabel(/mot de passe/i)).toHaveAttribute('aria-invalid', 'true')

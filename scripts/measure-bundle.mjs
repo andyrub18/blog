@@ -89,7 +89,7 @@ const routeKey = (path) =>
  *
  * Only two pages are exempt, and both are pages somebody opens on purpose
  * rather than arrives on. The budget is about the reader who taps a link on
- * mobile data having heard about KLE — measuring the others is still useful,
+ * mobile data having heard about KLEA — measuring the others is still useful,
  * which is why they are here at all rather than left unmeasured.
  */
 const PAGES = [

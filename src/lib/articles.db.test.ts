@@ -42,7 +42,7 @@ async function makeUser(role: string = 'member'): Promise<Viewer> {
   await harness.db.insert(schema.user).values({
     id,
     name: `${role}-${id.slice(0, 4)}`,
-    email: `${id}@kle.ht`,
+    email: `${id}@kleayiti.com`,
     emailVerified: true,
     role: role as 'member',
     memberStatus: 'active',

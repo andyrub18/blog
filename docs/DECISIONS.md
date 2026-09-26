@@ -10,7 +10,7 @@ _Last updated: September 2026._
 New articles are `public`; `members` is the deliberate exception. A movement
 whose purpose is national influence should not hide its output behind a signup
 wall. Public articles are the ones search engines index, so this column is
-effectively KLE's reach policy.
+effectively KLEA's reach policy.
 
 ## D2 — The app uses the manifesto's role vocabulary
 
@@ -179,7 +179,7 @@ language into its optional one.
 
 Recorded here because it is the one governance rule in this codebase that the
 implementation invented. **It should be confirmed or replaced by a decision from
-KLE**, and `MIN_LANGUAGE_SUPPORT` in `src/lib/deliberation.ts` is where it
+KLEA**, and `MIN_LANGUAGE_SUPPORT` in `src/lib/deliberation.ts` is where it
 changes.
 
 ## D17 — No dependency ships before a feature needs it
@@ -262,7 +262,7 @@ infrastructure rather than one screen's forty lines.
 
 ## D21 — The forum's three governance rules
 
-Settled with KLE before the phase was built, and recorded here because each one
+Settled with KLEA before the phase was built, and recorded here because each one
 could plausibly have gone the other way.
 
 **One discussion per article, not one per language.** D12 splits *publication*
@@ -273,7 +273,7 @@ reading, so the distinction is kept without being enforced.
 
 **Readers and above post; anonymous visitors read.** Exactly the roles table in
 `phases/01-ENROLLMENT.md`. Reading must never require an account (D1); speaking
-under KLE's article requires one that has verified an email and passed a
+under KLEA's article requires one that has verified an email and passed a
 captcha. Restricting the forum to members was rejected: it would leave the
 reader tier with no purpose and contradict the path this project encourages —
 read first, take part, then apply by dossier.
@@ -301,10 +301,10 @@ That was a restriction nobody asked for, and it was reverted. **Nothing in the
 manifesto bans an article in English or Spanish.** The constraint that prompted
 the split already enforces itself: a translation no contradictor reads simply
 never publishes, and `decide()` needs no help refusing it. A second gate in
-`article-actions.ts` added nothing except a decision taken away from KLE.
+`article-actions.ts` added nothing except a decision taken away from KLEA.
 
 The general rule this leaves: `CLAUDE.md` says a manifesto rule must not be
-*simplified* without a decision from KLE. Adding one nobody asked for is the same
+*simplified* without a decision from KLEA. Adding one nobody asked for is the same
 error, and harder to notice, because the code looks more careful afterwards.
 Before encoding a limit on who may write, review, publish or join, check it is
 written down. If it is only inferred from surrounding code, leave the door open.
@@ -315,7 +315,7 @@ banner therefore says the same thing in all four languages — a reader who aske
 for a language this article lacks is looking at a gap an author may close,
 whichever language it is.
 
-## D23 — A link KLE sends carries the language it was sent in
+## D23 — A link KLEA sends carries the language it was sent in
 
 Paraglide resolves locale from the URL first, then a cookie, then the browser's
 `Accept-Language`. An unprefixed URL therefore hands the choice of language to
@@ -362,7 +362,7 @@ text, so they survive being pasted into WhatsApp; the cost is that renaming a
 heading on a published article breaks links already shared, which is the same
 class of problem `article_revision` exists to make visible.
 
-A typeset PDF remains legitimate as a **companion download** — KLE's own work, so
+A typeset PDF remains legitimate as a **companion download** — KLEA's own work, so
 no rights question; a deliberate download, so outside the budget; served as an
 attachment, never inline. When built, it belongs on `article_translation` (the
 French and Creole PDFs are different documents), carries the `article_revision`

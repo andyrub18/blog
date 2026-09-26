@@ -36,23 +36,23 @@ import {
 const PASSWORD = 'demo-password-123'
 
 const ACCOUNTS = [
-  { key: 'senior', name: 'Manm Senyò', email: 'senior@kle.test', role: 'senior_member' },
+  { key: 'senior', name: 'Manm Senyò', email: 'senior@kleayiti.test', role: 'senior_member' },
   // Three senior members, because three approvals is the floor for a promotion.
   // With fewer, the qualified majority can never be reached and the promotion
   // flow cannot be exercised at all.
-  { key: 'senior2', name: 'Manm Senyò 2', email: 'senior2@kle.test', role: 'senior_member' },
-  { key: 'senior3', name: 'Manm Senyò 3', email: 'senior3@kle.test', role: 'senior_member' },
+  { key: 'senior2', name: 'Manm Senyò 2', email: 'senior2@kleayiti.test', role: 'senior_member' },
+  { key: 'senior3', name: 'Manm Senyò 3', email: 'senior3@kleayiti.test', role: 'senior_member' },
   // Probation behind them: the only kind of member who may be nominated.
-  { key: 'confirmed', name: 'Manm Konfime', email: 'confirmed@kle.test', role: 'member' },
+  { key: 'confirmed', name: 'Manm Konfime', email: 'confirmed@kleayiti.test', role: 'member' },
   // Reserved for the blocking test, so it does not lock another test's account.
-  { key: 'blockable', name: 'Manm Regilye', email: 'blockable@kle.test', role: 'member' },
-  { key: 'reader', name: 'Lektè', email: 'reader@kle.test', role: 'reader' },
-  { key: 'applicant', name: 'Kandida', email: 'applicant@kle.test', role: 'reader' },
+  { key: 'blockable', name: 'Manm Regilye', email: 'blockable@kleayiti.test', role: 'member' },
+  { key: 'reader', name: 'Lektè', email: 'reader@kleayiti.test', role: 'reader' },
+  { key: 'applicant', name: 'Kandida', email: 'applicant@kleayiti.test', role: 'reader' },
   // Admitted member whose six months are up: the probation queue's subject.
-  { key: 'probationer', name: 'Manm an Esè', email: 'probationer@kle.test', role: 'member' },
+  { key: 'probationer', name: 'Manm an Esè', email: 'probationer@kleayiti.test', role: 'member' },
   // Pristine on purpose: tests that only look at the application form must not
   // share an account with tests that submit one, or they depend on run order.
-  { key: 'newcomer', name: 'Nouvo', email: 'newcomer@kle.test', role: 'reader' },
+  { key: 'newcomer', name: 'Nouvo', email: 'newcomer@kleayiti.test', role: 'reader' },
 ] as const satisfies ReadonlyArray<{
   key: string
   name: string

@@ -40,7 +40,7 @@ export const MIN_CONTRADICTORS = 1
 /**
  * The support a single language needs before it is published.
  *
- * **This threshold is not in the manifesto and should be confirmed by KLE.** The
+ * **This threshold is not in the manifesto and should be confirmed by KLEA.** The
  * manifesto sets the quorum for the deliberation as a whole; it does not say
  * what one language of a multilingual article needs on its own. The rule chosen
  * here is the least that keeps the process honest:

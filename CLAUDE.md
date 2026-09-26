@@ -1,12 +1,12 @@
-# KLE platform — working notes
+# KLEA platform — working notes
 
-Publishing platform for **KLE — Konbit libète ak egalite**, a Haitian civic
+Publishing platform for **KLEA — Konbit pou Libète ak Egalite an Ayiti**, a Haitian civic
 movement. Members propose articles, senior members review them through the
 movement's own deliberation process, and readers discuss them in a forum.
 
-The governing document is the KLE manifesto. Where this codebase encodes a rule
+The governing document is the KLEA manifesto. Where this codebase encodes a rule
 about membership, deliberation or publication, that rule comes from the
-manifesto and should not be "simplified" without a decision from KLE.
+manifesto and should not be "simplified" without a decision from KLEA.
 
 ## Two things that override normal judgement
 

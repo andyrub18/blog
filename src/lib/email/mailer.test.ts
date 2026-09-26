@@ -18,14 +18,14 @@ describe('createConsoleMailer', () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => {})
     const mailer = createConsoleMailer()
     const result = await mailer.send({
-      to: 'lekte@kle.ht',
+      to: 'lekte@kleayiti.com',
       subject: 'Subject',
       html: '<p>hi</p>',
       text: 'hi',
     })
     expect(result).toEqual({ ok: true })
     expect(info).toHaveBeenCalledOnce()
-    expect(String(info.mock.calls[0][0])).toContain('lekte@kle.ht')
+    expect(String(info.mock.calls[0][0])).toContain('lekte@kleayiti.com')
   })
 })
 
@@ -57,7 +57,7 @@ describe('getMailer', () => {
   it('uses Resend when both credentials are present', () => {
     process.env.NODE_ENV = 'production'
     process.env.RESEND_API_KEY = 're_test'
-    process.env.EMAIL_FROM = 'KLE <noreply@kle.ht>'
+    process.env.EMAIL_FROM = 'KLEA <noreply@kleayiti.com>'
     expect(() => getMailer()).not.toThrow()
   })
 

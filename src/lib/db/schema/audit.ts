@@ -4,7 +4,7 @@ import { user } from './auth'
 /**
  * Append-only audit trail.
  *
- * Never updated, never deleted. The manifesto commits KLE to *transparence
+ * Never updated, never deleted. The manifesto commits KLEA to *transparence
  * totale* and *reddition de comptes*; these tables are that commitment in code.
  * `access_event` in particular is the only honest basis for telling a member
  * that their CV is not being passed around, because it records every time
