@@ -7,21 +7,29 @@ import { eq } from 'drizzle-orm'
 import { PDFDocument } from 'pdf-lib'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { startTestDatabase, type TestDatabase } from '../test/postgres'
+import type { Documentation } from './article-review'
 import type { Viewer } from './articles'
 
 /**
  * Companion PDFs against a real PostgreSQL and a real (temporary) disk.
  *
- * The property everything here protects: a reader is offered a companion only
- * while it was made from the text on the page. That is a subquery comparing
- * revision ids, a transaction that supersedes one row and inserts another, and
- * a file written before the row and deleted after it — none of which a mock
- * could be wrong about in the way the real thing can.
+ * Two properties, both enforced in SQL and both worth nothing if a mock agreed
+ * with them:
+ *
+ * - **Readers get only a PDF the circle approved** (D29): one attached before a
+ *   round was submitted, still matching the text, in a language that round
+ *   accepted. Everything else waits.
+ * - **Readers never get a PDF of text that has since changed** (D26).
+ *
+ * The rounds here are real ones — submitted, paneled, argued and decided —
+ * because approval is a side effect of `decide()`, and a test that stamped the
+ * row by hand would be testing the stamp.
  */
 
 let harness: TestDatabase
 let uploads: string
 let articles: typeof import('./articles')
+let review: typeof import('./article-review')
 let companion: typeof import('./companion')
 let schema: typeof import('./db/schema')
 
@@ -31,6 +39,7 @@ beforeAll(async () => {
   uploads = await mkdtemp(join(tmpdir(), 'klea-companion-'))
   process.env.UPLOAD_ROOT = uploads
   articles = await import('./articles')
+  review = await import('./article-review')
   companion = await import('./companion')
   schema = await import('./db/schema')
 })
@@ -42,6 +51,10 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await harness.db.delete(schema.articleCompanion)
+  await harness.db.delete(schema.articleDecision)
+  await harness.db.delete(schema.articleReview)
+  await harness.db.delete(schema.articleReviewer)
+  await harness.db.delete(schema.articleSubmission)
   await harness.db.delete(schema.articleRevision)
   await harness.db.delete(schema.articleTranslation)
   await harness.db.delete(schema.article)
@@ -63,6 +76,16 @@ async function makeUser(role: string = 'member'): Promise<Viewer> {
 
 const TITLE = 'Réforme de l’administration publique'
 const SUMMARY = 'Un diagnostic de la fonction publique et ce que le mouvement propose.'
+const RATIONALE = 'Le diagnostic tient, et le PDF dit ce que dit le texte.'
+const DOCUMENTATION: Documentation = {
+  diagnosis: 'Les concours ne sont pas publiés et les nominations ne sont pas motivées.',
+  solutions: 'Publier les résultats des concours, motiver chaque nomination, les deux.',
+  resources: 'Deux membres à mi-temps pendant un trimestre, et les journaux officiels.',
+  risks:
+    'Publier un chiffre faux et perdre la crédibilité que la proposition veut bâtir.',
+  indicators:
+    'Le nombre de postes techniques pourvus par concours, publié chaque trimestre.',
+}
 
 const body = (text: string) => ({
   type: 'doc',
@@ -81,7 +104,7 @@ async function save(author: Viewer, articleId: string, text: string, lang = 'fr'
   if (!saved.ok) throw new Error(`save failed: ${saved.code}`)
 }
 
-async function publishedArticle(author: Viewer, senior: Viewer) {
+async function draft(author: Viewer, text = 'Le texte soumis au cercle.') {
   const created = await articles.createArticle({
     author,
     lang: 'fr',
@@ -89,15 +112,8 @@ async function publishedArticle(author: Viewer, senior: Viewer) {
     summary: SUMMARY,
   })
   if (!created.ok) throw new Error(`create failed: ${created.code}`)
-  const { articleId, slug } = created.value
-  await save(author, articleId, 'Le texte revu par le cercle.')
-  const published = await articles.publishTranslation({
-    actor: senior,
-    articleId,
-    lang: 'fr',
-  })
-  if (!published.ok) throw new Error(`publish failed: ${published.code}`)
-  return { articleId, slug }
+  await save(author, created.value.articleId, text)
+  return created.value
 }
 
 async function pdfFile(pages = 3): Promise<File> {
@@ -106,13 +122,89 @@ async function pdfFile(pages = 3): Promise<File> {
   return new File([new Uint8Array(await doc.save())], 'proposition.pdf')
 }
 
-async function attach(actor: Viewer, articleId: string, file?: File) {
-  return companion.attachCompanion({
+async function attach(actor: Viewer, articleId: string, pages = 3) {
+  const result = await companion.attachCompanion({
     actor,
     articleId,
     lang: 'fr',
-    file: file ?? (await pdfFile()),
+    file: await pdfFile(pages),
   })
+  if (!result.ok) throw new Error(`attach failed: ${result.code}`)
+  return result.value
+}
+
+type Circle = { senior: Viewer; members: Array<Viewer> }
+
+async function circle(): Promise<Circle> {
+  return {
+    senior: await makeUser('senior_member'),
+    members: [await makeUser(), await makeUser(), await makeUser()],
+  }
+}
+
+async function submit(author: Viewer, articleId: string): Promise<string> {
+  const submitted = await review.submitForReview({
+    actor: author,
+    articleId,
+    langs: ['fr'],
+    documentation: DOCUMENTATION,
+  })
+  if (!submitted.ok) throw new Error(`submit failed: ${submitted.code}`)
+  return submitted.value.submissionId
+}
+
+/** Panel, debate, verdicts and decision on a submitted round. */
+async function decideRound(
+  { senior, members }: Circle,
+  submissionId: string,
+  verdict: 'support' | 'object' = 'support',
+) {
+  for (const [i, member] of members.entries()) {
+    const assigned = await review.assignReviewer({
+      actor: senior,
+      submissionId,
+      userId: member.id,
+      stance: i === 0 ? 'contradictor' : 'reviewer',
+    })
+    if (!assigned.ok) throw new Error(`assign failed: ${assigned.code}`)
+  }
+  const opened = await review.openDeliberation({ actor: senior, submissionId })
+  if (!opened.ok) throw new Error(`open failed: ${opened.code}`)
+  for (const member of members) {
+    const said = await review.recordVerdict({
+      actor: member,
+      submissionId,
+      lang: 'fr',
+      verdict,
+      rationale: RATIONALE,
+    })
+    if (!said.ok) throw new Error(`verdict failed: ${said.code}`)
+  }
+  const decided = await review.decide({
+    actor: senior,
+    submissionId,
+    rationale: RATIONALE,
+    unresolved: 'rejected',
+  })
+  if (!decided.ok) throw new Error(`decide failed: ${decided.code}`)
+  return decided.value
+}
+
+/** An article the circle published together with its PDF. */
+async function liveWithPdf(pages = 3) {
+  const author = await makeUser()
+  const people = await circle()
+  const { articleId, slug } = await draft(author)
+  await attach(author, articleId, pages)
+  const submissionId = await submit(author, articleId)
+  await decideRound(people, submissionId)
+  return { author, people, articleId, slug, submissionId }
+}
+
+async function stateOf(actor: Viewer, articleId: string) {
+  const result = await companion.companionState({ actor, articleId, lang: 'fr' })
+  if (!result.ok) throw new Error(result.code)
+  return result.value.state
 }
 
 async function storedFiles(articleId: string): Promise<Array<string>> {
@@ -127,32 +219,41 @@ async function bodyBytes(stream: ReadableStream<Uint8Array>): Promise<Uint8Array
 describe('who may attach one', () => {
   it('lets the author attach a PDF to their own text', async () => {
     const author = await makeUser()
-    const { articleId } = await publishedArticle(author, await makeUser('senior_member'))
+    const { articleId } = await draft(author)
     const result = await attach(author, articleId)
-    expect(result.ok).toBe(true)
-    if (result.ok) expect(result.value.pageCount).toBe(3)
+    expect(result.pageCount).toBe(3)
   })
 
   /** Whoever may change the text may change its rendering; nobody else. */
   it('refuses another member, and reads nothing of their file', async () => {
     const author = await makeUser()
-    const { articleId } = await publishedArticle(author, await makeUser('senior_member'))
-    const stranger = await makeUser()
-    expect(await attach(stranger, articleId)).toEqual({ ok: false, code: 'FORBIDDEN' })
+    const { articleId } = await draft(author)
+    const result = await companion.attachCompanion({
+      actor: await makeUser(),
+      articleId,
+      lang: 'fr',
+      file: await pdfFile(),
+    })
+    expect(result).toEqual({ ok: false, code: 'FORBIDDEN' })
     expect(await storedFiles(articleId)).toEqual([])
   })
 
   it('refuses a blocked author', async () => {
     const author = await makeUser()
-    const { articleId } = await publishedArticle(author, await makeUser('senior_member'))
-    const blocked = { ...author, memberStatus: 'blocked' }
-    expect(await attach(blocked, articleId)).toEqual({ ok: false, code: 'FORBIDDEN' })
+    const { articleId } = await draft(author)
+    const result = await companion.attachCompanion({
+      actor: { ...author, memberStatus: 'blocked' },
+      articleId,
+      lang: 'fr',
+      file: await pdfFile(),
+    })
+    expect(result).toEqual({ ok: false, code: 'FORBIDDEN' })
   })
 
   /** A PDF with no article text behind it would be the PDF-only publication D24 refused. */
   it('refuses a language with no text', async () => {
     const author = await makeUser()
-    const { articleId } = await publishedArticle(author, await makeUser('senior_member'))
+    const { articleId } = await draft(author)
     const result = await companion.attachCompanion({
       actor: author,
       articleId,
@@ -164,82 +265,146 @@ describe('who may attach one', () => {
 
   it('stores nothing when the file is refused', async () => {
     const author = await makeUser()
-    const { articleId } = await publishedArticle(author, await makeUser('senior_member'))
+    const { articleId } = await draft(author)
     const notPdf = new File([new TextEncoder().encode('PK\x03\x04 a zip')], 'x.pdf')
-    expect(await attach(author, articleId, notPdf)).toEqual({
-      ok: false,
-      code: 'NOT_A_PDF',
+    const result = await companion.attachCompanion({
+      actor: author,
+      articleId,
+      lang: 'fr',
+      file: notPdf,
     })
+    expect(result).toEqual({ ok: false, code: 'NOT_A_PDF' })
     expect(await harness.db.select().from(schema.articleCompanion)).toEqual([])
     expect(await storedFiles(articleId)).toEqual([])
   })
 })
 
-describe('the text moves on, the PDF stops', () => {
-  it('is offered while it matches the published text', async () => {
-    const author = await makeUser()
-    const { articleId } = await publishedArticle(author, await makeUser('senior_member'))
-    await attach(author, articleId)
-    expect(await companion.servableCompanion(articleId, 'fr')).not.toBeNull()
+describe('the circle approves it with the text (D29)', () => {
+  it('is offered to readers once the round that reviewed it accepts the language', async () => {
+    const { author, articleId, submissionId } = await liveWithPdf()
+    const servable = await companion.servableCompanion(articleId, 'fr')
+    expect(servable?.approvedInSubmissionId).toBe(submissionId)
+    expect(await stateOf(author, articleId)).toBe('approved')
   })
 
-  /**
-   * The central rule. A PDF is a statement in the movement's name, and one that
-   * no longer matches the reviewed text is a position nobody decided on.
-   */
-  it('is withdrawn from readers the moment the text is saved again', async () => {
+  /** The whole point of option A: nobody publishes a PDF alone. */
+  it('is not offered when attached to an article that is already live', async () => {
     const author = await makeUser()
-    const { articleId } = await publishedArticle(author, await makeUser('senior_member'))
-    await attach(author, articleId)
+    const { articleId } = await draft(author)
+    await decideRound(await circle(), await submit(author, articleId))
 
-    await save(author, articleId, 'Le texte, corrigé après la publication.')
+    await attach(author, articleId)
 
     expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
-    const state = await companion.companionState({ actor: author, articleId, lang: 'fr' })
-    expect(state.ok && state.value.state).toBe('stale')
+    expect(await stateOf(author, articleId)).toBe('awaitingReview')
   })
 
-  it('is offered again once a PDF of the new text is attached', async () => {
+  it('is shown to reviewers, and is in review, while its round is open', async () => {
     const author = await makeUser()
-    const { articleId } = await publishedArticle(author, await makeUser('senior_member'))
+    const { articleId } = await draft(author)
     await attach(author, articleId)
-    await save(author, articleId, 'Le texte, corrigé.')
-    await attach(author, articleId, await pdfFile(4))
+    const submissionId = await submit(author, articleId)
 
-    const servable = await companion.servableCompanion(articleId, 'fr')
-    expect(servable?.pageCount).toBe(4)
+    expect(await stateOf(author, articleId)).toBe('inReview')
+    const [view] = await companion.reviewCompanions({
+      id: submissionId,
+      articleId,
+      langs: ['fr'],
+      submittedAt: new Date(),
+    })
+    expect(view.state).toBe('underReview')
   })
 
   /**
-   * Attached to the draft the circle reviewed, it goes live with that draft —
-   * publication writes no revision, so it does not retire the PDF.
+   * The circle can only vouch for a file it was given. One attached after the
+   * round was submitted is not what the reviewers read.
    */
-  it('survives publication when the text did not change', async () => {
+  it('does not approve a PDF attached after the round was submitted', async () => {
     const author = await makeUser()
-    const created = await articles.createArticle({
-      author,
-      lang: 'fr',
-      title: TITLE,
-      summary: SUMMARY,
-    })
-    if (!created.ok) throw new Error('create failed')
-    const { articleId } = created.value
-    await save(author, articleId, 'Le texte soumis au cercle.')
+    const people = await circle()
+    const { articleId } = await draft(author)
+    const submissionId = await submit(author, articleId)
     await attach(author, articleId)
 
-    const senior = await makeUser('senior_member')
-    await articles.publishTranslation({ actor: senior, articleId, lang: 'fr' })
+    expect(await stateOf(author, articleId)).toBe('nextRound')
+    await decideRound(people, submissionId)
 
-    expect(await companion.servableCompanion(articleId, 'fr')).not.toBeNull()
+    expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
+    expect(await stateOf(author, articleId)).toBe('awaitingReview')
+  })
+
+  it('approves it in the next round instead', async () => {
+    const author = await makeUser()
+    const people = await circle()
+    const { articleId } = await draft(author)
+    await decideRound(people, await submit(author, articleId))
+    await attach(author, articleId)
+
+    const second = await submit(author, articleId)
+    await decideRound(people, second)
+
+    expect(
+      (await companion.servableCompanion(articleId, 'fr'))?.approvedInSubmissionId,
+    ).toBe(second)
+  })
+
+  it('does not approve a PDF whose text changed during the review', async () => {
+    const author = await makeUser()
+    const people = await circle()
+    const { articleId } = await draft(author)
+    await attach(author, articleId)
+    const submissionId = await submit(author, articleId)
+    await save(author, articleId, 'Le texte, modifié pendant l’examen.')
+
+    await decideRound(people, submissionId)
+
+    expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
+    expect(await stateOf(author, articleId)).toBe('stale')
+    // And the record does not say otherwise. A stale file is never served
+    // whatever its stamp, so this is about the audit trail: "approved in round
+    // N" has to mean the circle accepted text this PDF actually describes.
+    const [row] = await harness.db.select().from(schema.articleCompanion)
+    expect(row.approvedInSubmissionId).toBeNull()
+  })
+
+  it('does not approve a PDF in a language the circle refused', async () => {
+    const author = await makeUser()
+    const { articleId } = await draft(author)
+    await attach(author, articleId)
+    await decideRound(await circle(), await submit(author, articleId), 'object')
+
+    const [row] = await harness.db.select().from(schema.articleCompanion)
+    expect(row.approvedInSubmissionId).toBeNull()
+  })
+
+  /**
+   * A better-typeset version of an approved PDF is still a new file nobody has
+   * reviewed. Readers lose the old one when it is replaced, and get the new one
+   * when a round approves it — the editor warns before that happens.
+   */
+  it('withdraws an approved PDF from readers when it is replaced, until the next round', async () => {
+    const { author, people, articleId } = await liveWithPdf()
+    await attach(author, articleId, 5)
+    expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
+
+    await decideRound(people, await submit(author, articleId))
+    expect((await companion.servableCompanion(articleId, 'fr'))?.pageCount).toBe(5)
+  })
+})
+
+describe('the text moves on, the PDF stops', () => {
+  it('is withdrawn from readers the moment the text is saved again', async () => {
+    const { author, articleId } = await liveWithPdf()
+    await save(author, articleId, 'Le texte, corrigé après la publication.')
+    expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
+    expect(await stateOf(author, articleId)).toBe('stale')
   })
 })
 
 describe('the record', () => {
-  it('keeps a replaced PDF’s row, closed, and deletes its bytes', async () => {
-    const author = await makeUser()
-    const { articleId } = await publishedArticle(author, await makeUser('senior_member'))
-    await attach(author, articleId)
-    await attach(author, articleId, await pdfFile(5))
+  it('keeps a replaced PDF’s row, closed, with the round that approved it', async () => {
+    const { author, articleId, submissionId } = await liveWithPdf()
+    await attach(author, articleId, 5)
 
     const rows = await harness.db
       .select()
@@ -250,40 +415,72 @@ describe('the record', () => {
     const [open] = rows.filter((row) => row.supersededAt === null)
     expect(closed.storagePath).toBeNull()
     expect(closed.supersededBy).toBe(author.id)
+    expect(closed.approvedInSubmissionId).toBe(submissionId)
     expect(closed.sha256).toMatch(/^[0-9a-f]{64}$/)
-    expect(open.pageCount).toBe(5)
-    // Only the current file is on disk.
+    expect(open.approvedInSubmissionId).toBeNull()
     expect(await storedFiles(articleId)).toHaveLength(1)
   })
 
   it('closes the row on removal and stops serving it', async () => {
+    const { author, articleId } = await liveWithPdf()
+    expect(
+      await companion.removeCompanion({ actor: author, articleId, lang: 'fr' }),
+    ).toEqual({ ok: true, value: null })
+    expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
+    expect(await storedFiles(articleId)).toEqual([])
+  })
+})
+
+describe('what a reviewer downloads', () => {
+  async function inReview() {
     const author = await makeUser()
-    const { articleId } = await publishedArticle(author, await makeUser('senior_member'))
+    const { articleId } = await draft(author)
+    await attach(author, articleId)
+    const submissionId = await submit(author, articleId)
+    return { author, articleId, submissionId }
+  }
+
+  it('gives a member the PDF under review', async () => {
+    const { submissionId } = await inReview()
+    const download = await companion.openCompanionForReview({
+      submissionId,
+      lang: 'fr',
+      viewer: await makeUser(),
+    })
+    if (!download.ok) throw new Error(`expected a file, got ${download.status}`)
+    const bytes = await bodyBytes(download.body)
+    expect(bytes.byteLength).toBe(download.byteSize)
+  })
+
+  /** The same audience as the submission page: members, not readers. */
+  it('refuses a reader and an anonymous visitor', async () => {
+    const { submissionId } = await inReview()
+    for (const viewer of [await makeUser('reader'), null]) {
+      expect(
+        await companion.openCompanionForReview({ submissionId, lang: 'fr', viewer }),
+      ).toEqual({ ok: false, status: 403 })
+    }
+  })
+
+  it('does not offer a PDF attached after the round as though it were under review', async () => {
+    const author = await makeUser()
+    const { articleId } = await draft(author)
+    const submissionId = await submit(author, articleId)
     await attach(author, articleId)
 
     expect(
-      await companion.removeCompanion({ actor: author, articleId, lang: 'fr' }),
-    ).toEqual({
-      ok: true,
-      value: null,
-    })
-    expect(await companion.servableCompanion(articleId, 'fr')).toBeNull()
-    expect(await storedFiles(articleId)).toEqual([])
-    const rows = await harness.db.select().from(schema.articleCompanion)
-    expect(rows).toHaveLength(1)
-    expect(rows[0].supersededAt).not.toBeNull()
+      await companion.openCompanionForReview({
+        submissionId,
+        lang: 'fr',
+        viewer: await makeUser(),
+      }),
+    ).toEqual({ ok: false, status: 404 })
   })
 })
 
 describe('what a reader downloads', () => {
-  it('serves the cleaned file for a published, public article', async () => {
-    const author = await makeUser()
-    const { articleId, slug } = await publishedArticle(
-      author,
-      await makeUser('senior_member'),
-    )
-    await attach(author, articleId)
-
+  it('serves the approved file for a published, public article', async () => {
+    const { slug } = await liveWithPdf()
     const download = await companion.openCompanionDownload({
       slug,
       lang: 'fr',
@@ -298,12 +495,7 @@ describe('what a reader downloads', () => {
   })
 
   it('gives nobody a stale PDF, even from a link forwarded before the edit', async () => {
-    const author = await makeUser()
-    const { articleId, slug } = await publishedArticle(
-      author,
-      await makeUser('senior_member'),
-    )
-    await attach(author, articleId)
+    const { author, articleId, slug } = await liveWithPdf()
     await save(author, articleId, 'Corrigé.')
     expect(
       await companion.openCompanionDownload({ slug, lang: 'fr', viewer: null }),
@@ -314,16 +506,11 @@ describe('what a reader downloads', () => {
   })
 
   it('refuses an anonymous reader a members-only article’s PDF', async () => {
-    const author = await makeUser()
-    const { articleId, slug } = await publishedArticle(
-      author,
-      await makeUser('senior_member'),
-    )
+    const { articleId, slug } = await liveWithPdf()
     await harness.db
       .update(schema.article)
       .set({ visibility: 'members' })
       .where(eq(schema.article.id, articleId))
-    await attach(author, articleId)
 
     expect(
       await companion.openCompanionDownload({ slug, lang: 'fr', viewer: null }),
@@ -340,40 +527,14 @@ describe('what a reader downloads', () => {
     expect(allowed.ok).toBe(true)
   })
 
-  it('serves nothing for a language that is not published', async () => {
-    const author = await makeUser()
-    const created = await articles.createArticle({
-      author,
-      lang: 'fr',
-      title: TITLE,
-      summary: SUMMARY,
-    })
-    if (!created.ok) throw new Error('create failed')
-    await save(author, created.value.articleId, 'Brouillon.')
-    await attach(author, created.value.articleId)
-    expect(
-      await companion.openCompanionDownload({
-        slug: created.value.slug,
-        lang: 'fr',
-        viewer: null,
-      }),
-    ).toEqual({ ok: false, status: 404 })
-  })
-
   it('tells a reader who already has the file that they have it', async () => {
-    const author = await makeUser()
-    const { articleId, slug } = await publishedArticle(
-      author,
-      await makeUser('senior_member'),
-    )
-    await attach(author, articleId)
+    const { slug } = await liveWithPdf()
     const first = await companion.openCompanionDownload({
       slug,
       lang: 'fr',
       viewer: null,
     })
     if (!first.ok) throw new Error('expected a file')
-
     const again = await companion.openCompanionDownload({
       slug,
       lang: 'fr',
@@ -385,14 +546,8 @@ describe('what a reader downloads', () => {
 })
 
 describe('the reading view', () => {
-  it('links the PDF, with its size, while it matches — and not after', async () => {
-    const author = await makeUser()
-    const { articleId, slug } = await publishedArticle(
-      author,
-      await makeUser('senior_member'),
-    )
-    await attach(author, articleId)
-
+  it('links the approved PDF, with its size, and not once the text moves on', async () => {
+    const { author, articleId, slug } = await liveWithPdf()
     const read = async () => {
       const result = await articles.getReadableArticle({ slug, lang: 'fr', viewer: null })
       if (!result.ok) throw new Error(result.code)

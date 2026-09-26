@@ -53,7 +53,7 @@ export const attachCompanionPdf = createServerFn({ method: 'POST' })
     const gate = await consume(`companionUpload:user:${actor.id}`, RULES.companionUpload)
     if (!gate.allowed) return { ok: false, code: 'RATE_LIMITED' }
 
-    const { attachCompanion } = await import('./companion')
+    const { attachCompanion, companionState } = await import('./companion')
     const result = await attachCompanion({
       actor,
       articleId: data.articleId,
@@ -61,8 +61,16 @@ export const attachCompanionPdf = createServerFn({ method: 'POST' })
       file: data.file,
     })
     if (!result.ok) return result
-    const { cleaning, ...summary } = result.value
-    return { ok: true, state: { state: 'current', ...summary }, cleaning }
+    // Read back rather than assumed: a new file is never approved, and whether
+    // it is in the open round or waiting for the next depends on when that
+    // round was submitted — which the editor has to be able to say.
+    const state = await companionState({
+      actor,
+      articleId: data.articleId,
+      lang: data.lang,
+    })
+    if (!state.ok) return state
+    return { ok: true, state: state.value, cleaning: result.value.cleaning }
   })
 
 export const removeCompanionPdf = createServerFn({ method: 'POST' })

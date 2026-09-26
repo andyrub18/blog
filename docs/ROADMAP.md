@@ -28,7 +28,7 @@ must have before that page is interactive.
 | `/articles` | 97.2 KB |
 | `/` — the home page | 97.8 KB |
 | `/articles/{slug}/discussion` — the forum | 103.9 KB (opened from an article) |
-| `/write/{id}` — the editor, before TipTap loads | 118.8 KB (author screen) |
+| `/write/{id}` — the editor, before TipTap loads | 119.6 KB (author screen) |
 | TipTap itself, fetched only when the editor mounts | +126 KB, in two chunks |
 
 **The budget is met, with 1.0 KB of headroom.** It was not, for three phases:

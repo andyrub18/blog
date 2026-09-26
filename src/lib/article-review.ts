@@ -73,6 +73,42 @@ export type ReviewError =
 
 export type ReviewResult<T> = { ok: true; value: T } | { ok: false; code: ReviewError }
 
+type Db = Awaited<typeof import('./db')>['db']
+type Tx = Parameters<Parameters<Db['transaction']>[0]>[0]
+
+/**
+ * The article status to write, given the stage the review flow wants.
+ *
+ * `article.status` answers "is any language of this live?" before it answers
+ * where the latest round stands — `withdrawTranslation` has always treated it
+ * that way, and the reading view serves only `published` articles. The review
+ * flow used to write its stage unconditionally, so putting the Creole to the
+ * circle took the already-published French off the site for the whole review,
+ * and for good if the Creole was refused or withdrawn. That contradicts D12:
+ * the French being live while the Creole is still being argued over is the
+ * normal case.
+ *
+ * Read from the translations, inside the caller's transaction, so it is true
+ * of the rows being written rather than of a status read earlier.
+ */
+async function stageFor(
+  tx: Tx,
+  articleId: string,
+  stage: ArticleStatus,
+): Promise<ArticleStatus> {
+  const [live] = await tx
+    .select({ lang: articleTranslation.lang })
+    .from(articleTranslation)
+    .where(
+      and(
+        eq(articleTranslation.articleId, articleId),
+        eq(articleTranslation.status, 'published'),
+      ),
+    )
+    .limit(1)
+  return live ? 'published' : stage
+}
+
 function isSenior(viewer: Viewer): boolean {
   return viewer.memberStatus !== 'blocked' && hasAtLeastRole(viewer.role, 'senior_member')
 }
@@ -155,7 +191,7 @@ export async function submitForReview(input: {
       })
       await tx
         .update(article)
-        .set({ status: 'submitted', updatedAt: new Date() })
+        .set({ status: await stageFor(tx, row.id, 'submitted'), updatedAt: new Date() })
         .where(eq(article.id, row.id))
     })
   } catch {
@@ -343,7 +379,10 @@ export async function openDeliberation(input: {
       .where(eq(articleSubmission.id, submission.id))
     await tx
       .update(article)
-      .set({ status: 'in_review', updatedAt: now })
+      .set({
+        status: await stageFor(tx, submission.articleId, 'in_review'),
+        updatedAt: now,
+      })
       .where(eq(article.id, submission.articleId))
   })
 
@@ -502,6 +541,7 @@ export async function decide(input: {
       articleId: articleSubmission.articleId,
       status: articleSubmission.status,
       langs: articleSubmission.langs,
+      submittedAt: articleSubmission.submittedAt,
       authorId: article.authorId,
       articlePublishedAt: article.publishedAt,
     })
@@ -581,10 +621,23 @@ export async function decide(input: {
         )
     }
 
+    // The companion PDFs the circle read with those languages go live with
+    // them, in the same transaction: approving a language and approving the
+    // file it was reviewed with are one decision (D29).
+    const { approveCompanions } = await import('./companion')
+    await approveCompanions(
+      tx,
+      submission,
+      accepted.map((language) => language.lang),
+      now,
+    )
+
     await tx
       .update(article)
       .set({
-        status: ARTICLE_STATUS_FOR[outcome],
+        // After the accepted languages were published above, so an accepted
+        // round reads as live, and a refused one leaves live languages live.
+        status: await stageFor(tx, submission.articleId, ARTICLE_STATUS_FOR[outcome]),
         // First publication only: a second accepted language does not restate
         // when the article reached anyone.
         publishedAt:
@@ -631,7 +684,7 @@ export async function withdrawSubmission(input: {
     // the argument history too.
     await tx
       .update(article)
-      .set({ status: 'draft', updatedAt: now })
+      .set({ status: await stageFor(tx, submission.articleId, 'draft'), updatedAt: now })
       .where(eq(article.id, submission.articleId))
   })
 

@@ -1,0 +1,3 @@
+ALTER TABLE "article_companion" ADD COLUMN "approved_in_submission_id" text;--> statement-breakpoint
+ALTER TABLE "article_companion" ADD COLUMN "approved_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "article_companion" ADD CONSTRAINT "article_companion_approved_in_submission_id_article_submission_id_fk" FOREIGN KEY ("approved_in_submission_id") REFERENCES "public"."article_submission"("id") ON DELETE set null ON UPDATE no action;
