@@ -4,6 +4,7 @@ import { createSignal, Show } from 'solid-js'
 import { signUpMember } from '../../lib/auth-actions'
 import { SIGN_UP_ERROR_MESSAGE } from '../../lib/auth-messages'
 import { m } from '../../paraglide/messages'
+import VerifyEmailNotice from './VerifyEmailNotice'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -26,7 +27,10 @@ export default function RegisterMemberForm() {
   const [submitting, setSubmitting] = createSignal(false)
   const [serverError, setServerError] = createSignal<string | null>(null)
   const [errors, setErrors] = createSignal<FieldErrors>({})
-  const [success, setSuccess] = createSignal(false)
+  const [registered, setRegistered] = createSignal<{
+    email: string
+    verificationSent: boolean
+  } | null>(null)
 
   function validate(form: HTMLFormElement): FieldErrors {
     const fd = new FormData(form)
@@ -70,7 +74,10 @@ export default function RegisterMemberForm() {
         setServerError(SIGN_UP_ERROR_MESSAGE[result.code]())
         return
       }
-      setSuccess(true)
+      setRegistered({
+        email: String(fd.get('email') ?? '').trim(),
+        verificationSent: result.verificationSent,
+      })
       router.invalidate()
     } catch {
       setServerError(m.auth_register_errors_unexpected())
@@ -81,22 +88,14 @@ export default function RegisterMemberForm() {
 
   return (
     <Show
-      when={!success()}
+      when={!registered()}
       fallback={
-        <div class="flex flex-col items-center gap-4 text-center">
-          <h2 class="text-lg font-semibold text-neutral-900">
-            {m.auth_register_success_title()}
-          </h2>
-          <p class="text-sm text-neutral-700">{m.auth_register_success_verifyHint()}</p>
-          <p class="text-sm text-neutral-700">{m.auth_register_success_memberHint()}</p>
-          <button
-            type="button"
-            onClick={() => router.navigate({ to: '/auth/login' })}
-            class="h-11 px-4 rounded-md bg-[#00209F] text-white text-sm font-semibold hover:opacity-95"
-          >
-            {m.auth_verify_goLogin()}
-          </button>
-        </div>
+        <VerifyEmailNotice
+          email={registered()?.email ?? ''}
+          verificationSent={registered()?.verificationSent ?? false}
+          extraHint={m.auth_register_success_memberHint()}
+          onLogin={() => router.navigate({ to: '/auth/login' })}
+        />
       }
     >
       <form

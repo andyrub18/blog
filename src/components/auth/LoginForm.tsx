@@ -4,6 +4,7 @@ import { signInWithPassword } from '../../lib/auth-actions'
 import { SIGN_IN_ERROR_MESSAGE } from '../../lib/auth-messages'
 import { isValidEmail, isValidPassword } from '../../lib/validation'
 import { m } from '../../paraglide/messages'
+import ResendVerification from './ResendVerification'
 
 type FieldErrors = Partial<Record<'email' | 'password', string>>
 
@@ -18,6 +19,15 @@ export default function LoginForm() {
   const [googleLoading, setGoogleLoading] = createSignal(false)
   const [info, setInfo] = createSignal<string | null>(null)
   const [errors, setErrors] = createSignal<FieldErrors>({})
+  /**
+   * The address of an account that exists but has never been verified.
+   *
+   * Someone whose verification email never arrived has no other way back in:
+   * the address is taken, so registering again is refused, and the sign-in they
+   * try instead is refused too. This is where they end up, so this is where the
+   * mail has to be offered again.
+   */
+  const [unverified, setUnverified] = createSignal<string | null>(null)
 
   function validate(form: HTMLFormElement): FieldErrors {
     const fd = new FormData(form)
@@ -45,6 +55,7 @@ export default function LoginForm() {
     setSubmitting(true)
     setServerError(null)
     setInfo(null)
+    setUnverified(null)
     try {
       const result = await signInWithPassword({
         data: {
@@ -56,6 +67,9 @@ export default function LoginForm() {
         const message =
           SIGN_IN_ERROR_MESSAGE[result.code] ?? m.auth_login_errors_unexpected
         setServerError(message())
+        if (result.code === 'EMAIL_NOT_VERIFIED') {
+          setUnverified(String(fd.get('email') ?? ''))
+        }
         return
       }
       await router.navigate({ to: '/' })
@@ -146,6 +160,9 @@ export default function LoginForm() {
         </Show>
         <Show when={info()}>
           {(message) => <p class="text-neutral-600">{message()}</p>}
+        </Show>
+        <Show when={unverified()}>
+          {(email) => <ResendVerification email={email()} />}
         </Show>
       </div>
     </form>

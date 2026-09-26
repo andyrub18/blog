@@ -375,3 +375,64 @@ a budget annexe of dense tables, or work where the mathematics is the argument.
 The allowlist has no image or math node, so such a document cannot be carried as
 an article today either way. `pandoc --mathml` is the cheap answer for the second
 case, because MathML is text and renders natively with no client JavaScript.
+
+## D25 — A state the server knows is a state the page can show
+
+Five dead ends were fixed together because they were one mistake wearing five
+faces: the server knew what had happened and the page did not say it, so the
+person was left with nothing to press.
+
+**An account that exists is never reported as failed.** Better Auth's
+`sendOnSignUp` sends the verification mail inside `signUpEmail`, after the user
+row is written, and our callback throws when the mailer refuses — deliberately,
+because a silently undelivered verification mail looks to the applicant like the
+account never worked. That throw escaped into the catch around sign-up and
+returned `UNEXPECTED` for an account that had been created. The applicant was
+told to try again and could not: the address was taken. `runSignUp` now sends the
+mail itself and reports `verificationSent` next to `ok: true`. Either half of the
+truth alone is a lie — "failed" hides an account, "created" hides an undelivered
+mail.
+
+**The only door into a new account is one email, so there is always a way to ask
+for it again.** `resendVerificationEmail` had been written and rate-limited since
+phase 1 and nothing called it. It is offered wherever an account is known to
+exist unverified: the registration confirmation, and the sign-in form that
+refuses an unverified account — which is where somebody whose mail never arrived
+actually turns up, having found that registering again is refused too. The
+control is shown whether or not the first mail went out, because "sent" only ever
+means the mailer accepted it.
+
+**A spent invitation is not a broken one.** `inspectInvitation` always returned
+the reason; the page showed one panel for every reason, so the commonest case by
+far — a new member reloading the page they just registered on — read as
+"invitation unusable", sending someone who already had an account back to their
+sponsor for an invitation they had just used.
+
+**A filed application is a state of `/apply`, not a redirect away from it.** The
+eligibility guard sent an ineligible visitor home, and filing an application is
+what makes you ineligible to file one: `ApplyForm` called `router.invalidate()`,
+the guard re-ran, found the dossier it had just created, and redirected over the
+panel confirming it arrived — about 75ms on an idle machine, and often no frame
+at all. Someone who has just uploaded three PDFs and two essays on a metered
+connection reads a silent bounce as failure and files again. `APPLICATION_OPEN`
+is now a page; the other two refusals still redirect, because a member has
+nothing to apply for and an unverified address has to be dealt with first.
+
+**A recorded decision is read from the dossier, not remembered by the reviewer's
+browser.** `done` was a local signal, so a reload brought the decision buttons
+back for an already-approved application, and a second reviewer opening the same
+URL never saw the first decision at all. It is derived from `status` now. The
+`invalidate()` that follows a decision re-reads the dossier and therefore writes
+a second `access_event`, which is correct rather than noise: the page did read it
+again, and the log's promise is that every read is in it.
+
+The pattern worth keeping: **a client-side success flag is a claim about the
+world that stops being true the moment anything else changes it.** Four of these
+five were that flag. Derive from the loader, and the confirmation survives a
+reload, a second tab and a colleague.
+
+This also paid for itself in bytes. Moving `/apply`'s check out of `beforeLoad`
+took 0.7 KB off the shared entry — `beforeLoad` resolves before the component, so
+its server functions sit in the eager route tree, while a `loader` splits with
+its route. The reading view gained 0.5 KB of headroom from a fix to the
+application form.

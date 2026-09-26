@@ -19,8 +19,8 @@ before touching auth, uploads, or anything that reads a dossier.
 
 **2. First-load weight is a feature, not a nicety.** Readers arrive on slow,
 metered Haitian mobile data. The budget is **under 100 KB gzipped** of client
-JS for an article page, and after phase 6 it has about **0.6 KB** of headroom —
-the next thing added to that page has to find bytes before it spends them.
+JS for an article page, and it currently has about **1.1 KB** of headroom — the
+next thing added to that page has to find bytes before it spends them.
 Measure before and after any dependency addition:
 
 ```bash
@@ -115,12 +115,33 @@ in the browser can carry active content.
 guard is UX. A `createServerFn` is a public HTTP endpoint and must re-check the
 caller's role itself, every time.
 
+**A guard in `beforeLoad` is paid for by every page; the same guard in a `loader`
+is not.** `beforeLoad` runs before the route's component is resolved, so its
+module — and every server function it calls — sits in the eagerly loaded route
+tree that ships with the entry. A `loader` splits with the route. Moving
+`/apply`'s eligibility check from one to the other took 0.7 KB off the shared
+entry and 0.5 KB off the reading view, a page that has nothing to do with
+applying. Prefer a `loader` unless the check must run before the component
+exists; if a route guard is the only thing standing between a caller and the
+data, the guard is in the wrong place anyway — see the rule above.
+
 **Never trust `file.type` on an upload.** It is set by the client. Check magic
 bytes — `stageApplicationPdf` in `src/lib/uploads.ts` is the reference.
 
 **Validate and stage uploads before creating an account.** Creating the user
 first means a failed upload strands an account with no application. See the
 comment in `signUpMember`.
+
+**Once the account exists, nothing downstream may report failure.** Better Auth's
+`sendOnSignUp` fires inside `signUpEmail`, and our `sendVerificationEmail`
+callback throws when the mailer refuses — so a Resend outage returned
+`UNEXPECTED` for an account that had in fact been created, and the person was
+told to try again with an address that was now taken. `runSignUp` sends the
+verification mail itself, after the user row, and reports `verificationSent`
+alongside `ok: true`. The mail is also the *only* door into a new account, so
+every page that says an account exists offers `resendVerificationEmail` —
+including the sign-in form, which is where somebody whose mail never arrived
+actually ends up.
 
 **Article content is parsed before it is stored, and again before it is
 rendered.** `parseDocument` in `src/lib/prosemirror.ts` drops every node, mark

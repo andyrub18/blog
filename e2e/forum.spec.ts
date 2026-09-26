@@ -81,18 +81,29 @@ test.describe('posting', () => {
     await waitForInteractive(page)
 
     const said = `La question du transport manque aussi (${Date.now()}).`
-    await page.locator('[name="body"]').first().fill(said)
+    const composer = page.locator('[name="body"]').first()
+    await composer.fill(said)
     await page
       .getByRole('button', { name: /^publier$/i })
       .first()
       .click()
 
+    // Painted. The thread shows the post before the server has been asked —
+    // `DiscussionThread` merges a `pending:` placeholder in on submit — so this
+    // says the composer answered, and nothing yet about storage.
     await expect(page.getByText(said)).toBeVisible({ timeout: 15_000 })
 
-    // It is really stored, not only painted: a fresh load of the article page
-    // shows it in the tail. Matched on the whole line, timestamp included —
-    // every run of this test leaves one behind, and a loose match would find
-    // all of them.
+    // Stored. The box empties only when `postToDiscussion` resolved, so this is
+    // the app's own signal that the write landed. Without it the navigation
+    // below races the insert: the placeholder satisfies the assertion above
+    // about fifteen milliseconds after the request goes out, and under a loaded
+    // dev server the article page is rendered before the row exists — which is
+    // the whole failure this waits out.
+    await expect(composer).toHaveValue('', { timeout: 15_000 })
+
+    // And the tail is served from the database, not from this page's state.
+    // Matched on the whole line, timestamp included — every run of this test
+    // leaves one behind, and a loose match would find all of them.
     await page.goto(`/fr/articles/${PUBLISHED}`)
     await expect(page.getByText(said)).toBeVisible()
   })

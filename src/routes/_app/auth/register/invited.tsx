@@ -26,6 +26,10 @@ export const Route = createFileRoute('/_app/auth/register/invited')({
 function RegisterInvitedPage() {
   const invitation = Route.useLoaderData()
   const search = Route.useSearch()
+  const alreadyUsed = () => {
+    const result = invitation()
+    return !result.ok && result.code === 'ALREADY_USED'
+  }
 
   return (
     <main class="flex min-h-screen items-center justify-center bg-linear-to-br from-neutral-50 via-white to-neutral-100 px-4 py-12">
@@ -38,11 +42,26 @@ function RegisterInvitedPage() {
           when={invitation().ok && invitation()}
           fallback={
             <div class="rounded-xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
+              {/*
+               * A spent token is told apart from a broken one.
+               *
+               * `inspectInvitation` has always returned the reason; the page
+               * showed one panel for all of them, so the commonest case by far —
+               * a new member reloading the page they just registered on, or
+               * opening the link again from their mail — read as "invitation
+               * unusable, ask for another one". That sends someone who already
+               * has an account back to their sponsor. The answer is on the
+               * server already; it only had to be said.
+               */}
               <h1 class="text-xl font-bold text-neutral-900">
-                {m.auth_register_invited_invalidTitle()}
+                {alreadyUsed()
+                  ? m.auth_register_invited_usedTitle()
+                  : m.auth_register_invited_invalidTitle()}
               </h1>
               <p class="mt-2 text-sm text-neutral-600">
-                {m.auth_register_invited_invalidBody()}
+                {alreadyUsed()
+                  ? m.auth_register_invited_usedBody()
+                  : m.auth_register_invited_invalidBody()}
               </p>
             </div>
           }

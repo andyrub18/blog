@@ -46,7 +46,17 @@ export type SignUpErrorCode =
   | 'UNEXPECTED'
 
 export type SignUpResult =
-  | { ok: true; userId: string; needsVerification: boolean }
+  | {
+      ok: true
+      userId: string
+      needsVerification: boolean
+      /**
+       * False when the account exists but its verification email did not go
+       * out. The account is still real and must be presented as created — the
+       * only honest thing to add is a way to ask for the mail again.
+       */
+      verificationSent: boolean
+    }
   | { ok: false; code: SignUpErrorCode }
 
 export type ApplyErrorCode =
@@ -564,10 +574,32 @@ async function runSignUp(input: {
       },
       headers: getRequest().headers,
     })
+    /**
+     * From here the account exists, so nothing below may report failure.
+     *
+     * `sendVerificationEmail` in `auth.ts` throws when the mailer refuses, and
+     * it is right to: a silently undelivered verification email looks to the
+     * applicant like the account never worked. But that throw used to escape
+     * through `signUpEmail` into the catch below, which turned a created
+     * account into `UNEXPECTED` — leaving somebody with an address they could
+     * no longer register and no way to ask for the mail again. Catching it here
+     * keeps the report truthful in both directions.
+     */
+    let verificationSent = true
+    try {
+      await auth.api.sendVerificationEmail({
+        body: { email: input.email },
+        headers: getRequest().headers,
+      })
+    } catch {
+      verificationSent = false
+    }
+
     return {
       ok: true,
       userId: result.user.id,
       needsVerification: !result.user.emailVerified,
+      verificationSent,
     }
   } catch (err) {
     if (err instanceof APIError) {

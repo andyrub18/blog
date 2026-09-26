@@ -19,7 +19,18 @@ export const auth = betterAuth({
     autoSignIn: false,
   },
   emailVerification: {
-    sendOnSignUp: true,
+    /**
+     * Sent by `runSignUp`, not here.
+     *
+     * `sendOnSignUp` fires inside `signUpEmail`, after the user row exists, and
+     * the callback below throws when the mailer fails — so a Resend outage took
+     * the whole sign-up down with it and returned `UNEXPECTED` for an account
+     * that had in fact been created. The applicant was told to try again, could
+     * not (the address was taken), and had no way to ask for another
+     * verification email. Sending it from `runSignUp` puts the failure where it
+     * can be reported without pretending the account does not exist.
+     */
+    sendOnSignUp: false,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
       const [{ getMailer }, { renderVerificationEmail }, { resolveRequestLocale }] =

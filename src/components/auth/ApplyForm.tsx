@@ -3,6 +3,7 @@ import { createSignal, Show } from 'solid-js'
 import { type ApplyErrorCode, applyForMembership } from '../../lib/auth-actions'
 import { MAX_PDF_BYTES, MIN_CONTRIBUTION_PLAN_CHARS } from '../../lib/validation'
 import { m } from '../../paraglide/messages'
+import ApplicationFiled from './ApplicationFiled'
 
 type MessageFn = () => string
 
@@ -66,6 +67,11 @@ export default function ApplyForm() {
         return
       }
       setSuccess(true)
+      // Refreshes the layout and this route: the home page stops offering
+      // "Devenir membre", and `/apply` re-reads its loader and settles on the
+      // same confirmation panel this component is already showing. Painting it
+      // here first means the applicant is not left looking at the form they
+      // just sent for the length of that round trip.
       router.invalidate()
     } catch {
       setServerError(m.apply_errors_unexpected())
@@ -75,15 +81,7 @@ export default function ApplyForm() {
   }
 
   return (
-    <Show
-      when={!success()}
-      fallback={
-        <div class="flex flex-col items-center gap-3 text-center">
-          <h2 class="text-lg font-semibold text-neutral-900">{m.apply_successTitle()}</h2>
-          <p class="text-sm text-neutral-700">{m.apply_successHint()}</p>
-        </div>
-      }
-    >
+    <Show when={!success()} fallback={<ApplicationFiled />}>
       <form
         class="flex flex-col gap-4"
         onSubmit={(e) => void onSubmit(e)}
