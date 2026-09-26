@@ -19,10 +19,10 @@ import {
   fetchEditableArticle,
   saveArticle,
   withdrawTranslation,
-} from '../../../lib/article-actions'
-import { ARTICLE_ERROR_MESSAGE } from '../../../lib/article-messages'
-import { fetchRounds } from '../../../lib/article-review-actions'
-import type { DocNode } from '../../../lib/prosemirror'
+} from '../../../lib/articles/article-actions'
+import { ARTICLE_ERROR_MESSAGE } from '../../../lib/articles/article-messages'
+import type { DocNode } from '../../../lib/articles/prosemirror'
+import { fetchRounds } from '../../../lib/deliberation/article-review-actions'
 import { m } from '../../../paraglide/messages'
 
 type Search = { lang?: Locale }

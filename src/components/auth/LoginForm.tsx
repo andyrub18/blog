@@ -1,8 +1,8 @@
 import { useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
-import { signInWithPassword } from '../../lib/auth-actions'
-import { SIGN_IN_ERROR_MESSAGE } from '../../lib/auth-messages'
-import { isValidEmail, isValidPassword } from '../../lib/validation'
+import { signInWithPassword } from '../../lib/auth/auth-actions'
+import { SIGN_IN_ERROR_MESSAGE } from '../../lib/auth/auth-messages'
+import { isValidEmail, isValidPassword } from '../../lib/shared/validation'
 import { m } from '../../paraglide/messages'
 import ResendVerification from './ResendVerification'
 

@@ -9,7 +9,7 @@ vi.mock('@tanstack/solid-router', () => ({
   useRouter: () => ({ invalidate }),
 }))
 
-vi.mock('../../lib/auth-actions', () => ({
+vi.mock('../../lib/auth/auth-actions', () => ({
   applyForMembership: (...args: Array<unknown>) => applyForMembership(...args),
 }))
 

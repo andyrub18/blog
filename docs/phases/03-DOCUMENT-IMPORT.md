@@ -94,7 +94,7 @@ to `.docx` is straightforward but it is not v1 work — note it and move on.
 
 ## What phase 4 built
 
-`src/lib/docx.ts` is the pipeline and `src/lib/html-to-prosemirror.ts` is the
+`src/lib/articles/import/docx.ts` is the pipeline and `src/lib/articles/import/html-to-prosemirror.ts` is the
 conversion. Between them they follow the eight steps above, with two deliberate
 departures.
 

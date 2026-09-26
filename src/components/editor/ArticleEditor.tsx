@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core'
 import { createEffect, createSignal, For, onCleanup, Show, untrack } from 'solid-js'
-import { type DocNode, isSafeHref } from '../../lib/prosemirror'
+import { type DocNode, isSafeHref } from '../../lib/articles/prosemirror'
 import { m } from '../../paraglide/messages'
 
 /**
@@ -57,7 +57,7 @@ type ToolbarButton = {
  * The buttons, and nothing else.
  *
  * This list is deliberately the same vocabulary as the allowlist in
- * `lib/prosemirror.ts`. A button that produced something the server drops would
+ * `lib/articles/prosemirror.ts`. A button that produced something the server drops would
  * silently lose an author's formatting on save, and they would only find out by
  * reloading the page.
  */

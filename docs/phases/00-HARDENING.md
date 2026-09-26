@@ -81,7 +81,7 @@ The client bundle was **332.8 KB gzipped**. A single 136 KB chunk turned out to
 be the entire Better Auth *server* — kysely, sqlite and postgres adapters — in
 the browser.
 
-Cause: the app layout imports `lib/session.ts`, so `session.ts` is client
+Cause: the app layout imports `lib/auth/session.ts`, so `session.ts` is client
 code. Its non-server-function exports (`getSession`, `requireUser`, …) carried a
 dynamic `import('./auth')`, which pulled the auth server into the client graph.
 
@@ -109,7 +109,7 @@ server-only imports is called out in `CLAUDE.md`.
    It reaches for `@tanstack/solid-start/server` through a dynamic import, which
    under Start 2 pulls the server-function handler into an environment where that
    virtual module is not registered. Reimplemented locally in
-   `src/lib/auth-cookies.ts`, wrapped in `createServerOnlyFn`.
+   `src/lib/auth/auth-cookies.ts`, wrapped in `createServerOnlyFn`.
 
 Both workarounds are marked for deletion once Better Auth ships support. They are
 the concrete cost of running two release candidates — worth recording, since D6

@@ -12,8 +12,8 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { PDFDocument } from 'pdf-lib'
-import { auth } from '../src/lib/auth'
-import { attachCompanion } from '../src/lib/companion'
+import { auth } from '../src/lib/auth/auth'
+import { attachCompanion } from '../src/lib/articles/companion/companion'
 import { db } from '../src/lib/db'
 import {
   applicationEvent,

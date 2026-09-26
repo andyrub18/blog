@@ -1,14 +1,14 @@
 import { createEffect, createSignal, Show } from 'solid-js'
-import type { CompanionState } from '../../lib/companion'
+import type { CompanionState } from '../../lib/articles/companion/companion'
 import {
   type AttachResult,
   attachCompanionPdf,
   type CompanionActionError,
   fetchCompanionState,
   removeCompanionPdf,
-} from '../../lib/companion-actions'
-import type { PdfCleaning } from '../../lib/pdf'
-import { formatMegabytes } from '../../lib/validation'
+} from '../../lib/articles/companion/companion-actions'
+import type { PdfCleaning } from '../../lib/articles/companion/pdf'
+import { formatMegabytes } from '../../lib/shared/validation'
 import { m } from '../../paraglide/messages'
 import { getLocale } from '../../paraglide/runtime'
 

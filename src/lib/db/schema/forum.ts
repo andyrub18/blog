@@ -45,7 +45,7 @@ export const forumPost = pgTable(
     parentId: text('parent_id').references((): AnyPgColumn => forumPost.id, {
       onDelete: 'cascade',
     }),
-    /** Plain text, never HTML and never a document. See `lib/forum.ts`. */
+    /** Plain text, never HTML and never a document. See `lib/forum/forum.ts`. */
     body: text('body').notNull(),
     status: text('status').$type<ForumPostStatus>().notNull().default('visible'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

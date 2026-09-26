@@ -1,13 +1,13 @@
 import { Link } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
 import { LOCALE_LABELS } from '../../i18n'
-import { submitArticleForReview } from '../../lib/article-review-actions'
-import type { Documentation } from '../../lib/deliberation'
+import { submitArticleForReview } from '../../lib/deliberation/article-review-actions'
+import type { Documentation } from '../../lib/deliberation/deliberation'
 import {
   DELIBERATION_ERROR_MESSAGE,
   OUTCOME_MESSAGE,
   SUBMISSION_STATUS_MESSAGE,
-} from '../../lib/deliberation-messages'
+} from '../../lib/deliberation/deliberation-messages'
 import { m } from '../../paraglide/messages'
 
 /**

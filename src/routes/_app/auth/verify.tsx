@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { createSignal, onSettled, Show } from 'solid-js'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
-import { authClient } from '../../../lib/auth-client'
+import { authClient } from '../../../lib/auth/auth-client'
 import { m } from '../../../paraglide/messages'
 
 type Status = 'pending' | 'success' | 'failure'

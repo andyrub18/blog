@@ -1,8 +1,11 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
-import { decideApplication, fetchApplication } from '../../../lib/review-actions'
-import { REVIEW_ERROR_MESSAGE } from '../../../lib/review-messages'
+import {
+  decideApplication,
+  fetchApplication,
+} from '../../../lib/membership/review-actions'
+import { REVIEW_ERROR_MESSAGE } from '../../../lib/membership/review-messages'
 import { m } from '../../../paraglide/messages'
 
 export const Route = createFileRoute('/_app/review/$applicationId')({

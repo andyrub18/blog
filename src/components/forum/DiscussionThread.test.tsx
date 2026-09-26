@@ -1,10 +1,10 @@
 import { render } from '@solidjs/testing-library'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Discussion } from '../../lib/forum'
+import type { Discussion } from '../../lib/forum/forum'
 
 const fetchDiscussion = vi.fn()
 
-vi.mock('../../lib/forum-actions', () => ({
+vi.mock('../../lib/forum/forum-actions', () => ({
   fetchDiscussion: (...args: Array<unknown>) => fetchDiscussion(...args),
   postToDiscussion: vi.fn(),
   editMyPost: vi.fn(),

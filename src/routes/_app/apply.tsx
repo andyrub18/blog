@@ -14,12 +14,12 @@ import { m } from '../../paraglide/messages'
  * The promotion path needs the opposite guard — you must be signed in to use it.
  */
 const readApplicationState = createServerFn({ method: 'GET' }).handler(async () => {
-  const { getSession } = await import('../../lib/session.server')
+  const { getSession } = await import('../../lib/auth/session.server')
   const session = await getSession()
   if (!session?.user) {
     throw redirect({ to: '/auth/login' })
   }
-  const { checkEligibility } = await import('../../lib/enrollment')
+  const { checkEligibility } = await import('../../lib/membership/enrollment')
   const eligibility = await checkEligibility({
     id: session.user.id,
     role: session.user.role,

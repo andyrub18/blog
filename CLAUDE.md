@@ -59,34 +59,58 @@ Layered, in dependency order: **data** (PostgreSQL + Drizzle) → **business
 logic** (server functions) → **auth** (Better Auth) → **components** (Solid) →
 **routes** (TanStack Start, file-based under `src/routes`).
 
+`src/lib` is grouped by domain, one folder per part of the movement's work:
+
+| Folder | What lives there |
+|---|---|
+| `auth/` | Better Auth, sessions, sign-in and sign-up actions, captcha |
+| `membership/` | Applications, their review, dossiers and uploads, probation, promotion, invitations, blocking |
+| `articles/` | The article model and its document format; `import/` for Word files, `companion/` for PDFs |
+| `deliberation/` | The circle's review: submissions, panels, verdicts, decisions |
+| `forum/` | Discussions under articles and their moderation |
+| `shared/` | What every domain uses: `validation.ts`, `rate-limit.ts` |
+| `db/`, `email/` | The schema and connection; transactional mail |
+
+Inside a folder, modules mostly come in threes — `forum.ts` the logic,
+`forum-actions.ts` its server functions (each re-checking the caller),
+`forum-messages.ts` the error-code → message map a component imports — and
+tests sit beside what they test. Whether a module is server-only is a property
+of the module, not of its folder: `deliberation/deliberation.ts` is pure and
+safe for a route to import, `deliberation/article-review.ts` beside it is not.
+Files keep their full
+names rather than becoming `actions.ts` seven times over, so a name finds one
+file. A new file goes in the folder of the domain whose rules it enforces;
+`shared/` is for what genuinely has no single owner, not a place to put things
+when the choice is hard.
+
 - `src/lib/db/schema/` — Drizzle schema. Change here, then `db:generate`.
-- `src/lib/validation.ts` — pure validation rules, shared by client forms and
+- `src/lib/shared/validation.ts` — pure validation rules, shared by client forms and
   server actions so both enforce the same thing. No IO, no framework. Test it.
-- `src/lib/auth.ts` — Better Auth config. **Server only.**
-- `src/lib/session.ts` — client-safe: types plus the `fetchSessionUser` server
+- `src/lib/auth/auth.ts` — Better Auth config. **Server only.**
+- `src/lib/auth/session.ts` — client-safe: types plus the `fetchSessionUser` server
   function.
-- `src/lib/session.server.ts` — server only: `getSession`, `requireUser`,
+- `src/lib/auth/session.server.ts` — server only: `getSession`, `requireUser`,
   `requireRole`, `redirectIfAuthenticated`.
-- `src/lib/prosemirror.ts` — the article document format: the node/mark
+- `src/lib/articles/prosemirror.ts` — the article document format: the node/mark
   allowlist, the parser, the server-side HTML renderer and the heading outline
   behind the table of contents. Pure, no IO. Test it.
-- `src/lib/articles.ts` — article business logic. `src/lib/article-actions.ts` —
+- `src/lib/articles/articles.ts` — article business logic. `src/lib/articles/article-actions.ts` —
   the server functions, each re-checking the caller.
-- `src/lib/docx.ts` — the DOCX import pipeline. **Server only.**
-  `src/lib/html-to-prosemirror.ts` — HTML to our format, and the thing that makes
+- `src/lib/articles/import/docx.ts` — the DOCX import pipeline. **Server only.**
+  `src/lib/articles/import/html-to-prosemirror.ts` — HTML to our format, and the thing that makes
   an imported file safe.
-- `src/lib/pdf.ts` — preparing a companion PDF: what it refuses, what it
-  strips. **Server only.** `src/lib/jpeg.ts` — removing EXIF and friends from a
-  JPEG; pure. `src/lib/companion.ts` — attaching, retiring and serving
-  companions. **Server only.** `src/lib/companion-actions.ts` — its server
+- `src/lib/articles/companion/pdf.ts` — preparing a companion PDF: what it refuses, what it
+  strips. **Server only.** `src/lib/articles/companion/jpeg.ts` — removing EXIF and friends from a
+  JPEG; pure. `src/lib/articles/companion/companion.ts` — attaching, retiring and serving
+  companions. **Server only.** `src/lib/articles/companion/companion-actions.ts` — its server
   functions. `src/routes/api/companion/$.ts` — the reader's download.
-- `src/lib/forum.ts` — the forum rules and queries. **Server only.**
-  `src/lib/forum-actions.ts` — its server functions. The post format's rules
+- `src/lib/forum/forum.ts` — the forum rules and queries. **Server only.**
+  `src/lib/forum/forum-actions.ts` — its server functions. The post format's rules
   (length, normalising, paragraph splitting) live in `validation.ts`, because
   the composer in the browser needs them too.
-- `src/lib/deliberation.ts` — the review rules: quorum, the per-language
+- `src/lib/deliberation/deliberation.ts` — the review rules: quorum, the per-language
   threshold, the five documentation fields. Pure, and therefore safe for a route
-  to import. `src/lib/article-review.ts` is the flow around them, and is
+  to import. `src/lib/deliberation/article-review.ts` is the flow around them, and is
   **server only** — it reaches `node:crypto` and the database.
 - `src/i18n/` — locale registry and the locale context.
 - `messages/<locale>.json` — translations, compiled by Paraglide.
@@ -94,7 +118,7 @@ logic** (server functions) → **auth** (Better Auth) → **components** (Solid)
 ## Rules that are easy to get wrong
 
 **Never statically import server-only modules from anything a route reaches.**
-`src/routes/_app.tsx` imports `lib/session.ts`, so everything reachable from
+`src/routes/_app.tsx` imports `lib/auth/session.ts`, so everything reachable from
 there ends up in the browser graph. A static `import { auth }` once put the
 entire Better Auth server — kysely, sqlite and postgres adapters — into the
 client bundle: **136 KB gzipped of pure waste**. Import server modules
@@ -108,7 +132,7 @@ If the build fails with `[import-protection] Import denied in client
 environment`, this is what happened. `createServerOnlyFn` is the escape hatch
 when the code must live in a shared module.
 
-**Reading a dossier is logged, always.** `lib/dossier.ts` writes an
+**Reading a dossier is logged, always.** `lib/membership/dossier.ts` writes an
 `access_event` for every file read, and `fetchApplication` logs opening an
 application. These are CVs and political essays belonging to people organising in
 Haiti; the only honest basis for telling a member their file is not circulating
@@ -131,7 +155,7 @@ exists; if a route guard is the only thing standing between a caller and the
 data, the guard is in the wrong place anyway — see the rule above.
 
 **Never trust `file.type` on an upload.** It is set by the client. Check magic
-bytes — `stageApplicationPdf` in `src/lib/uploads.ts` is the reference.
+bytes — `stageApplicationPdf` in `src/lib/membership/uploads.ts` is the reference.
 
 **Validate and stage uploads before creating an account.** Creating the user
 first means a failed upload strands an account with no application. See the
@@ -149,7 +173,7 @@ including the sign-in form, which is where somebody whose mail never arrived
 actually ends up.
 
 **Article content is parsed before it is stored, and again before it is
-rendered.** `parseDocument` in `src/lib/prosemirror.ts` drops every node, mark
+rendered.** `parseDocument` in `src/lib/articles/prosemirror.ts` drops every node, mark
 and attribute outside its allowlist. Never store what the editor sent; never add
 a node type without asking what it lets an author put in another reader's
 browser. There is no image node and no raw-HTML node, both on purpose.
@@ -469,7 +493,7 @@ file: Better Auth 1.7.4 declares optional peers on Solid 1 and Start 1. We do
 not use its Solid integration. Delete that file when Better Auth ships Solid 2
 support.
 
-`src/lib/auth-cookies.ts` is a local reimplementation of
+`src/lib/auth/auth-cookies.ts` is a local reimplementation of
 `better-auth/tanstack-start/solid`, which breaks the Start 2 build. Delete it and
 go back upstream when that is fixed.
 

@@ -43,7 +43,7 @@ forget — a legitimate senior member account that has been compromised or turne
    Counters live in Postgres, not memory, so they survive a deploy and are
    shared across instances.
 3. ~~**Bot defence on registration**~~ **DONE, on reader registration only.**
-   Cloudflare Turnstile, verified server-side in `lib/captcha.ts`. Chosen over
+   Cloudflare Turnstile, verified server-side in `lib/auth/captcha.ts`. Chosen over
    reCAPTCHA because it does not profile the visitor: asking Haitians to pass
    through Google's tracking to prove they are human is the wrong trade for this
    movement. Verification **fails closed** — a Cloudflare outage blocks
@@ -67,7 +67,7 @@ forget — a legitimate senior member account that has been compromised or turne
 
 ## P1 — Protecting the roster and dossiers
 
-8. **Dossiers leave local disk.** `src/lib/uploads.ts` writes to `./uploads`, outside the
+8. **Dossiers leave local disk.** `src/lib/membership/uploads.ts` writes to `./uploads`, outside the
    webroot with no serving route — the right default, but it will not survive a redeploy on
    cloud hosting. Move to S3-compatible object storage, private ACL, random UUID keys never
    derived from user input, access only through short-lived signed URLs minted for an
@@ -92,7 +92,7 @@ forget — a legitimate senior member account that has been compromised or turne
 ## P2 — Access control and accountability
 
 12. **Authorise on the server, in every server function.** `requireRole()` in
-    `src/lib/session.ts` is correct, but route guards are UX — a `createServerFn` is a
+    `src/lib/auth/session.ts` is correct, but route guards are UX — a `createServerFn` is a
     public HTTP endpoint and must re-check the caller's role itself, every time. This is
     the single most common way apps of this shape leak data.
 13. **Mandatory TOTP 2FA for `senior_member` and `super_admin`**, optional for everyone
@@ -120,7 +120,7 @@ forget — a legitimate senior member account that has been compromised or turne
 21. **CSRF:** Better Auth covers its own endpoints; verify origin on our server functions.
 22. Optional but advisable: ClamAV scan on uploaded PDFs and DOCX files. Companion PDFs
     are the case where it matters most, because they are the one upload served to the
-    public; `lib/pdf.ts` refuses active content but parses with a library that is no
+    public; `lib/articles/companion/pdf.ts` refuses active content but parses with a library that is no
     longer maintained (D26).
 
 ## P4 — Operations

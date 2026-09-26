@@ -5,7 +5,7 @@
 import { eq } from 'drizzle-orm'
 import { db } from '../src/lib/db'
 import { user as userTable } from '../src/lib/db/schema'
-import { auth } from '../src/lib/auth'
+import { auth } from '../src/lib/auth/auth'
 
 async function main() {
   const email = (process.env.SUPER_ADMIN_EMAIL ?? '').trim().toLowerCase()

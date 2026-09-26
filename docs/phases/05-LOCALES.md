@@ -136,7 +136,7 @@ One more locale fits; two do not, until something comes off that page.
   registration check: the registry, the Paraglide `urlPatterns`, and
   `project.inlang/settings.json` must agree. Adding a language to two of the
   three is the quiet failure.
-- `src/lib/articles.db.test.ts` — a reader whose interface language the movement
+- `src/lib/articles/articles.db.test.ts` — a reader whose interface language the movement
   does not publish in is served the article, in the base locale, with
   `requestedLang` preserved so the page can tell which note to show.
 - `e2e/locales.spec.ts` — both prefixes serve their interface; a Spanish reader

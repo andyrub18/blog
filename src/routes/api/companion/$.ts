@@ -13,7 +13,7 @@ import { createFileRoute } from '@tanstack/solid-router'
  * CSP besides: `pdf.ts` refuses active content, but a file we did not write is
  * handled as though that check could one day miss something.
  *
- * Not logged, on purpose — see `lib/companion.ts`. A list of who downloaded a
+ * Not logged, on purpose — see `lib/articles/companion/companion.ts`. A list of who downloaded a
  * political proposal is a list nobody should be able to subpoena or steal.
  *
  * Modules are imported lazily, for the reason `api/dossier/$.ts` gives: this
@@ -28,12 +28,12 @@ export const Route = createFileRoute('/api/companion/$')({
           .filter(Boolean)
         const [{ isLocale }, { isValidSlug }] = await Promise.all([
           import('../../../i18n'),
-          import('../../../lib/validation'),
+          import('../../../lib/shared/validation'),
         ])
 
         const [{ getSession }, companion] = await Promise.all([
-          import('../../../lib/session.server'),
-          import('../../../lib/companion'),
+          import('../../../lib/auth/session.server'),
+          import('../../../lib/articles/companion/companion'),
         ])
         const viewerOf = async () => {
           const session = await getSession()

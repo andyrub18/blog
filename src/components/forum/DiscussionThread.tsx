@@ -1,5 +1,5 @@
 import { createEffect, createSignal, For, onCleanup, Show, untrack } from 'solid-js'
-import type { Discussion, ForumPostView, ModerationRecord } from '../../lib/forum'
+import type { Discussion, ForumPostView, ModerationRecord } from '../../lib/forum/forum'
 import {
   editMyPost,
   fetchDiscussion,
@@ -7,9 +7,12 @@ import {
   moderateDiscussionPost,
   postToDiscussion,
   withdrawMyPost,
-} from '../../lib/forum-actions'
-import { FORUM_ERROR_MESSAGE } from '../../lib/forum-messages'
-import { forumParagraphs, MIN_MODERATION_RATIONALE_CHARS } from '../../lib/validation'
+} from '../../lib/forum/forum-actions'
+import { FORUM_ERROR_MESSAGE } from '../../lib/forum/forum-messages'
+import {
+  forumParagraphs,
+  MIN_MODERATION_RATIONALE_CHARS,
+} from '../../lib/shared/validation'
 import { m } from '../../paraglide/messages'
 import { getLocale } from '../../paraglide/runtime'
 import PostComposer from './PostComposer'

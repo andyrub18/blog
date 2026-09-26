@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet } from '@tanstack/solid-router'
 import { createEffect } from 'solid-js'
-import { fetchPublicConfig } from '../lib/public-config'
-import { fetchSessionUser } from '../lib/session'
+import { fetchPublicConfig } from '../lib/auth/public-config'
+import { fetchSessionUser } from '../lib/auth/session'
 
 /**
  * Pathless layout carrying the session.

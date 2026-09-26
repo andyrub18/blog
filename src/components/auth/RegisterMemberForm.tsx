@@ -1,8 +1,8 @@
 import type { JSX } from '@solidjs/web'
 import { useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
-import { signUpMember } from '../../lib/auth-actions'
-import { SIGN_UP_ERROR_MESSAGE } from '../../lib/auth-messages'
+import { signUpMember } from '../../lib/auth/auth-actions'
+import { SIGN_UP_ERROR_MESSAGE } from '../../lib/auth/auth-messages'
 import { m } from '../../paraglide/messages'
 import VerifyEmailNotice from './VerifyEmailNotice'
 

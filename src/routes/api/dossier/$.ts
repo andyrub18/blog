@@ -17,9 +17,9 @@ export const Route = createFileRoute('/api/dossier/$')({
       GET: async ({ request, params }) => {
         const [{ getSession }, { readDossierFile }, { clientIp }, { hasAtLeastRole }] =
           await Promise.all([
-            import('../../../lib/session.server'),
-            import('../../../lib/dossier'),
-            import('../../../lib/rate-limit'),
+            import('../../../lib/auth/session.server'),
+            import('../../../lib/membership/dossier'),
+            import('../../../lib/shared/rate-limit'),
             import('../../../lib/db/schema'),
           ])
 

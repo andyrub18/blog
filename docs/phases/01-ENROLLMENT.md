@@ -74,7 +74,7 @@ Two entry points, one pipeline:
 Both create a `reader` account plus a `member_application` row. The registration path is
 just the promotion path with the account creation in front of it.
 
-**Fix the ordering bug.** `signUpMember` in `src/lib/auth-actions.ts` creates the user via
+**Fix the ordering bug.** `signUpMember` in `src/lib/auth/auth-actions.ts` creates the user via
 `runSignUp()` and *then* saves the PDFs. If an upload fails it returns an error but the
 user account already exists, with no application attached — a stranded account that cannot
 re-apply because of the `UNIQUE` constraint above. Validate and stage all three files
@@ -131,7 +131,7 @@ exactly that kind of decision.
 
 **Built** as `senior_promotion` plus `senior_promotion_vote`, decided at `/review/promotions`.
 The rule is at least **three approvals** and at least **two thirds of the votes cast** —
-`evaluate()` in `src/lib/promotion.ts`, kept pure so the arithmetic is tested on its own.
+`evaluate()` in `src/lib/membership/promotion.ts`, kept pure so the arithmetic is tested on its own.
 Four things are worth stating:
 
 - **The denominator is votes cast, not the electorate.** A senior member who does not vote
@@ -208,7 +208,7 @@ can see why.
 
 ## Flow F — Blocking and demotion
 
-Senior members may block an account for misconduct. **Built** in `src/lib/moderation.ts`,
+Senior members may block an account for misconduct. **Built** in `src/lib/membership/moderation.ts`,
 from `/review/members`.
 
 `member_status` already existed in the schema and **nothing enforced it**: an account could

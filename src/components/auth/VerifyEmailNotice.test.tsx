@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const resendVerificationEmail = vi.fn()
 
-vi.mock('../../lib/auth-actions', () => ({
+vi.mock('../../lib/auth/auth-actions', () => ({
   resendVerificationEmail: (...args: Array<unknown>) => resendVerificationEmail(...args),
 }))
 

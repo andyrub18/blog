@@ -1,9 +1,12 @@
 import { createSignal, For, Show } from 'solid-js'
 import { LOCALE_LABELS, LOCALES, type Locale } from '../../i18n'
-import type { ImportErrorCode, ImportResult } from '../../lib/docx-actions'
-import { importDocx } from '../../lib/docx-actions'
-import type { ImportReport } from '../../lib/html-to-prosemirror'
-import type { DocNode } from '../../lib/prosemirror'
+import type {
+  ImportErrorCode,
+  ImportResult,
+} from '../../lib/articles/import/docx-actions'
+import { importDocx } from '../../lib/articles/import/docx-actions'
+import type { ImportReport } from '../../lib/articles/import/html-to-prosemirror'
+import type { DocNode } from '../../lib/articles/prosemirror'
 import { m } from '../../paraglide/messages'
 
 /**

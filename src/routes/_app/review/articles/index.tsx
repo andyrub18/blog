@@ -2,9 +2,9 @@ import { createFileRoute, Link } from '@tanstack/solid-router'
 import { For, Show } from 'solid-js'
 import LanguageSwitcher from '../../../../components/LanguageSwitcher'
 import { LOCALE_LABELS } from '../../../../i18n'
-import { fetchSubmissionQueue } from '../../../../lib/article-review-actions'
-import { MIN_REVIEWERS } from '../../../../lib/deliberation'
-import { SUBMISSION_STATUS_MESSAGE } from '../../../../lib/deliberation-messages'
+import { fetchSubmissionQueue } from '../../../../lib/deliberation/article-review-actions'
+import { MIN_REVIEWERS } from '../../../../lib/deliberation/deliberation'
+import { SUBMISSION_STATUS_MESSAGE } from '../../../../lib/deliberation/deliberation-messages'
 import { m } from '../../../../paraglide/messages'
 
 /**

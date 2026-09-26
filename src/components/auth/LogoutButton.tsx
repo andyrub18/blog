@@ -1,6 +1,6 @@
 import { useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
-import { signOut } from '../../lib/auth-actions'
+import { signOut } from '../../lib/auth/auth-actions'
 import { m } from '../../paraglide/messages'
 
 export default function LogoutButton(props: { class?: string }) {
