@@ -158,6 +158,36 @@ function Deliberation() {
               </section>
 
               {/*
+               * The text itself, as submitted (D30) — what reviewers argue
+               * about and what an acceptance publishes. `innerHTML` is safe
+               * for the reason it is on the reading view: `renderDocument`
+               * wrote every tag and escaped every character the author typed.
+               */}
+              <For each={loaded().texts}>
+                {(text) => (
+                  <section
+                    class="rounded-lg border border-neutral-200 bg-white p-6"
+                    data-testid="submitted-text"
+                  >
+                    <p class="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                      {m.deliberation_submittedText()} · {languageName(text.lang)}
+                    </p>
+                    <h2 class="mt-1 text-xl font-bold text-neutral-900">{text.title}</h2>
+                    <p class="mt-1 text-sm text-neutral-600">{text.summary}</p>
+                    <p class="mt-2 text-xs text-neutral-500">
+                      {m.deliberation_submittedTextHint()}
+                    </p>
+                    <Show when={text.changedSince}>
+                      <p class="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                        {m.deliberation_textChangedSince()}
+                      </p>
+                    </Show>
+                    <div class="article-prose mt-4" innerHTML={text.html} />
+                  </section>
+                )}
+              </For>
+
+              {/*
                * The PDF is reviewed with the text (D29): if this round accepts
                * a language, the file listed as under review is what readers
                * will download in the movement's name. Every language is listed,

@@ -455,6 +455,11 @@ a 404, not a 410 and not the old file: a forwarded link to an outdated PDF gives
 nobody the outdated PDF. Publication writes no revision, so a PDF attached to
 the draft the circle reviewed goes live with it.
 
+*Amended by D30:* readers now see a language's approved revision rather than
+its working copy, so a draft save no longer retires anything — the approved PDF
+still describes the approved text on the page. A companion goes stale when a
+round publishes a newer text.
+
 **Kept, not rebuilt — so what it may contain is narrower instead.** Everything
 else the platform ingests is rebuilt from an allowlist (D18). A companion cannot
 be: its typesetting is the reason it exists, and a PDF we regenerated would be
@@ -636,3 +641,54 @@ record which revision the circle read: an author can still edit a language after
 the verdicts are in and before the decision, and `decide()` publishes whatever
 text is current; and a published language can still be edited without a round.
 The companion is protected from both by its revision check. The text is not.
+
+*Decided in D30:* the text follows the same rule.
+
+## D30 — A published text changes only through the circle
+
+KLEA's decision: **the text must be protected, and a modification must be
+reviewed — the nature of the movement asks for it.** D29 applied that to the
+companion PDF and noted the text did not follow it. Now it does.
+
+**A round records exactly what it was given.** `submitForReview` stores the
+newest revision of each submitted language in `article_submission.revision_ids`.
+That is the text reviewers read — the submission page now shows it, rendered,
+language by language — and it is the only text the round can publish: `decide()`
+pins `article_translation.published_revision_id` to it. An author who keeps
+editing after submitting is editing the next round's text; the editor says so,
+and so does the review page, to reviewers, so nobody argues about a version they
+cannot see.
+
+**Readers see the pinned revision, never the working copy.** The reading view,
+the article index and the discussion page all read title, summary and body
+through `published_revision_id`. An author may go on editing a published
+language — every save is kept as a revision — but those saves are a draft,
+named as one in the editor, until a new round accepts them. Before this, a save
+on a published article went live at once, and a decision published whatever the
+working copy said at the moment of deciding.
+
+**The submission page did not show the text at all.** Found while building this:
+reviewers voted on a document the platform never put in front of them, and a
+panel member below senior could not open the draft anywhere. It now renders the
+submitted revision of each language, server-side, with the same guarantee as the
+reading view — `renderDocument` wrote every tag.
+
+**The companion follows the published revision.** Approved when its revision is
+the one the round reviewed; served while that is the revision readers see. So a
+draft save no longer retires an approved PDF (the reader still sees the text it
+describes), and a new published text without a new PDF does.
+
+**Existing data.** Migration `0011_protected_text` pins every published language
+to its newest revision — what readers were seeing, since until now they saw the
+working copy — and records, for every round still open, the text as it stands.
+Decided rounds are history and are left without a snapshot. The backfill is
+tested against rows shaped like the old data (`migrations.db.test.ts`), because
+the harness applies migrations to an empty database and would never catch an
+`UPDATE` that pinned the wrong thing — which here would take every published
+article off the site.
+
+**What this does not do.** It does not stop an author editing during a review;
+nothing needs stopping, since the edits cannot reach readers. There is no way to
+discard a draft and return the working copy to the published text, and no view
+of what changed between the published text and the draft; both would help an
+author and a panel, and neither is needed for the rule to hold.

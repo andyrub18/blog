@@ -99,6 +99,21 @@ export const articleTranslation = pgTable(
     contentJson: jsonb('content_json').notNull(),
     status: text('status').$type<TranslationStatus>().notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
+    /**
+     * The revision readers are shown — the one the circle approved (D30).
+     *
+     * The columns above are the author's *working* copy: what the editor loads
+     * and saves. Once a language is published the two part ways. An author may
+     * go on editing, and every save is kept as a revision, but readers keep the
+     * approved text until a new round accepts a newer one. Set only by
+     * `decide()`; a reader-facing query reads the text through this, never
+     * through `title`, `summary` or `content_json`.
+     *
+     * No foreign-key reference is declared: `article_revision` is defined
+     * below this table. Revisions are append-only and cascade with the
+     * article, so the id cannot dangle.
+     */
+    publishedRevisionId: text('published_revision_id'),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

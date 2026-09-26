@@ -28,7 +28,7 @@ must have before that page is interactive.
 | `/articles` | 97.2 KB |
 | `/` — the home page | 97.8 KB |
 | `/articles/{slug}/discussion` — the forum | 103.9 KB (opened from an article) |
-| `/write/{id}` — the editor, before TipTap loads | 119.6 KB (author screen) |
+| `/write/{id}` — the editor, before TipTap loads | 120.4 KB (author screen) |
 | TipTap itself, fetched only when the editor mounts | +126 KB, in two chunks |
 
 **The budget is met, with 1.0 KB of headroom.** It was not, for three phases:
@@ -118,6 +118,8 @@ After the phases:
 |---|---|---|
 | Long-form reading | Heading anchors and a contents list | **Done** — D24 |
 | Companion PDF | The author's typeset PDF beside an article, cleaned, and retired when the text changes | **Done** — D26 |
+| Reviewed companion | The circle reviews the PDF with the text; only its approval reaches readers | **Done** — D29 |
+| Protected text | Readers see the revision the circle approved; edits after publication are drafts until a new round | **Done** — D30 |
 | Deployment gate | The three P0s below | **In progress** — mock Google sign-in retired (D27) |
 | Interface review | The whole organisation gives its opinion on the UI, then it is revised | After the deployment gate |
 

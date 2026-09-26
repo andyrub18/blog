@@ -116,6 +116,14 @@ test('the circle reads the PDF with the text, and readers get the file it approv
     .getByRole('link', { name: /^Ouvrir$/i })
     .click()
 
+  // The reviewer reads the text as it was submitted — what an acceptance
+  // publishes (D30) — on the same page as the PDF that goes with it.
+  await expect(
+    page
+      .getByTestId('submitted-text')
+      .getByText(/budget publié en entier mais illisible/i),
+  ).toBeVisible({ timeout: 15_000 })
+
   // The reviewer is shown the PDF under review, and can take it home to check.
   const section = page.getByTestId('review-companion')
   await expect(section.getByText(/Français : 4 pages/i)).toBeVisible({ timeout: 15_000 })

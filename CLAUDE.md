@@ -213,9 +213,19 @@ secret is still there.
 revision is the newest.** `servableCompanion` is the single answer, used by the
 reading view's link and by the download route alike; approval is stamped only by
 `approveCompanions` inside `decide()`, for files attached before the round was
-submitted (D29). Never serve a companion by id or by path, never add a second
-way to approve one, and never let an author's action stamp it. Any save retires
-it — that is the rule working, not a bug to smooth over.
+submitted and made from the revision that round reviewed (D29, D30). Never
+serve a companion by id or by path, never add a second way to approve one, and
+never let an author's action stamp it. A newly published text retires it; a
+draft save does not, because readers do not see drafts.
+
+**Readers see `published_revision_id`, never the working copy.** The title,
+summary and body on `article_translation` are the author's draft; what readers
+get is the revision a decision pinned (D30). Every reader-facing query — the
+reading view, the index, the discussion page — joins `article_revision` on
+`published_revision_id`, and a new one must too. Only `decide()` moves the pin,
+to the revision `submitForReview` recorded; a save never does. If you find
+yourself reading `articleTranslation.contentJson` for a reader, you are
+publishing unreviewed text.
 
 **`article.status` is "is any language live", before it is the review stage.**
 Write it through `stageFor` in `article-review.ts`. Writing the stage directly
