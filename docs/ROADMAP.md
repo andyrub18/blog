@@ -23,16 +23,17 @@ must have before that page is interactive.
 
 | Page | Client JS, gzipped |
 |---|---|
-| Shared entry, on every page | **95.3 KB** |
-| `/articles/{slug}` — the reading view | **98.8 KB** |
-| `/articles` | 97.4 KB |
-| `/` — the home page | 98.0 KB |
-| `/articles/{slug}/discussion` — the forum | 103.0 KB (opened from an article) |
-| `/write/{id}` — the editor, before TipTap loads | 108.6 KB (author screen) |
+| Shared entry, on every page | **94.7 KB** |
+| `/articles/{slug}` — the reading view | **98.9 KB** |
+| `/articles` | 97.1 KB |
+| `/` — the home page | 97.8 KB |
+| `/articles/{slug}/discussion` — the forum | 103.7 KB (opened from an article) |
+| `/write/{id}` — the editor, before TipTap loads | 113.4 KB (author screen) |
 | TipTap itself, fetched only when the editor mounts | +126 KB, in two chunks |
 
-**The budget is met, with 1.2 KB of headroom.** It was not, for three phases:
-the reading view peaked at 103.8 KB after phase 3. Two things fixed it.
+**The budget is met, with 1.1 KB of headroom.** It was not, for three phases:
+the reading view peaked at 103.8 KB after phase 3. Two things fixed it, and a
+third gave 0.5 KB back afterwards — see the trend below.
 
 **TanStack Query was in every page and nothing used it.** The scaffold put a
 `QueryClient` in the router context and it had been shipping to every reader
@@ -60,6 +61,15 @@ visits them — about 0.5 KB each. Phase 5's single new route cost the entry
 0.8 KB, paid by every reader including the ones who never open a discussion.
 Splitting loaders out of the entry was tried and reverted: it moved 0.3 KB out
 of the entry and added 0.3 KB back to the page, plus a round trip on navigation.
+
+**What that trend responds to:** `beforeLoad` is the expensive half of it. A
+guard there is resolved before the component, so its module and every server
+function it calls stay in the eager route tree; a `loader` splits with its route.
+Moving `/apply`'s eligibility check from `beforeLoad` to `loader` took the shared
+entry from 95.4 KB to 94.7 KB — every page on the site, for a check that only
+`/apply` performs. This is not the reverted experiment above: that one moved
+loaders out of the entry and paid the cost back on navigation, whereas this
+removes a stub from pages that never call it.
 
 **And watch the measurement itself.** Phase 5 found that `npm run budget`
 matched route files by prefix, so `articles/$slug` also matched
@@ -122,7 +132,10 @@ From `SECURITY.md`, in order:
 
 1. **A verified sending domain in Resend**, with SPF, DKIM and DMARC. Until then
    the account is sandboxed and can only mail its own owner, so nobody else can
-   complete registration.
+   complete registration. A mailer that refuses is now at least survivable rather
+   than terminal — the account is created, the page says the mail did not go out,
+   and it can be asked for again (D25) — but survivable is not the same as
+   working, and this is still what blocks a real registration.
 2. **Turnstile keys** in the deployment environment. The code refuses to start
    without them in production, which is the intent, but it does mean the deploy
    fails until they are set.

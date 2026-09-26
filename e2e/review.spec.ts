@@ -19,6 +19,15 @@ test.skip(!process.env.E2E_DATABASE, 'requires E2E_DATABASE and seeded accounts'
 test('a reader can file a membership application', async ({ page }) => {
   await signIn(page, ACCOUNTS.newcomer)
   await submitApplication(page)
+
+  // The confirmation is a state of the route, not a flash between a signal and
+  // a redirect. It used to live about 75ms: filing the application made the
+  // applicant ineligible to file one, and the eligibility guard redirected over
+  // the panel saying the dossier had arrived.
+  await page.reload()
+  await waitForInteractive(page)
+  await expect(page).toHaveURL(/\/fr\/apply\/?$/)
+  await expect(page.getByText(/Candidature déposée/i)).toBeVisible()
 })
 
 test('a senior member reviews a dossier and approves it', async ({ page }) => {
@@ -55,6 +64,15 @@ test('a senior member reviews a dossier and approves it', async ({ page }) => {
     .fill('Dossier complet, plan de contribution concret et verifiable.')
   await page.getByRole('button', { name: /^Approuver$/i }).click()
   await expect(page.getByText(/Décision enregistrée/i)).toBeVisible()
+
+  // The decision is read back from the dossier, not remembered by this page: a
+  // reload still shows it recorded and offers no second decision. It used to be
+  // a local flag, so reloading brought the buttons back for a dossier already
+  // approved — and a second reviewer opening the same URL never saw it at all.
+  await page.reload()
+  await waitForInteractive(page)
+  await expect(page.getByText(/Décision enregistrée/i)).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Approuver$/i })).toHaveCount(0)
 
   // Approved applications leave the queue.
   await page.goto('/fr/review')

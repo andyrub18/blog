@@ -10,6 +10,7 @@ import {
 } from '../../lib/validation'
 import { m } from '../../paraglide/messages'
 import Turnstile from './Turnstile'
+import VerifyEmailNotice from './VerifyEmailNotice'
 
 type Field = 'name' | 'email' | 'password' | 'dateOfBirth' | 'essay'
 type FieldErrors = Partial<Record<Field, string>>
@@ -23,7 +24,10 @@ export default function RegisterReaderForm() {
   const [submitting, setSubmitting] = createSignal(false)
   const [serverError, setServerError] = createSignal<string | null>(null)
   const [errors, setErrors] = createSignal<FieldErrors>({})
-  const [success, setSuccess] = createSignal(false)
+  const [registered, setRegistered] = createSignal<{
+    email: string
+    verificationSent: boolean
+  } | null>(null)
 
   function validate(fd: FormData): FieldErrors {
     const errs: FieldErrors = {}
@@ -67,7 +71,10 @@ export default function RegisterReaderForm() {
         setServerError(SIGN_UP_ERROR_MESSAGE[result.code]())
         return
       }
-      setSuccess(true)
+      setRegistered({
+        email: String(fd.get('email') ?? ''),
+        verificationSent: result.verificationSent,
+      })
       router.invalidate()
     } catch {
       setServerError(m.auth_register_errors_unexpected())
@@ -78,12 +85,11 @@ export default function RegisterReaderForm() {
 
   return (
     <Show
-      when={!success()}
+      when={!registered()}
       fallback={
-        <SuccessPanel
-          title={m.auth_register_success_title()}
-          hint={m.auth_register_success_verifyHint()}
-          loginCta={m.auth_verify_goLogin()}
+        <VerifyEmailNotice
+          email={registered()?.email ?? ''}
+          verificationSent={registered()?.verificationSent ?? false}
           onLogin={() => router.navigate({ to: '/auth/login' })}
         />
       }
@@ -188,26 +194,5 @@ function TextInput(props: {
         {(message) => <span class="text-xs text-[#D21034]">{message()}</span>}
       </Show>
     </label>
-  )
-}
-
-function SuccessPanel(props: {
-  title: string
-  hint: string
-  loginCta: string
-  onLogin: () => void
-}) {
-  return (
-    <div class="flex flex-col items-center gap-4 text-center">
-      <h2 class="text-lg font-semibold text-neutral-900">{props.title}</h2>
-      <p class="text-sm text-neutral-700">{props.hint}</p>
-      <button
-        type="button"
-        onClick={props.onLogin}
-        class="h-11 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95"
-      >
-        {props.loginCta}
-      </button>
-    </div>
   )
 }

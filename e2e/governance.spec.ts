@@ -137,6 +137,20 @@ test('a senior member issues an invitation and is shown the link once', async ({
   await expect(invited.getByText(/Compte créé/i)).toBeVisible({
     timeout: 20_000,
   })
+  // The verification email is the only door into the new account, so the way to
+  // ask for it again is on the page that says the account exists.
+  await expect(
+    invited.getByRole('button', { name: /Renvoyer le courriel de vérification/i }),
+  ).toBeVisible()
+
+  // Coming back to the same link — a reload, or opening it again from the mail —
+  // says the invitation was used, not that it is unusable. The second reading
+  // sends someone who already has an account back to their sponsor for a new
+  // invitation they do not need.
+  await invited.goto(url.replace(/^https?:\/\/[^/]+/, ''))
+  await waitForInteractive(invited)
+  await expect(invited.getByText(/Invitation déjà utilisée/i)).toBeVisible()
+  await expect(invited.getByText(/Invitation inutilisable/i)).toHaveCount(0)
   await guest.close()
 })
 

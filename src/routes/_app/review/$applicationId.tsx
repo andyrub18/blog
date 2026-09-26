@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/solid-router'
+import { createFileRoute, Link, useRouter } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import { decideApplication, fetchApplication } from '../../../lib/review-actions'
@@ -11,13 +11,34 @@ export const Route = createFileRoute('/_app/review/$applicationId')({
   component: ReviewDetail,
 })
 
+/**
+ * Statuses in which this dossier is still waiting on a reviewer.
+ *
+ * Anything else means a decision has been recorded against it, which is what
+ * the page reads to decide whether to offer the form or the notice.
+ */
+const AWAITING_DECISION = new Set(['pending', 'under_review'])
+
 function ReviewDetail() {
   const data = Route.useLoaderData()
   const params = Route.useParams()
+  const router = useRouter()
   const [rationale, setRationale] = createSignal('')
   const [busy, setBusy] = createSignal(false)
   const [error, setError] = createSignal<string | null>(null)
-  const [done, setDone] = createSignal(false)
+  /**
+   * Whether a decision stands, read from the loader rather than remembered here.
+   *
+   * It used to be a local `done` flag, which meant the page only knew about a
+   * decision it had itself just made: reloading brought the buttons back for a
+   * dossier already approved, and a second reviewer opening the same URL saw a
+   * form for a decision that had been taken. Deriving it from the row makes the
+   * notice survive a reload and makes `invalidate()` below safe to call.
+   */
+  const decided = () => {
+    const status = data()?.application.status
+    return status !== undefined && !AWAITING_DECISION.has(status)
+  }
 
   async function decide(decision: 'approve' | 'reject' | 'request_more_info') {
     setBusy(true)
@@ -34,7 +55,9 @@ function ReviewDetail() {
         setError(REVIEW_ERROR_MESSAGE[result.code]())
         return
       }
-      setDone(true)
+      // The loader is the record. Re-reading it is also what logs the second
+      // look at the dossier, which is correct: the page did read it again.
+      await router.invalidate()
     } catch {
       setError(m.review_errors_unexpected())
     } finally {
@@ -121,7 +144,7 @@ function ReviewDetail() {
               </section>
 
               <Show
-                when={!done()}
+                when={!decided()}
                 fallback={
                   <p class="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">
                     {m.review_decided()}

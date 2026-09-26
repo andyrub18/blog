@@ -9,6 +9,7 @@ import {
   MIN_CONTRIBUTION_PLAN_CHARS,
 } from '../../lib/validation'
 import { m } from '../../paraglide/messages'
+import VerifyEmailNotice from './VerifyEmailNotice'
 
 type Field = 'name' | 'password' | 'dateOfBirth' | 'essay' | 'contributionPlan'
 type FieldErrors = Partial<Record<Field, string>>
@@ -34,7 +35,10 @@ export default function RegisterInvitedForm(props: {
   const [submitting, setSubmitting] = createSignal(false)
   const [serverError, setServerError] = createSignal<string | null>(null)
   const [errors, setErrors] = createSignal<FieldErrors>({})
-  const [success, setSuccess] = createSignal(false)
+  const [registered, setRegistered] = createSignal<{
+    email: string
+    verificationSent: boolean
+  } | null>(null)
 
   function validate(fd: FormData): FieldErrors {
     const errs: FieldErrors = {}
@@ -85,9 +89,12 @@ export default function RegisterInvitedForm(props: {
       }
       // Deliberately no `router.invalidate()` here, unlike the other
       // registration forms. Re-running this route's loader would re-check a
-      // token that has just been spent, and the new member would watch their
-      // confirmation be replaced by "invitation unusable".
-      setSuccess(true)
+      // token that has just been spent, and replace this confirmation — which
+      // names the address to verify and offers the mail again — with the
+      // route's own, thinner account of a used invitation. The route handles
+      // that case properly now, so a reload lands somewhere sensible; this
+      // panel is simply the better one to have just after signing up.
+      setRegistered({ email: props.email, verificationSent: result.verificationSent })
     } catch {
       setServerError(m.auth_register_errors_unexpected())
     } finally {
@@ -97,21 +104,13 @@ export default function RegisterInvitedForm(props: {
 
   return (
     <Show
-      when={!success()}
+      when={!registered()}
       fallback={
-        <div class="flex flex-col items-center gap-4 text-center">
-          <h2 class="text-lg font-semibold text-neutral-900">
-            {m.auth_register_success_title()}
-          </h2>
-          <p class="text-sm text-neutral-700">{m.auth_register_success_verifyHint()}</p>
-          <button
-            type="button"
-            onClick={() => router.navigate({ to: '/auth/login' })}
-            class="h-11 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95"
-          >
-            {m.auth_verify_goLogin()}
-          </button>
-        </div>
+        <VerifyEmailNotice
+          email={props.email}
+          verificationSent={registered()?.verificationSent ?? false}
+          onLogin={() => router.navigate({ to: '/auth/login' })}
+        />
       }
     >
       <form

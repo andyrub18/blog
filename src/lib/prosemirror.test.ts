@@ -155,7 +155,11 @@ describe('link safety', () => {
 
   it('renders a safe link with rel attributes that cannot be overridden', () => {
     const html = render(
-      doc(para(text('manifeste', [{ type: 'link', attrs: { href: 'https://kleayiti.com' } }]))),
+      doc(
+        para(
+          text('manifeste', [{ type: 'link', attrs: { href: 'https://kleayiti.com' } }]),
+        ),
+      ),
     )
     expect(html).toBe(
       '<p><a href="https://kleayiti.com" rel="nofollow noopener noreferrer">manifeste</a></p>',
