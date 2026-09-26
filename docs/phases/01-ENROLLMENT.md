@@ -49,7 +49,7 @@ CREATE UNIQUE INDEX one_open_application_per_user
 
 ## Flow A — Reader registration (self-serve)
 
-Name, email, password (or Google), **birth year**, and a short essay. Email verification is
+Name, email, password, **birth year**, and a short essay. Email verification is
 required before the account becomes usable. On verification: `role = reader`.
 
 Two changes to what exists:

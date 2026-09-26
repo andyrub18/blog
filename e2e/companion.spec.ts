@@ -83,6 +83,14 @@ test('an author attaches a PDF, readers get it, and the next save takes it away'
   const href = await link.getAttribute('href')
   expect(href).toBe(`/api/companion/${SLUG}/fr`)
 
+  // Clicked, the way a reader gets it: the browser must treat it as a download
+  // and name the file. (Opening the same URL as a page is covered by
+  // `api-routes.spec.ts`; the `download` attribute means a click is not sent as
+  // a page navigation, so this click alone would not have caught that bug.)
+  const [download] = await Promise.all([page.waitForEvent('download'), link.click()])
+  expect(download.suggestedFilename()).toBe(`${SLUG}-fr.pdf`)
+  expect(await download.failure()).toBeNull()
+
   // Served as an attachment, never inline, and without the author's name in it.
   const response = await page.request.get(href as string)
   expect(response.status()).toBe(200)
