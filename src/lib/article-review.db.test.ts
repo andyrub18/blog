@@ -823,3 +823,100 @@ describe('the queue', () => {
     expect(detail.tallies[0].objections).toBe(1)
   })
 })
+
+/**
+ * A second round on an article that is already live.
+ *
+ * The documented normal case (D12): the French is published, the Creole is
+ * written afterwards and comes back as its own round. `article.status` means
+ * "at least one language is live" — `withdrawTranslation` already treats it
+ * that way — so nothing about putting the Creole to the circle may take the
+ * French off the site, during the review or after it.
+ */
+describe('a later round on a published article', () => {
+  async function everyoneSays(
+    members: Array<Viewer>,
+    submissionId: string,
+    lang: string,
+    verdict: 'support' | 'object',
+  ) {
+    for (const member of members) {
+      const result = await review.recordVerdict({
+        actor: member,
+        submissionId,
+        lang,
+        verdict,
+        rationale: RATIONALE,
+      })
+      if (!result.ok) throw new Error(`recordVerdict: ${result.code}`)
+    }
+  }
+
+  async function liveInFrench() {
+    const author = await makeUser()
+    const senior = await makeUser('senior_member')
+    const members = [await makeUser(), await makeUser(), await makeUser()]
+    const { articleId, slug, submissionId } = await submit(author, ['fr'])
+    await panelOf(senior, submissionId, members)
+    await everyoneSays(members, submissionId, 'fr', 'support')
+    const decided = await review.decide({
+      actor: senior,
+      submissionId,
+      rationale: RATIONALE,
+    })
+    if (!decided.ok) throw new Error(`decide: ${decided.code}`)
+
+    await articles.saveTranslation({
+      actor: author,
+      articleId,
+      lang: 'ht',
+      title: `${TITLE} (ht)`,
+      summary: SUMMARY,
+      content: body('Tèks la an kreyòl.'),
+    })
+    const second = await review.submitForReview({
+      actor: author,
+      articleId,
+      langs: ['ht'],
+      documentation: DOCUMENTATION,
+    })
+    if (!second.ok) throw new Error(`submitForReview: ${second.code}`)
+    return {
+      author,
+      senior,
+      members,
+      articleId,
+      slug,
+      submissionId: second.value.submissionId,
+    }
+  }
+
+  const readable = async (slug: string) =>
+    (await articles.getReadableArticle({ slug, lang: 'fr', viewer: null })).ok
+
+  it('keeps the French readable while the Creole is under review', async () => {
+    const { slug } = await liveInFrench()
+    expect(await readable(slug)).toBe(true)
+  })
+
+  it('keeps the French readable when the circle sends the Creole back', async () => {
+    const { senior, members, slug, submissionId } = await liveInFrench()
+    await panelOf(senior, submissionId, members)
+    await everyoneSays(members, submissionId, 'ht', 'object')
+    const decided = await review.decide({
+      actor: senior,
+      submissionId,
+      rationale: RATIONALE,
+      unresolved: 'rejected',
+    })
+    expect(decided.ok && decided.value.outcome).toBe('rejected')
+    expect(await readable(slug)).toBe(true)
+  })
+
+  it('keeps the French readable when the author withdraws the Creole round', async () => {
+    const { author, slug, submissionId } = await liveInFrench()
+    const withdrawn = await review.withdrawSubmission({ actor: author, submissionId })
+    expect(withdrawn.ok).toBe(true)
+    expect(await readable(slug)).toBe(true)
+  })
+})

@@ -11,7 +11,9 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { eq, inArray } from 'drizzle-orm'
+import { PDFDocument } from 'pdf-lib'
 import { auth } from '../src/lib/auth'
+import { attachCompanion } from '../src/lib/companion'
 import { db } from '../src/lib/db'
 import {
   applicationEvent,
@@ -429,6 +431,24 @@ const ARTICLES: ReadonlyArray<DemoArticle> = [
     ],
   },
   {
+    // In debate with its typeset PDF attached before submission: the round a
+    // senior member decides to watch a companion go live with its text (D29).
+    slug: 'pwopozisyon-ak-pdf',
+    visibility: 'public',
+    translations: [
+      {
+        lang: 'fr',
+        status: 'draft',
+        title: 'Un budget national lisible par tous',
+        summary:
+          "Pourquoi le budget doit être publié sous une forme qu'un citoyen peut vérifier, et le document complet qui l'accompagne.",
+        paragraphs: [
+          'Le diagnostic porte sur un budget publié en entier mais illisible, donc invérifiable.',
+        ],
+      },
+    ],
+  },
+  {
     slug: 'note-interne-cercle-economie',
     visibility: 'members',
     translations: [
@@ -638,10 +658,43 @@ async function resetDeliberations(ids: Record<string, string>): Promise<void> {
     .where(eq(article.slug, 'pwopozisyon-sou-eneji'))
   if (!awaitingPanel) return
 
+  await debateReadyToDecide(awaitingPanel.id, ids)
+
+  /**
+   * The same, with a companion PDF attached *before* the round was submitted —
+   * the file the circle reviews with the text, and that the decision approves.
+   * Attached through `attachCompanion` rather than inserted, so the seeded file
+   * has been through the same cleaning as any author's.
+   */
+  const [withPdf] = await db
+    .select({ id: article.id })
+    .from(article)
+    .where(eq(article.slug, 'pwopozisyon-ak-pdf'))
+  if (!withPdf) return
+  const pdf = await PDFDocument.create()
+  for (let page = 0; page < 4; page += 1) pdf.addPage([595, 842])
+  const attached = await attachCompanion({
+    actor: { id: ids.confirmed, role: 'member', memberStatus: 'active' },
+    articleId: withPdf.id,
+    lang: 'fr',
+    file: new File([new Uint8Array(await pdf.save())], 'budget.pdf'),
+  })
+  if (!attached.ok) throw new Error(`seeding the companion failed: ${attached.code}`)
+  await debateReadyToDecide(withPdf.id, ids)
+}
+
+/**
+ * A round in debate with every assigned reviewer's verdict recorded, so a
+ * decision can be exercised in a single sign-in.
+ */
+async function debateReadyToDecide(
+  articleId: string,
+  ids: Record<string, string>,
+): Promise<void> {
   const submissionId = randomUUID()
   await db.insert(articleSubmission).values({
     id: submissionId,
-    articleId: awaitingPanel.id,
+    articleId: articleId,
     round: 1,
     langs: ['fr'],
     submittedBy: ids.confirmed,
@@ -676,7 +729,7 @@ async function resetDeliberations(ids: Record<string, string>): Promise<void> {
   await db
     .update(article)
     .set({ status: 'in_review' })
-    .where(eq(article.id, awaitingPanel.id))
+    .where(eq(article.id, articleId))
 }
 
 async function main() {

@@ -3,23 +3,28 @@ import { PDFDocument, PDFName, PDFString } from 'pdf-lib'
 import { ACCOUNTS, signIn, waitForInteractive } from './helpers'
 
 /**
- * The companion PDF, from the author's editor to a reader's download (D26).
+ * The companion PDF, from the author's editor through the circle to a reader
+ * (D26, D29).
  *
- * One test, deliberately, walking the whole life of a companion: refused when
- * it can act, attached and cleaned, offered on the reading view, served as an
- * attachment, retired by the next save, removed. Splitting it would multiply
- * the sign-ins, and chromium-only for the same reason as the other signed-in
- * suites: our own per-IP throttle buckets every local caller together.
+ * Two tests, one per side, each walking its whole half in a single sign-in —
+ * chromium-only for the same reason as the other signed-in suites: our own
+ * per-IP throttle buckets every local caller together.
  *
- * It uses the French-only seeded article and saves its text *unchanged*. A save
- * writes a new revision whatever it contains — which is exactly what retires a
- * companion — and leaves the page other specs read identical.
+ * **The author's side** uses the French-only published article. Attaching a PDF
+ * to it must *not* reach readers — the circle has not read it — and a save
+ * (of the same text: a save writes a revision whatever it contains, and leaves
+ * the page other specs read identical) makes it stale.
+ *
+ * **The circle's side** uses a seeded round in debate whose PDF was attached
+ * before submission. A senior member downloads it from the submission page,
+ * decides, and readers then get exactly that file.
  *
  * Skipped unless E2E_DATABASE is set. Run `npm run db:seed:demo` first.
  */
 test.skip(!process.env.E2E_DATABASE, 'requires E2E_DATABASE and seeded accounts')
 
-const SLUG = 'leducation-comme-priorite'
+const LIVE = 'leducation-comme-priorite'
+const IN_DEBATE = 'pwopozisyon-ak-pdf'
 
 async function pdf(options: { script?: boolean } = {}): Promise<Buffer> {
   const doc = await PDFDocument.create()
@@ -57,7 +62,7 @@ async function upload(page: Page, bytes: Buffer) {
   await panel.getByRole('button', { name: /(Joindre|Remplacer) le PDF/i }).click()
 }
 
-test('an author attaches a PDF, readers get it, and the next save takes it away', async ({
+test('an author’s PDF waits for the circle, and a save makes it stale', async ({
   page,
 }) => {
   await signIn(page, ACCOUNTS.confirmed)
@@ -68,64 +73,106 @@ test('an author attaches a PDF, readers get it, and the next save takes it away'
   await upload(page, await pdf({ script: true }))
   await expect(panel.getByText(/éléments actifs/i)).toBeVisible({ timeout: 15_000 })
 
-  // Attached, and the author is told what was taken out of their file.
+  // Attached and cleaned — and waiting for the circle, not on the site.
   await upload(page, await pdf())
-  await expect(panel.getByText(/Proposé aux lecteurs : 2 pages/i)).toBeVisible({
+  await expect(
+    panel.getByText(/examinera avec le texte quand vous soumettrez/i),
+  ).toBeVisible({
     timeout: 15_000,
   })
   await expect(panel.getByText(/propriétés du document/i)).toBeVisible()
 
-  // The reading view links it, with its size, as plain markup.
-  await page.goto(`/fr/articles/${SLUG}`)
-  const link = page.getByRole('link', { name: /Télécharger le PDF/i })
-  await expect(link).toBeVisible()
-  await expect(page.getByText(/2 pages · 0,1 Mo/)).toBeVisible()
-  const href = await link.getAttribute('href')
-  expect(href).toBe(`/api/companion/${SLUG}/fr`)
+  // Readers get nothing: not the link, not the file by URL.
+  await page.goto(`/fr/articles/${LIVE}`)
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Télécharger le PDF/i })).toHaveCount(0)
+  expect((await page.request.get(`/api/companion/${LIVE}/fr`)).status()).toBe(404)
 
-  // Clicked, the way a reader gets it: the browser must treat it as a download
-  // and name the file. (Opening the same URL as a page is covered by
-  // `api-routes.spec.ts`; the `download` attribute means a click is not sent as
-  // a page navigation, so this click alone would not have caught that bug.)
-  const [download] = await Promise.all([page.waitForEvent('download'), link.click()])
-  expect(download.suggestedFilename()).toBe(`${SLUG}-fr.pdf`)
-  expect(await download.failure()).toBeNull()
-
-  // Served as an attachment, never inline, and without the author's name in it.
-  const response = await page.request.get(href as string)
-  expect(response.status()).toBe(200)
-  expect(response.headers()['content-disposition']).toMatch(/^attachment;/)
-  expect(response.headers()['x-content-type-options']).toBe('nosniff')
-  const served = await PDFDocument.load(await response.body(), { updateMetadata: false })
-  expect(served.getAuthor()).toBeUndefined()
-  expect(served.getTitle()).toBe("L'éducation comme priorité vérifiable")
-
-  // Asked again with the hash it already has, the reader downloads nothing.
-  const etag = response.headers().etag
-  const again = await page.request.get(href as string, {
-    headers: { 'if-none-match': etag },
-  })
-  expect(again.status()).toBe(304)
-
-  // The author saves — the same text, but a new revision — and the PDF no longer
-  // describes the text readers see. The editor says so.
+  // A save — the same text, a new revision — and the PDF no longer describes it.
   await openEditor(page)
   await page.getByRole('button', { name: /^Enregistrer$/i }).click()
   await expect(page.getByText(/Enregistré à/i)).toBeVisible({ timeout: 15_000 })
-  await expect(panel.getByText(/n'est plus proposé aux lecteurs/i)).toBeVisible({
+  await expect(panel.getByText(/ne correspond plus au texte/i)).toBeVisible({
     timeout: 15_000,
   })
 
-  // And readers no longer get it, by the link or by the URL.
-  await page.goto(`/fr/articles/${SLUG}`)
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  await expect(page.getByRole('link', { name: /Télécharger le PDF/i })).toHaveCount(0)
-  expect((await page.request.get(href as string)).status()).toBe(404)
-
   // Removed, so the next run starts from nothing even without a re-seed.
-  await openEditor(page)
   await panel.getByRole('button', { name: /Retirer le PDF/i }).click()
   await expect(panel.getByRole('button', { name: /Joindre le PDF/i })).toBeVisible({
     timeout: 15_000,
   })
+})
+
+test('the circle reads the PDF with the text, and readers get the file it approved', async ({
+  page,
+  browser,
+}) => {
+  await signIn(page, ACCOUNTS.senior)
+  await page.goto('/fr/review/articles')
+  await waitForInteractive(page)
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: /budget national lisible/i })
+    .getByRole('link', { name: /^Ouvrir$/i })
+    .click()
+
+  // The reviewer is shown the PDF under review, and can take it home to check.
+  const section = page.getByTestId('review-companion')
+  await expect(section.getByText(/Français : 4 pages/i)).toBeVisible({ timeout: 15_000 })
+  const [reviewCopy] = await Promise.all([
+    page.waitForEvent('download'),
+    section.getByRole('link', { name: /^Télécharger$/i }).click(),
+  ])
+  expect(await reviewCopy.failure()).toBeNull()
+
+  // Nobody outside the circle can fetch the file under review.
+  const anonymous = await browser.newContext()
+  try {
+    const reviewHref = await section
+      .getByRole('link', { name: /^Télécharger$/i })
+      .getAttribute('href')
+    const refused = await anonymous.request.get(
+      new URL(reviewHref as string, page.url()).href,
+    )
+    expect(refused.status()).toBe(403)
+  } finally {
+    await anonymous.close()
+  }
+
+  await page
+    .locator('[name="decisionRationale"]')
+    .fill('Le diagnostic tient, et le PDF dit ce que dit le texte.')
+  await page.getByRole('button', { name: /Enregistrer la décision/i }).click()
+  await expect(page.getByText(/Acceptée/i).first()).toBeVisible({ timeout: 15_000 })
+  await expect(section.getByText(/approuvé par cette décision/i)).toBeVisible()
+
+  // A reader with no account now gets the link, and the approved file.
+  const visitorContext = await browser.newContext()
+  try {
+    const visitor = await visitorContext.newPage()
+    await visitor.goto(`/fr/articles/${IN_DEBATE}`)
+    const link = visitor.getByRole('link', { name: /Télécharger le PDF/i })
+    await expect(link).toBeVisible()
+    await expect(visitor.getByText(/4 pages · 0,1 Mo/)).toBeVisible()
+
+    const [download] = await Promise.all([visitor.waitForEvent('download'), link.click()])
+    expect(download.suggestedFilename()).toBe(`${IN_DEBATE}-fr.pdf`)
+
+    const response = await visitor.request.get(`/api/companion/${IN_DEBATE}/fr`)
+    expect(response.status()).toBe(200)
+    expect(response.headers()['content-disposition']).toMatch(/^attachment;/)
+    expect(response.headers()['x-content-type-options']).toBe('nosniff')
+    const served = await PDFDocument.load(await response.body(), {
+      updateMetadata: false,
+    })
+    expect(served.getPageCount()).toBe(4)
+    expect(served.getTitle()).toBe('Un budget national lisible par tous')
+
+    const again = await visitor.request.get(`/api/companion/${IN_DEBATE}/fr`, {
+      headers: { 'if-none-match': response.headers().etag },
+    })
+    expect(again.status()).toBe(304)
+  } finally {
+    await visitorContext.close()
+  }
 })

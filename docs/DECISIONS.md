@@ -483,17 +483,12 @@ entry, the article's title, so a reader's viewer shows that.
 Not attempted, and said in the code: white text, content hidden under an image,
 optional-content layers. Those are what the author put on the page.
 
-**Who may attach one: whoever may edit the text.** `canEdit`, the same rule as
-saving. No separate sign-off was added, because none is written down: the
-manifesto governs the text, and the text is still what the circle reviews and
-what `decide()` publishes. But this should be said plainly rather than left to
-be discovered: **nothing verifies that the PDF says what the reviewed text
-says.** It is the same trust the platform already extends to an author who edits
-a published translation after the decision, and the same controls apply — the
-row records who attached which file and when, and the next save retires it. If
-KLEA decides a companion needs a second person's attestation, that is a column
-and a button on this panel; it is KLEA's rule to make, not the platform's to
-presume.
+**Who may attach one: whoever may edit the text** — `canEdit`, the same rule as
+saving. **Who may put one in front of readers: the circle** — see D29, which
+replaced this paragraph's original answer. As first built, an attached PDF went
+live on its own, on the reasoning that nothing written down required more. KLEA
+answered that documents are reviewed before publication and that a reviewer must
+be able to verify the PDF too.
 
 **Downloads are not logged; uploads are.** A dossier read is logged because it is
 a privileged look at someone's private file. This is a reader taking a public
@@ -589,3 +584,55 @@ locale scope, pinned to the base locale; nothing under `/api` renders text for a
 person, and the verification email is sent from a server function, which keeps
 the request's real locale. `e2e/api-routes.spec.ts` navigates to each API route
 with a locale cookie set, and fails without the exclusion.
+
+## D29 — The circle reviews the companion PDF with the text
+
+KLEA's answer to the question D26 left open: **documents are reviewed before
+publication, and a reviewer must be able to verify the PDF as well as the
+text.** A companion now reaches readers only through a decision.
+
+**The rule.** When `decide()` accepts a language, `approveCompanions` stamps the
+current companion of that language with the round (`approved_in_submission_id`,
+`approved_at`) — but only if it was attached **no later than the round was
+submitted** and is **still made from the newest text**. `servableCompanion`
+serves only stamped files. Everything else waits, and the author's editor says
+which of five states it is in: approved, in review, waiting for the next round
+(attached after this round was submitted), awaiting review (no round open), or
+stale (the text changed after it was attached).
+
+"Attached before submission" is the line because it is the only moment the
+platform can say the circle *had* the file. A PDF swapped in mid-debate, after
+some reviewers downloaded the old one, would otherwise be approved by verdicts
+given on a different document.
+
+**What reviewers get.** The submission page lists every language of the round
+with its PDF's state, and a download for the one under review —
+`/api/companion/review/<submissionId>/<lang>`, served to members (the same
+audience as the page itself), `private, no-store`, as an attachment. Not
+logged: it is the author's proposal, not somebody's private file. The same
+route file as the reader's download, because every route costs every page a few
+hundred bytes of route tree.
+
+**Replacing an approved PDF withdraws it** from readers until a round approves
+the new one — there is one current companion per language, and an unreviewed
+file cannot be current and served at once. The editor warns before it happens.
+That is a real cost for an author who only wants to fix a typo in the typeset
+version, and the price of the rule: the fix is a new round for that language.
+
+**A new round no longer takes a live article offline.** Making "the next round"
+the way back for a PDF surfaced a bug that was there all along: the review flow
+wrote its stage into `article.status` unconditionally, so submitting a language
+of an already-published article — the Creole after the French, D12's normal
+case — set the article to `submitted` and the reading view, which serves only
+`published` articles, dropped the French for the whole review, and for good if
+the Creole was refused or withdrawn. `stageFor` in `article-review.ts` now keeps
+an article `published` while any translation is, which is what
+`withdrawTranslation` had always assumed the column meant. Covered by
+`article-review.db.test.ts`, which failed before the fix.
+
+**Not changed, and worth a decision of its own.** The same principle — reviewed
+before publication — is not yet enforced for the *text*. A submission does not
+record which revision the circle read: an author can still edit a language after
+the verdicts are in and before the decision, and `decide()` publishes whatever
+text is current; and a published language can still be edited without a round.
+The companion is protected from both by its revision check. The text is not.
