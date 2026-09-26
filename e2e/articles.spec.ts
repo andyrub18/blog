@@ -123,3 +123,21 @@ test('a short article carries no contents list', async ({ page }) => {
   await page.goto(`/fr/articles/${PUBLISHED}`)
   await expect(page.getByRole('navigation', { name: /Sommaire/i })).toHaveCount(0)
 })
+
+/**
+ * Readers can tell whether an article has changed since they read it (D31).
+ * The version line is server-rendered markup on the reading view, and the
+ * history is a page of its own; neither needs an account.
+ */
+test('an article says which version it is, and its history lists what the circle approved', async ({
+  page,
+}) => {
+  await page.goto(`/fr/articles/${FRENCH_ONLY}`)
+  await expect(page.getByText(/Version 1 · approuvée le/i)).toBeVisible()
+
+  await waitForInteractive(page)
+  await page.getByRole('link', { name: /Historique des versions/i }).click()
+  await expect(page).toHaveURL(new RegExp(`/fr/articles/${FRENCH_ONLY}/versions$`))
+  await expect(page.getByTestId('version-entry')).toHaveCount(1)
+  await expect(page.getByText(/Première version publiée/i)).toBeVisible()
+})

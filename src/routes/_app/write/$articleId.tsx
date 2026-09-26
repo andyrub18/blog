@@ -352,7 +352,6 @@ function Editing(props: EditingProps) {
       <CompanionPanel
         articleId={props.article.articleId}
         lang={props.article.lang}
-        published={props.article.translationStatus === 'published'}
         dirty={dirty()}
         textVersion={textVersion()}
       />

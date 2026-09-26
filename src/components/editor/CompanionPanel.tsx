@@ -54,7 +54,6 @@ const ERROR_MESSAGE: Record<CompanionActionError, () => string> = {
 type Props = {
   articleId: string
   lang: string
-  published: boolean
   /** Unsaved edits in the editor: a PDF attached now would describe the old text. */
   dirty: boolean
   /** Goes up on every save or import, which is when a companion can go stale. */
@@ -80,10 +79,22 @@ export default function CompanionPanel(props: Props) {
     },
   )
 
+  /** The working PDF: the one the next version will carry. */
+  const working = () => state()?.working ?? null
   const summary = () => {
-    const current = state()
+    const current = working()
     if (!current || current.state === 'none') return null
     return {
+      pages: String(current.pageCount),
+      size: formatMegabytes(current.byteSize, getLocale()),
+    }
+  }
+  /** The PDF readers have now: the published version's, whatever is attached here. */
+  const published = () => {
+    const current = state()?.published
+    if (!current) return null
+    return {
+      version: String(current.version),
       pages: String(current.pageCount),
       size: formatMegabytes(current.byteSize, getLocale()),
     }
@@ -134,15 +145,12 @@ export default function CompanionPanel(props: Props) {
   }
 
   /**
-   * One sentence per state, and every one but the first says why readers do not
-   * have the file — the author cannot act on a state they are not told about.
+   * Where the working PDF is on its way to readers. None of these states means
+   * readers have it yet; what readers have is said separately, from the
+   * published version.
    */
   const describeState = (values: { pages: string; size: string }) => {
-    switch (state()?.state) {
-      case 'approved':
-        return props.published
-          ? m.companion_current(values)
-          : m.companion_approvedNotLive(values)
+    switch (working()?.state) {
       case 'inReview':
         return m.companion_inReview(values)
       case 'nextRound':
@@ -153,7 +161,7 @@ export default function CompanionPanel(props: Props) {
   }
 
   const hasCompanion = () => {
-    const current = state()
+    const current = working()
     return current !== null && current.state !== 'none'
   }
 
@@ -166,16 +174,18 @@ export default function CompanionPanel(props: Props) {
       <p class="mt-1 text-sm text-neutral-600">{m.companion_subtitle()}</p>
 
       <div aria-live="polite" class="mt-4 flex flex-col gap-2 text-sm">
-        <Show when={state()?.state === 'stale'}>
+        <Show when={published()}>
+          {(values) => (
+            <p class="text-neutral-700">{m.companion_publishedPdf(values())}</p>
+          )}
+        </Show>
+        <Show when={working()?.state === 'stale'}>
           <p class="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">
             {m.companion_stale()}
           </p>
         </Show>
-        <Show when={state()?.state !== 'stale' && summary()}>
+        <Show when={working()?.state !== 'stale' && summary()}>
           {(values) => <p class="text-neutral-700">{describeState(values())}</p>}
-        </Show>
-        <Show when={state()?.state === 'approved' && props.published}>
-          <p class="text-xs text-neutral-500">{m.companion_replaceWarning()}</p>
         </Show>
         <Show when={props.dirty}>
           <p class="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">

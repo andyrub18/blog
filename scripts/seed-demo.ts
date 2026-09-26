@@ -10,10 +10,11 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { and, desc, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { PDFDocument } from 'pdf-lib'
 import { auth } from '../src/lib/auth/auth'
 import { attachCompanion } from '../src/lib/articles/companion/companion'
+import { createVersions } from '../src/lib/articles/versions'
 import { db } from '../src/lib/db'
 import {
   applicationEvent,
@@ -24,7 +25,9 @@ import {
   articleRevision,
   articleSubmission,
   articleTranslation,
+  articleVersion,
   authThrottle,
+  rateLimit,
   forumPost,
   invitation,
   memberApplication,
@@ -523,8 +526,6 @@ async function resetArticles(authorId: string, allAuthors: Array<string>): Promi
 
     for (const translation of entry.translations) {
       const content = demoDocument(translation.paragraphs)
-      // A published language shows its pinned revision, never its working copy
-      // (D30), so the revision's id is chosen first and used for both.
       const revisionId = randomUUID()
       const published = translation.status === 'published'
       await db.insert(articleTranslation).values({
@@ -535,7 +536,6 @@ async function resetArticles(authorId: string, allAuthors: Array<string>): Promi
         contentJson: content,
         status: translation.status,
         publishedAt: published ? now : null,
-        publishedRevisionId: published ? revisionId : null,
       })
       await db.insert(articleRevision).values({
         id: revisionId,
@@ -546,6 +546,29 @@ async function resetArticles(authorId: string, allAuthors: Array<string>): Promi
         contentJson: content,
         createdBy: authorId,
       })
+      // A published language is shown at its published version, never its
+      // working copy (D30, D31): version 1, approved, carrying this text.
+      if (published) {
+        const versionId = randomUUID()
+        await db.insert(articleVersion).values({
+          id: versionId,
+          articleId: id,
+          lang: translation.lang,
+          number: 1,
+          revisionId,
+          outcome: 'approved',
+          decidedAt: now,
+        })
+        await db
+          .update(articleTranslation)
+          .set({ publishedVersionId: versionId })
+          .where(
+            and(
+              eq(articleTranslation.articleId, id),
+              eq(articleTranslation.lang, translation.lang),
+            ),
+          )
+      }
     }
   }
 }
@@ -642,16 +665,18 @@ async function resetDeliberations(ids: Record<string, string>): Promise<void> {
     .from(article)
     .where(eq(article.slug, 'pwopozisyon-san-panel'))
   if (noPanel) {
+    const noPanelSubmission = randomUUID()
     await db.insert(articleSubmission).values({
-      id: randomUUID(),
+      id: noPanelSubmission,
       articleId: noPanel.id,
       round: 1,
       langs: ['fr'],
-      revisionIds: await submittedRevisions(noPanel.id, ['fr']),
       submittedBy: ids.confirmed,
       status: 'open',
       ...DOCUMENTATION,
     })
+    // As `submitForReview` does: the version this round puts to the circle.
+    await createVersions(db, { id: noPanelSubmission, articleId: noPanel.id }, ['fr'], new Date())
     await db
       .update(article)
       .set({ status: 'submitted' })
@@ -690,27 +715,6 @@ async function resetDeliberations(ids: Record<string, string>): Promise<void> {
 }
 
 /**
- * The text a seeded round puts to the circle: each language's newest revision,
- * as `submitForReview` records it (D30).
- */
-async function submittedRevisions(
-  articleId: string,
-  langs: Array<string>,
-): Promise<Record<string, string>> {
-  const ids: Record<string, string> = {}
-  for (const lang of langs) {
-    const [newest] = await db
-      .select({ id: articleRevision.id })
-      .from(articleRevision)
-      .where(and(eq(articleRevision.articleId, articleId), eq(articleRevision.lang, lang)))
-      .orderBy(desc(articleRevision.createdAt))
-      .limit(1)
-    if (newest) ids[lang] = newest.id
-  }
-  return ids
-}
-
-/**
  * A round in debate with every assigned reviewer's verdict recorded, so a
  * decision can be exercised in a single sign-in.
  */
@@ -724,11 +728,12 @@ async function debateReadyToDecide(
     articleId: articleId,
     round: 1,
     langs: ['fr'],
-    revisionIds: await submittedRevisions(articleId, ['fr']),
     submittedBy: ids.confirmed,
     status: 'in_review',
     ...DOCUMENTATION,
   })
+  // The version the round reviews: its text, and the PDF if one was attached.
+  await createVersions(db, { id: submissionId, articleId }, ['fr'], new Date())
 
   // The author is `confirmed`, so the panel is drawn from everybody else.
   const panel: Array<[string, 'contradictor' | 'reviewer']> = [
@@ -772,6 +777,10 @@ async function main() {
   // the per-IP limit, and behind no proxy every local client shares the single
   // `unknown` bucket — so one test run locks out the next.
   await db.delete(authThrottle)
+  // Better Auth's own counters too: it limits `/api/auth/verify-email` to ten
+  // hits in fifteen minutes, and each full end-to-end run makes two, so a few
+  // runs in a row were refused with a 429 that looked like a broken link.
+  await db.delete(rateLimit)
   console.info('· cleared rate-limit counters')
 
   const ids: Record<string, string> = {}

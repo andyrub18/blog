@@ -97,19 +97,21 @@ export const fetchSubmission = createServerFn({ method: 'GET' })
     const actor = await currentActor()
     const { hasAtLeastRole } = await import('../db/schema')
     if (!hasAtLeastRole(actor.role, 'member')) return null
-    const [{ getSubmission, submittedTexts }, { reviewCompanions }] = await Promise.all([
+    const [{ getSubmission }, { roundLanguages }, { m }] = await Promise.all([
       import('./article-review'),
-      import('../articles/companion/companion'),
+      import('../articles/versions'),
+      import('../../paraglide/messages'),
     ])
     const loaded = await getSubmission(data.submissionId)
     if (!loaded) return null
-    // What the circle reviews is the submitted text and its PDF (D29, D30), so
-    // the page reviewers use shows both, language by language.
-    const [texts, companions] = await Promise.all([
-      submittedTexts(loaded.submission),
-      reviewCompanions(loaded.submission),
-    ])
-    return { ...loaded, texts, companions }
+    // What the circle reviews is each language's version — its text and its
+    // PDF — and what it changed since the version before, whatever became of
+    // that one (D31).
+    const languages = await roundLanguages(loaded.submission, {
+      unchanged: (count) => m.diff_unchanged({ count: String(count) }),
+      reformatted: m.diff_reformatted(),
+    })
+    return { ...loaded, languages }
   })
 
 /** Who a senior member can put on a panel: members and above, the author aside. */

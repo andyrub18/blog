@@ -241,3 +241,44 @@ body {
   font-weight: 600;
   color: #00209f;
 }
+
+/*
+ * Version comparisons (D31). An insertion is underlined as well as tinted and a
+ * deletion struck through as well as tinted, so neither depends on telling two
+ * colours apart.
+ */
+.article-diff ins,
+.diff-line ins {
+  background: #dcfce7;
+  color: #14532d;
+  text-decoration: underline;
+}
+.article-diff del,
+.diff-line del {
+  background: #fee2e2;
+  color: #7f1d1d;
+  text-decoration: line-through;
+}
+.article-diff .diff-skip {
+  color: #737373;
+  font-size: 0.875rem;
+  font-style: italic;
+}
+.article-diff .diff-context {
+  color: #737373;
+}
+.article-diff .diff-note {
+  color: #737373;
+  font-size: 0.75rem;
+}
+.article-diff .diff-item::before {
+  content: "• ";
+}
+.article-prose .article-version {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: #525252;
+}
+.article-prose .article-version a {
+  color: #00209f;
+}
