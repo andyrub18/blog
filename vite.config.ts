@@ -11,7 +11,9 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
     devtools(),
-    nitro(),
+    // `src/boot.ts` runs the production guards when the server starts, not on
+    // its first request.
+    nitro({ plugins: ['./src/boot.ts'] }),
     tailwindcss(),
     // Compile-time i18n: messages become tree-shakable functions, so the
     // bundle does not grow as locales or messages are added.

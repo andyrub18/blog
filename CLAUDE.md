@@ -333,6 +333,25 @@ fetches an API route proves nothing about a link to it. A new route under
 redirect from anywhere else needs the same treatment, and a test that
 `page.goto`s it.
 
+**Production guards run at startup, in `src/boot.ts`.** A missing Resend key,
+Turnstile secret or `CLIENT_IP_HEADER`, or an `http://` `BETTER_AUTH_URL`, stops
+the server with exit code 1. They must stay in that Nitro plugin: `src/server.ts`
+is only loaded on the first request, and guards there let a misconfigured server
+start and answer 500 to everyone (D32). A new "production must have X" check
+goes in `boot.ts` too.
+
+**Inline scripts run only with the request's nonce.** The Content-Security-Policy
+(`lib/shared/security-headers.ts`) has no `'unsafe-inline'` for scripts; every
+inline script the server renders gets the nonce through the router's
+`ssr.nonce`. Never add `'unsafe-inline'` or `'unsafe-eval'` to make something
+work. The policy only exists in production builds, so a change to scripts,
+the router or the server entry is checked with `e2e/csp.spec.ts` against one —
+a page whose hydration script was refused looks perfect and answers nothing.
+
+**The client's address comes from `CLIENT_IP_HEADER`, and nothing else.** Never
+read `x-forwarded-for` for it: its first entry is written by the client, and
+reading it made every rate limit on members' accounts optional (D32).
+
 **Dates of birth are compared in UTC.** An `<input type="date">` value parses as
 UTC midnight; reading it with local getters shifts it a day in any timezone
 behind UTC, Haiti included, and silently changes a computed age.
@@ -465,7 +484,8 @@ Three rules:
   catches a missing translation.
 
 Locally, leaving `RESEND_API_KEY` unset prints mail to the console. In production
-a missing key is a startup failure, on purpose. To run a *production build*
+a missing key is a startup failure, on purpose — checked in `src/boot.ts`, so the
+server does not start at all. To run a *production build*
 locally without Cloudflare or Resend credentials, set `ALLOW_INSECURE_LOCAL=true`
 — it lifts both guards and warns loudly. Never set it on a deployed server.
 
@@ -480,7 +500,9 @@ too — nothing else will.
 
 Counters are in Postgres (`auth_throttle`), not memory: an in-memory counter
 resets on deploy and is per-instance, so an attacker gets a fresh budget from
-each. `rate_limit` is a separate table owned by Better Auth; its shape is
+each. They are keyed on `clientIp`, which reads only `CLIENT_IP_HEADER` — the
+header the reverse proxy sets — and Better Auth's limiter is configured to read
+the same one (D32, `docs/DEPLOYMENT.md` step 4). `rate_limit` is a separate table owned by Better Auth; its shape is
 dictated by the library, so do not tidy it.
 
 Captcha applies to **reader registration only**. The member application asks for

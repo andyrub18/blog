@@ -1,4 +1,5 @@
 import { createRouter as createTanStackRouter } from '@tanstack/solid-router'
+import { currentNonce } from './lib/shared/csp-nonce'
 import { deLocalizeUrl, localizeUrl } from './paraglide/runtime'
 import { routeTree } from './routeTree.gen'
 
@@ -42,6 +43,15 @@ export function getRouter() {
      */
     defaultPreload: 'intent',
     defaultPreloadStaleTime: PRELOAD_STALE_TIME_MS,
+
+    /**
+     * The nonce this request's Content-Security-Policy allows inline scripts
+     * with. The router puts it on every inline script it renders — the
+     * hydration bootstrap and the serialized loader data — so the policy needs
+     * no `'unsafe-inline'`. Absent in the browser and in development, where no
+     * policy is sent (`lib/shared/security-headers.ts`).
+     */
+    ssr: { nonce: currentNonce() },
   })
 
   return router

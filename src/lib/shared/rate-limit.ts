@@ -143,23 +143,32 @@ export async function sweepExpired(): Promise<void> {
 }
 
 /**
- * Best-effort client address.
+ * The client's address, as the reverse proxy in front of the app reports it.
  *
- * `x-forwarded-for` is only trustworthy when the app sits behind a proxy that
- * overwrites it. On a managed host that is the case; if this ever runs without
- * one, a client can forge the header and sidestep per-IP limits. The per-email
- * counter is the backstop for that.
+ * Read from exactly one header, named by `CLIENT_IP_HEADER`: one the proxy
+ * *sets*, overwriting whatever the client sent — `x-real-ip` behind nginx or
+ * Caddy, `cf-connecting-ip` behind Cloudflare. It used to be the first entry of
+ * `x-forwarded-for`, which is the one entry a client writes itself: proxies
+ * append the address they saw to the end of that list, they do not replace it.
+ * Sending a different made-up address with every request earned a fresh
+ * rate-limit bucket every time — unlimited password guessing against any
+ * member, and a forged address in the dossier access log. `assertClientIpHeader`
+ * refuses to start production without the setting, and refuses
+ * `x-forwarded-for` as its value.
  *
- * The `unknown` fallback deserves care in deployment: with no proxy header at
- * all, every caller shares one bucket and they throttle each other. That is the
- * safe direction to fail, but it makes the site unusable under any real load,
- * so confirm the host sets `x-forwarded-for` before launch.
+ * With no header configured — development — every caller is `unknown` and
+ * shares one bucket, the safe direction to fail. If the configured header holds
+ * a list, the last entry is taken: the one written by the proxy nearest the app.
  */
-export function clientIp(headers: Headers): string {
-  const forwarded = headers.get('x-forwarded-for')
-  if (forwarded) {
-    const first = forwarded.split(',')[0]?.trim()
-    if (first) return first
-  }
-  return headers.get('cf-connecting-ip') ?? headers.get('x-real-ip') ?? 'unknown'
+export function clientIp(
+  headers: Headers,
+  header: string | undefined = process.env.CLIENT_IP_HEADER,
+): string {
+  const name = header?.trim().toLowerCase()
+  if (!name) return 'unknown'
+  const entries = (headers.get(name) ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+  return entries.at(-1) ?? 'unknown'
 }

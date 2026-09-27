@@ -14,6 +14,7 @@ import {
   articleVersion,
   hasAtLeastRole,
 } from '../../db/schema'
+import { uploadRoot } from '../../shared/upload-root'
 import { canEdit, canRead, type Viewer } from '../articles'
 import { type PdfCleaning, type PdfError, preparePdf } from './pdf'
 
@@ -75,11 +76,6 @@ export type CompanionState = {
   working: { state: 'none' } | ({ state: CompanionStatus } & CompanionSummary)
   /** The PDF readers are given: the published version's. */
   published: { version: number; pageCount: number; byteSize: number } | null
-}
-
-/** Read at call time so the database tests can point it at a temporary directory. */
-function uploadRoot(): string {
-  return process.env.UPLOAD_ROOT ?? join(process.cwd(), 'uploads')
 }
 
 /** Resolve a stored path, refusing anything that escapes the upload root. */

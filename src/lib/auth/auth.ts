@@ -4,6 +4,7 @@ import { env } from '../../env'
 import { db } from '../db'
 import * as schema from '../db/schema'
 import { tanstackStartCookies } from './auth-cookies'
+import { servedOverHttps } from './transport'
 
 export const auth = betterAuth({
   baseURL: env.BETTER_AUTH_URL,
@@ -65,6 +66,30 @@ export const auth = betterAuth({
    * Stored in the database so limits survive a deploy and are shared across
    * instances; in memory an attacker gets a fresh budget from each.
    */
+  /**
+   * Session cookies: `httpOnly` and `sameSite=lax` always, and `secure` — with
+   * the `__Secure-` prefix — whenever the site is served over HTTPS. Better Auth
+   * would infer the last from `BETTER_AUTH_URL`; it is written out so the choice
+   * is visible here, and `assertSecureTransport` makes sure production is never
+   * the case where it comes out false (SECURITY.md P0 #6).
+   */
+  advanced: {
+    useSecureCookies: servedOverHttps(),
+    defaultCookieAttributes: { httpOnly: true, sameSite: 'lax' },
+    /**
+     * Better Auth's own limiter, on `/api/auth/*`, reads the client address the
+     * same way `clientIp` does — from the one header the proxy sets. Left to its
+     * default it takes the first entry of `x-forwarded-for`, which the client
+     * writes.
+     */
+    ...(process.env.CLIENT_IP_HEADER
+      ? {
+          ipAddress: {
+            ipAddressHeaders: [process.env.CLIENT_IP_HEADER.trim().toLowerCase()],
+          },
+        }
+      : {}),
+  },
   rateLimit: {
     enabled: true,
     storage: 'database',
