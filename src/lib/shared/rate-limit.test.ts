@@ -2,43 +2,41 @@ import { describe, expect, it } from 'vitest'
 import { clientIp, RULES } from './rate-limit'
 
 describe('clientIp', () => {
-  it('takes the first entry of x-forwarded-for', () => {
-    // The chain is client, proxy1, proxy2 — the client is the leftmost.
-    const headers = new Headers({ 'x-forwarded-for': '41.87.1.1, 10.0.0.1, 10.0.0.2' })
-    expect(clientIp(headers)).toBe('41.87.1.1')
+  /**
+   * The property: an address the client writes is never the one used. A proxy
+   * appends to `x-forwarded-for`, so its first entry is the client's own claim —
+   * reading it gave every forged request a fresh rate-limit bucket.
+   */
+  it('reads only the header the proxy sets, never a client-written x-forwarded-for', () => {
+    const headers = new Headers({
+      'x-forwarded-for': '6.6.6.6',
+      'x-real-ip': '41.87.1.1',
+    })
+    expect(clientIp(headers, 'x-real-ip')).toBe('41.87.1.1')
   })
 
-  it('trims whitespace', () => {
-    expect(clientIp(new Headers({ 'x-forwarded-for': '  41.87.1.1  ' }))).toBe(
-      '41.87.1.1',
+  it('takes the last entry of a list, the one the nearest proxy wrote', () => {
+    const headers = new Headers({ 'x-real-ip': '6.6.6.6, 41.87.1.1' })
+    expect(clientIp(headers, 'x-real-ip')).toBe('41.87.1.1')
+  })
+
+  it('reads cf-connecting-ip when that is the header named', () => {
+    expect(
+      clientIp(new Headers({ 'cf-connecting-ip': ' 41.87.2.2 ' }), 'CF-Connecting-IP'),
+    ).toBe('41.87.2.2')
+  })
+
+  it('returns a stable placeholder when no header is configured', () => {
+    // Development: every caller shares one bucket. Must never be undefined,
+    // which would collapse or crash the throttle key.
+    expect(clientIp(new Headers({ 'x-forwarded-for': '41.87.1.1' }), undefined)).toBe(
+      'unknown',
     )
   })
 
-  it('falls back to cf-connecting-ip', () => {
-    expect(clientIp(new Headers({ 'cf-connecting-ip': '41.87.2.2' }))).toBe('41.87.2.2')
-  })
-
-  it('falls back to x-real-ip', () => {
-    expect(clientIp(new Headers({ 'x-real-ip': '41.87.3.3' }))).toBe('41.87.3.3')
-  })
-
-  it('prefers x-forwarded-for over the others', () => {
-    const headers = new Headers({
-      'x-forwarded-for': '41.87.1.1',
-      'cf-connecting-ip': '41.87.2.2',
-      'x-real-ip': '41.87.3.3',
-    })
-    expect(clientIp(headers)).toBe('41.87.1.1')
-  })
-
-  it('returns a stable placeholder when no address is present', () => {
-    // Must never return undefined: that would make the throttle key collapse
-    // and bucket every anonymous request together, or crash the lookup.
-    expect(clientIp(new Headers())).toBe('unknown')
-  })
-
-  it('ignores an empty x-forwarded-for', () => {
-    expect(clientIp(new Headers({ 'x-forwarded-for': '' }))).toBe('unknown')
+  it('returns the placeholder when the configured header is missing or empty', () => {
+    expect(clientIp(new Headers(), 'x-real-ip')).toBe('unknown')
+    expect(clientIp(new Headers({ 'x-real-ip': ' , ' }), 'x-real-ip')).toBe('unknown')
   })
 })
 

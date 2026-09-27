@@ -42,6 +42,13 @@ forget — a legitimate senior member account that has been compromised or turne
    credential stuffing against one targeted member arrives from many addresses.
    Counters live in Postgres, not memory, so they survive a deploy and are
    shared across instances.
+
+   **Corrected before launch (D32):** both limiters keyed on the *first* entry of
+   `X-Forwarded-For` — the one entry the client writes, since proxies append to
+   that header. Forging a new one per request earned a fresh bucket every time:
+   unlimited password guessing, and forged addresses in the dossier access log.
+   The address now comes only from `CLIENT_IP_HEADER`, a header the proxy sets;
+   production will not start without it, or with `x-forwarded-for` as its value.
 3. ~~**Bot defence on registration**~~ **DONE, on reader registration only.**
    Cloudflare Turnstile, verified server-side in `lib/auth/captcha.ts`. Chosen over
    reCAPTCHA because it does not profile the visitor: asking Haitians to pass
@@ -57,23 +64,37 @@ forget — a legitimate senior member account that has been compromised or turne
    problem, and it is rate-limited. Reader registration is different: it is
    cheap, auto-approved after email verification, and it grants forum access,
    so fake accounts are both easy to make and useful to an adversary.
-4. **Fix the orphaned-account bug** in `signUpMember` (see `phases/01-ENROLLMENT.md`).
+4. ~~**Fix the orphaned-account bug** in `signUpMember`.~~ **DONE.** The three PDFs
+   are validated and held in memory before the account exists, and if storing the
+   application fails afterwards, `rollbackFailedApplication` deletes the account
+   and its files so the applicant can simply try again. Not covered by an
+   automated test (it needs a database failure mid-sign-up). One small leftover:
+   the verification email is sent before the application is stored, so after a
+   rollback the applicant may hold a link to an account that no longer exists;
+   it fails harmlessly, and the page has already told them to try again.
 5. ~~**Remove the mock Google path before launch.**~~ Done (D27). There is no social
    sign-in; an account is an email and a password, and nothing else authenticates.
-6. **Cookies and transport:** HTTPS only, HSTS, session cookie `httpOnly` + `secure` +
-   `sameSite=lax`. The `lang` cookie is deliberately readable and that is fine.
-7. **Secrets:** `.env.local` and `uploads/` are correctly gitignored today — keep it that
-   way. Plan for `BETTER_AUTH_SECRET` rotation; treat it as a break-glass procedure.
+6. ~~**Cookies and transport.**~~ **DONE (D32).** Production refuses to start unless
+   `BETTER_AUTH_URL` is `https://`, which is what makes Better Auth mark the
+   session cookie `secure` (with the `__Secure-` prefix); `httpOnly` and
+   `sameSite=lax` are set explicitly. Every response carries HSTS (production,
+   HTTPS), `X-Content-Type-Options`, `X-Frame-Options: DENY`,
+   `Referrer-Policy: same-origin` and a `Permissions-Policy`. The `lang` cookie is
+   deliberately readable and that is fine.
+7. **Secrets:** `.env.local` and `uploads/` are correctly gitignored — keep it that
+   way. The procedure for replacing `BETTER_AUTH_SECRET` is in `DEPLOYMENT.md`,
+   step 8. What remains is operational: keeping the secret out of the repository
+   and knowing who holds it.
 
 ## P1 — Protecting the roster and dossiers
 
-8. **Dossiers leave local disk.** `src/lib/membership/uploads.ts` writes to `./uploads`, outside the
-   webroot with no serving route — the right default, but it will not survive a redeploy on
-   cloud hosting. Move to S3-compatible object storage, private ACL, random UUID keys never
-   derived from user input, access only through short-lived signed URLs minted for an
-   authorised senior member. Companion PDFs (D26) live under the same `./uploads` and
-   need the same move — public objects, but still written only through `companion.ts`,
-   which alone decides whether one is current.
+8. **Dossiers leave local disk.** Every upload — dossiers and companion PDFs — goes
+   under `UPLOAD_ROOT` (`lib/shared/upload-root.ts`; `./uploads` by default). For
+   launch, a server with a persistent disk and the encrypted, off-server backups in
+   `DEPLOYMENT.md` step 6 is acceptable. Later, move to S3-compatible object
+   storage: private ACL, random UUID keys never derived from user input, access only
+   through short-lived signed URLs minted for an authorised senior member. Until
+   then, a host that wipes its disk on redeploy must not be used.
 9. **Application-level encryption for the sensitive columns.** Provider disk encryption
    protects against a stolen drive; it does nothing against a leaked database dump, a SQL
    injection, or an over-broad backup. Envelope-encrypt the essays and dossier file keys
@@ -109,11 +130,16 @@ forget — a legitimate senior member account that has been compromised or turne
 17. **Sanitise all rich text server-side**, from the editor and from DOCX import alike.
     Storing ProseMirror JSON rather than HTML makes this structural: unknown nodes are
     dropped at parse time and script cannot survive the round trip.
-18. **CSP** with `script-src 'self'` and no `unsafe-inline`, plus `frame-ancestors 'none'`,
-    `X-Content-Type-Options: nosniff`, and a strict `Referrer-Policy`.
-19. **Validate uploads by magic bytes, not `file.type`.** `assertPdf()` currently trusts
-    `file.type`, which is supplied by the client and trivially spoofed. Check the leading
-    bytes (`%PDF-` for PDF, `PK\x03\x04` for DOCX).
+18. ~~**CSP**~~ **DONE (D32).** `script-src 'self'` plus a per-request nonce plus
+    Turnstile, no `unsafe-inline` for scripts; `frame-ancestors 'none'`,
+    `object-src 'none'`, `base-uri 'self'`. The nonce reaches every inline script
+    the server renders through the router's `ssr.nonce`; `e2e/csp.spec.ts` proves
+    it against a production build and fails on every page when the nonce is
+    removed. Styles allow `'unsafe-inline'` — the editor sets inline styles, and a
+    style cannot run code.
+19. ~~**Validate uploads by magic bytes, not `file.type`.**~~ **DONE.** `%PDF-` for
+    PDFs (`stageApplicationPdf`, `preparePdf`), `PK\x03\x04` and the ZIP directory
+    for DOCX; `file.type` is never trusted.
 20. **Password policy:** raise `minPasswordLength` from 8 to 12, and check candidates
     against the HaveIBeenPwned k-anonymity range API — it never sends the password or its
     full hash, and it stops credential-stuffing at the source. Offer passkeys.
