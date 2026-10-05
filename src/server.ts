@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto'
 import handler from '@tanstack/solid-start/server-entry'
 import { servedOverHttps } from './lib/auth/transport'
 import { installNonceStore } from './lib/shared/csp-nonce'
+import { withoutHeadBody } from './lib/shared/head-request'
 import { securityHeaders, withSecurityHeaders } from './lib/shared/security-headers'
 import { paraglideMiddleware } from './paraglide/server.js'
 
@@ -41,7 +42,10 @@ export default {
   async fetch(request: Request): Promise<Response> {
     const nonce = production ? randomBytes(16).toString('base64') : undefined
     const run = () => paraglideMiddleware(request, () => handler.fetch(request))
-    const response = nonce ? await nonces.run(nonce, run) : await run()
+    const response = await withoutHeadBody(
+      request,
+      nonce ? await nonces.run(nonce, run) : await run(),
+    )
     return withSecurityHeaders(response, securityHeaders({ production, https, nonce }))
   },
 }

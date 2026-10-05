@@ -1,0 +1,54 @@
+# The KLEA platform. Installed by deploy/setup-server.sh as
+# /etc/systemd/system/klea.service; see docs/DEPLOYMENT.md.
+[Unit]
+Description=KLEA platform
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=klea
+Group=klea
+# A symlink to the release deploy/deploy.sh switched to last.
+WorkingDirectory=/srv/klea/current
+EnvironmentFile=/etc/klea/env
+ExecStart=/usr/bin/node .output/server/index.mjs
+
+# Restart after a crash, but not after the startup guards refuse a missing or
+# unsafe setting (src/boot.ts exits 78, EX_CONFIG): restarting cannot supply a
+# key, and a loop of identical failures buries the line that says which.
+Restart=on-failure
+RestartSec=5
+RestartPreventExitStatus=78
+# A stop lets requests in flight finish (5 s) and closes the database pool
+# (5 s more at most). The default 90 s is how long the site was down on every
+# deploy while the pool kept the process alive; if anything else ever does, it
+# should cost seconds.
+TimeoutStopSec=15
+
+# The server reads its own release and writes only uploads. Everything else on
+# the machine is out of its reach, so a flaw in the app is not a flaw in the
+# server.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/klea/uploads
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

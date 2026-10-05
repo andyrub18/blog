@@ -806,3 +806,45 @@ of an article does not tell the destination which article), and a
 HTTPS, which production now requires. And `docs/DEPLOYMENT.md`: settings, the
 proxy, the service, encrypted backups held off the server, a restore test, and
 how to replace the auth secret.
+
+## D33 — One server, run by systemd, not containers
+
+KLEA runs on a single OVHcloud VPS under Ubuntu 24.04, chosen by KLEA over
+Cloudflare's hosting platform: the app, PostgreSQL and Caddy on one machine,
+with encrypted backups copied to a different provider. `deploy/setup-server.sh`
+installs and configures all of it — Node, PostgreSQL, Caddy, the firewall, the
+database and its password — so nothing is installed by hand
+(`docs/DEPLOYMENT.md`).
+
+**Not in Docker.** Considered and set aside by KLEA, for reasons that weigh more
+here than on most projects:
+
+- Ports Docker publishes bypass the host firewall. Behind Cloudflare's proxy the
+  firewall admits only Cloudflare's addresses; with Docker that rule would
+  silently stop applying, and one careless port mapping puts PostgreSQL — every
+  dossier — on the internet.
+- Host packages receive security updates every night. An image's packages are
+  as old as its last build, and KLEA has nobody watching advisories to rebuild.
+- Building an image on a 2 GB server needs the memory the build already needs;
+  building it elsewhere needs a registry and CI — one more account holding the
+  code and the means to deploy it.
+
+The isolation a container would give comes from the systemd unit instead: the
+file system read-only except the uploads, no capabilities, `/home` hidden. What
+this costs is portability: moving host means running the setup again and
+restoring a backup — which the restore test practises anyway.
+
+**The startup guards exit 78, not 1** (D32): `EX_CONFIG`, so systemd restarts the
+server after a crash and not after a refusal, which no restart can fix.
+
+**What the rehearsal found.** The whole sequence was run on a throwaway Ubuntu
+machine before any real one existed. Besides fixes to the scripts themselves, it
+found that a `HEAD` request held its rendered page in memory for two minutes:
+TanStack Start answers `HEAD` like `GET`, with a stream that frees itself when
+read or when a 120-second timer runs out, and a `HEAD` body is never read. Two
+thousand of them added 150 MB — a loop of cheap requests could fill a 2 GB
+server — and the pending timer kept a stopping server alive until systemd killed
+it, so every deploy took the site down for 90 seconds. `src/server.ts` now
+cancels the body of every `HEAD` response (`lib/shared/head-request.ts`), and the
+database pool closes when the server does (`lib/db/shutdown.ts`): memory stays
+flat, and a restart takes a second.

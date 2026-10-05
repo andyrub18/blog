@@ -335,7 +335,8 @@ redirect from anywhere else needs the same treatment, and a test that
 
 **Production guards run at startup, in `src/boot.ts`.** A missing Resend key,
 Turnstile secret or `CLIENT_IP_HEADER`, or an `http://` `BETTER_AUTH_URL`, stops
-the server with exit code 1. They must stay in that Nitro plugin: `src/server.ts`
+the server with exit code 78 (`EX_CONFIG`) — distinct from a crash's 1, so
+`deploy/klea.service` restarts after crashes but not after a refusal. They must stay in that Nitro plugin: `src/server.ts`
 is only loaded on the first request, and guards there let a misconfigured server
 start and answer 500 to everyone (D32). A new "production must have X" check
 goes in `boot.ts` too.

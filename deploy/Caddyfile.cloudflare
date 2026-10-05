@@ -1,0 +1,34 @@
+# KLEA behind Cloudflare's proxy: visitors connect to Cloudflare, Cloudflare to
+# this server. deploy/setup-server.sh writes it to /etc/caddy/Caddyfile with the
+# domain and Cloudflare's address ranges filled in.
+
+{
+	servers {
+		# Only Cloudflare may say who the visitor is. From these addresses,
+		# CF-Connecting-IP is believed; from anyone else, it is ignored — and the
+		# firewall lets nobody else in on 80 or 443 anyway.
+		trusted_proxies static __CLOUDFLARE_RANGES__
+		client_ip_headers CF-Connecting-IP
+	}
+}
+
+__DOMAIN__ {
+	# A Cloudflare Origin CA certificate: trusted by Cloudflare only, which is
+	# all that ever connects here. Create it in the Cloudflare dashboard
+	# (SSL/TLS > Origin Server) and set SSL/TLS mode to "Full (strict)".
+	tls /etc/caddy/cloudflare-origin.pem /etc/caddy/cloudflare-origin.key
+
+	encode zstd gzip
+
+	request_body {
+		max_size 25MB
+	}
+
+	reverse_proxy 127.0.0.1:3000 {
+		# The visitor's address as Cloudflare reported it, resolved by Caddy
+		# above. The app reads only this (CLIENT_IP_HEADER=x-real-ip; D32).
+		header_up X-Real-IP {client_ip}
+	}
+
+	# No access log, on purpose — see Caddyfile.direct.
+}
