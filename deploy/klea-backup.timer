@@ -1,0 +1,12 @@
+[Unit]
+Description=Nightly KLEA encrypted backup
+
+[Timer]
+# 03:30 UTC is late evening in Haiti, when the site is quietest.
+OnCalendar=*-*-* 03:30:00 UTC
+RandomizedDelaySec=15m
+# A night missed while the server was down is made up when it comes back.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

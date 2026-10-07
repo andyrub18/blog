@@ -1,0 +1,24 @@
+# KLEA behind Caddy alone: visitors connect straight to this server.
+# deploy/setup-server.sh writes it to /etc/caddy/Caddyfile with the domain filled
+# in. Caddy obtains and renews the HTTPS certificate itself (Let's Encrypt).
+
+__DOMAIN__ {
+	# Readers pay for every byte on metered data; compressing HTML and the
+	# serialized page data is free bytes back.
+	encode zstd gzip
+
+	# Companion PDFs go up to 20 MB; nothing legitimate is bigger.
+	request_body {
+		max_size 25MB
+	}
+
+	reverse_proxy 127.0.0.1:3000 {
+		# The address the visitor connected from, overwriting anything they sent.
+		# The app reads only this (CLIENT_IP_HEADER=x-real-ip; D32).
+		header_up X-Real-IP {remote_host}
+	}
+
+	# No access log, on purpose: a file of which address read which article is
+	# exactly the record SECURITY.md says not to keep. Errors still go to the
+	# journal.
+}

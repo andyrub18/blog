@@ -1,6 +1,7 @@
 import { definePlugin } from 'nitro'
 import { assertCaptchaConfigured } from './lib/auth/captcha'
 import { assertClientIpHeader, assertSecureTransport } from './lib/auth/transport'
+import { closeDatabase } from './lib/db/shutdown'
 import { getMailer } from './lib/email/mailer'
 
 /**
@@ -16,11 +17,29 @@ import { getMailer } from './lib/email/mailer'
  *
  * Each guard does nothing outside production, and `ALLOW_INSECURE_LOCAL=true`
  * lifts them — loudly — for a production build on a developer's machine.
+ *
+ * A refusal exits with 78 (`EX_CONFIG`), not with the 1 an ordinary crash
+ * gives, so the service manager can tell the two apart: `deploy/klea.service`
+ * restarts the server after a crash and gives up at once on 78 — restarting
+ * cannot supply a missing key, and a loop of identical failures would bury the
+ * one line that says which.
  */
-export default definePlugin(() => {
-  assertSecureTransport()
-  assertClientIpHeader()
-  assertCaptchaConfigured()
-  // Chooses the transport, and refuses to in production without Resend keys.
-  getMailer()
+const CONFIGURATION_ERROR_EXIT = 78
+
+export default definePlugin((nitroApp) => {
+  try {
+    assertSecureTransport()
+    assertClientIpHeader()
+    assertCaptchaConfigured()
+    // Chooses the transport, and refuses to in production without Resend keys.
+    getMailer()
+  } catch (err) {
+    console.error(
+      `\n[boot] Refusing to start: ${err instanceof Error ? err.message : err}\n`,
+    )
+    process.exit(CONFIGURATION_ERROR_EXIT)
+  }
+
+  // Without this the process outlives its HTTP server (see lib/db/shutdown.ts).
+  nitroApp.hooks.hook('close', closeDatabase)
 })
