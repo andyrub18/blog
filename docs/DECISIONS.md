@@ -764,3 +764,45 @@ the D29 approval columns. Both are tested against rows in the shape they had
 before them (`migrations.db.test.ts`, which can now stop the schema at any
 migration): the harness alone runs migrations on an empty database, where a
 wrong backfill does nothing, right or wrong.
+
+## D32 — What the deployment gate found
+
+The work before a first deployment — security headers, secure cookies, and a
+deployment checklist — turned up three things that were wrong, not just missing.
+
+**The rate limiters could be walked around.** Both ours and Better Auth's took
+the client's address from the *first* entry of `X-Forwarded-For`. Proxies append
+the address they saw to the end of that header; the first entry is whatever the
+client wrote. A client sending a new invented address with each request got a
+fresh bucket each time — unlimited password guesses against any member — and the
+dossier access log recorded addresses of the client's choosing. The address now
+comes only from `CLIENT_IP_HEADER`, a header the reverse proxy *sets*
+(`x-real-ip`, or `cf-connecting-ip` behind Cloudflare), for both limiters.
+Production refuses to start without it, and refuses `x-forwarded-for` as its
+value. Checked against a production build: one client forging the header on
+every request is refused after the limit; twelve different real clients are not.
+
+**"Fail at boot" did not fail at boot.** The captcha and mailer guards were
+called at the top of `src/server.ts`, which the built server loads on its first
+request. A misconfigured production server started, printed "Listening", and
+answered every request with a 500 — failing closed, but invisibly to anything
+watching the process. The guards now run in `src/boot.ts`, a Nitro plugin, at
+startup: every bad configuration tested exits with code 1 and the reason.
+
+**Dossiers ignored `UPLOAD_ROOT`.** Companion PDFs honoured it; dossiers were
+hard-coded to `./uploads`. A server with its persistent volume at `UPLOAD_ROOT`
+would have kept the PDFs and lost every CV and essay on its next redeploy. One
+`uploadRoot()` now serves every upload.
+
+**What was added.** A Content-Security-Policy with a fresh nonce per request and
+no `'unsafe-inline'` for scripts: the router already accepted an `ssr.nonce` and
+passes it to every inline script it renders, so the only work was getting each
+request's nonce to it (`lib/shared/csp-nonce.ts`). It applies to production
+builds only — the dev server's scripts carry no nonce — so `e2e/csp.spec.ts`
+runs against one, and fails on every page when the nonce is removed. HSTS,
+`X-Frame-Options`, `Referrer-Policy: same-origin` (a reader following a link out
+of an article does not tell the destination which article), and a
+`Permissions-Policy`. Session cookies marked `secure` wherever the site is on
+HTTPS, which production now requires. And `docs/DEPLOYMENT.md`: settings, the
+proxy, the service, encrypted backups held off the server, a restore test, and
+how to replace the auth secret.

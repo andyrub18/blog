@@ -16,6 +16,7 @@ import { auth } from '../src/lib/auth/auth'
 import { attachCompanion } from '../src/lib/articles/companion/companion'
 import { createVersions } from '../src/lib/articles/versions'
 import { db } from '../src/lib/db'
+import { uploadRoot } from '../src/lib/shared/upload-root'
 import {
   applicationEvent,
   article,
@@ -139,7 +140,7 @@ async function writeDossier(userId: string): Promise<Record<string, string>> {
   const paths: Record<string, string> = {}
   for (const field of ['cv', 'vision', 'contribution'] as const) {
     const relative = `member-applications/${userId}/${field}-${randomUUID()}-${field}.pdf`
-    const absolute = join(process.cwd(), 'uploads', relative)
+    const absolute = join(uploadRoot(), relative)
     await mkdir(dirname(absolute), { recursive: true })
     await writeFile(absolute, MINIMAL_PDF)
     paths[field] = relative
@@ -504,9 +505,8 @@ async function resetArticles(authorId: string, allAuthors: Array<string>): Promi
     await db.delete(article).where(inArray(article.id, ids))
     // The companion rows went with the revisions (the foreign key cascades);
     // their files would not, and every run of the suite attaches one.
-    const uploadRoot = process.env.UPLOAD_ROOT ?? join(process.cwd(), 'uploads')
     for (const id of ids) {
-      await rm(join(uploadRoot, 'companions', id), { recursive: true, force: true })
+      await rm(join(uploadRoot(), 'companions', id), { recursive: true, force: true })
     }
   }
 

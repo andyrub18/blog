@@ -3,9 +3,8 @@ import { readFile } from 'node:fs/promises'
 import { join, normalize, sep } from 'node:path'
 import { eq } from 'drizzle-orm'
 import { accessEvent, memberApplication } from '../db/schema'
+import { uploadRoot } from '../shared/upload-root'
 import type { ApplicationField } from './uploads'
-
-const UPLOAD_ROOT = join(process.cwd(), 'uploads')
 
 export type DossierError = 'NOT_FOUND' | 'UNREADABLE'
 export type DossierResult =
@@ -54,8 +53,9 @@ export async function readDossierFile(input: {
   // The stored path comes from our own writer, but treat it as untrusted
   // anyway: resolve it and refuse anything that escapes the upload root. A
   // traversal here would turn a reviewer into an arbitrary file reader.
-  const absolute = normalize(join(UPLOAD_ROOT, storedPath))
-  if (!absolute.startsWith(UPLOAD_ROOT + sep)) {
+  const root = uploadRoot()
+  const absolute = normalize(join(root, storedPath))
+  if (!absolute.startsWith(root + sep)) {
     return { ok: false, code: 'NOT_FOUND' }
   }
 

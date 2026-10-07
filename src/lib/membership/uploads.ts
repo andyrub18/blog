@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { uploadRoot } from '../shared/upload-root'
 import { MAX_PDF_BYTES } from '../shared/validation'
-
-const UPLOAD_ROOT = join(process.cwd(), 'uploads')
 
 /** `%PDF-` — the only thing that actually makes a file a PDF. */
 const PDF_MAGIC = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d])
@@ -78,7 +77,7 @@ export async function commitApplicationPdf(
   userId: string,
   staged: StagedPdf,
 ): Promise<string> {
-  const dir = join(UPLOAD_ROOT, 'member-applications', userId)
+  const dir = join(uploadRoot(), 'member-applications', userId)
   await mkdir(dir, { recursive: true })
   const fileName = `${staged.field}-${randomUUID()}-${staged.safeName}`
   await writeFile(join(dir, fileName), staged.bytes)
@@ -87,7 +86,7 @@ export async function commitApplicationPdf(
 
 /** Compensating cleanup when an application fails partway through. */
 export async function discardApplicationUploads(userId: string): Promise<void> {
-  await rm(join(UPLOAD_ROOT, 'member-applications', userId), {
+  await rm(join(uploadRoot(), 'member-applications', userId), {
     recursive: true,
     force: true,
   })

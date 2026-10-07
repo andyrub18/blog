@@ -121,7 +121,7 @@ After the phases:
 | Reviewed companion | The circle reviews the PDF with the text; only its approval reaches readers | **Done** — D29 |
 | Protected text | Readers see the revision the circle approved; edits after publication are drafts until a new round | **Done** — D30 |
 | Versions | Numbered per language, text and PDF together; readers see which version and what changed, the circle sees every change | **Done** — D31 |
-| Deployment gate | The three P0s below | **In progress** — mock Google sign-in retired (D27) |
+| Deployment gate | The P0s below, and `SECURITY.md`'s | **In progress** — Google sign-in retired (D27); headers, CSP, secure cookies, rate-limit bypass, startup guards, `DEPLOYMENT.md` (D32). Left: Resend domain, Turnstile keys, a host |
 | Interface review | The whole organisation gives its opinion on the UI, then it is revised | After the deployment gate |
 
 Phase 1 comes before articles because the role rename is cheap now and expensive
@@ -152,6 +152,12 @@ From `SECURITY.md`, in order:
    without them in production, which is the intent, but it does mean the deploy
    fails until they are set.
 3. ~~**Retire the mock Google sign-in path.**~~ Done — there is no social sign-in (D27).
+
+4. **A host**, with a persistent disk for uploads and encrypted off-server
+   backups — `DEPLOYMENT.md` says what the server needs.
+
+The code-side items `SECURITY.md` lists as P0 are done (D32); what is left needs
+accounts and a server.
 
 None of these blocks development. In development the mailer prints to the console
 and the captcha is skipped; `ALLOW_INSECURE_LOCAL=true` covers a local production
