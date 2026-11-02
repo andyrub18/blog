@@ -1,4 +1,4 @@
-import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 
 /**
  * The membership ladder, in the manifesto's own vocabulary (DECISIONS.md, D2).
@@ -57,9 +57,40 @@ export const user = pgTable('user', {
   probationConfirmedAt: timestamp('probation_confirmed_at', { withTimezone: true }),
   /** Senior member who vouched, when the account arrived by cooptation. */
   sponsoredBy: text('sponsored_by'),
+  /**
+   * Sign-in asks for a code from an authenticator app as well as the password
+   * (D40). Opt-in for now; written by Better Auth's two-factor plugin, never by us.
+   */
+  twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
+
+/**
+ * The authenticator secret and backup codes behind `user.twoFactorEnabled`.
+ *
+ * The shape is Better Auth's two-factor plugin's. Both secrets are stored
+ * encrypted with the server's secret, so a copy of the database, a backup
+ * included, cannot produce codes. `verified` stays false until the person has
+ * typed one code from their app, which is what proves the setup worked;
+ * `failed_verification_count` and `locked_until` are the plugin's lockout.
+ */
+export const twoFactor = pgTable(
+  'two_factor',
+  {
+    id: text('id').primaryKey(),
+    secret: text('secret').notNull(),
+    backupCodes: text('backup_codes').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    verified: boolean('verified').notNull().default(true),
+    failedVerificationCount: integer('failed_verification_count').notNull().default(0),
+    lockedUntil: timestamp('locked_until'),
+  },
+  // Every sign-in that asks for a code looks the row up by its user.
+  (table) => [index('two_factor_user_idx').on(table.userId)],
+)
 
 export const session = pgTable('session', {
   id: text('id').primaryKey(),

@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { twoFactor } from 'better-auth/plugins'
 import { eq } from 'drizzle-orm'
 import { env } from '../../env'
 import { db } from '../db'
@@ -69,13 +70,27 @@ export const auth = betterAuth({
    */
   verification: { storeIdentifier: 'hashed' },
   /**
-   * Closed over HTTP; the server functions in `password-reset-actions.ts` call
-   * them in-process, behind `guard()`. Open, `/request-password-reset` would
-   * send mail to any address with only Better Auth's per-IP limit in the way,
-   * and none per address. The link in the mail, `/reset-password/<token>`, is
-   * a different path and stays open.
+   * Closed over HTTP; server functions call them in-process, behind `guard()`.
+   *
+   * Open, `/request-password-reset` would send mail to any address with only
+   * Better Auth's per-IP limit in the way, and none per address. The link in
+   * the mail, `/reset-password/<token>`, is a different path and stays open
+   * (`password-reset-actions.ts`). The two-factor endpoints go through
+   * `two-factor-actions.ts` for the same reason, and so that a blocked account
+   * is refused after its code exactly as it is after its password.
    */
-  disabledPaths: ['/request-password-reset', '/reset-password'],
+  disabledPaths: [
+    '/request-password-reset',
+    '/reset-password',
+    '/two-factor/enable',
+    '/two-factor/disable',
+    '/two-factor/get-totp-uri',
+    '/two-factor/verify-totp',
+    '/two-factor/verify-backup-code',
+    '/two-factor/generate-backup-codes',
+    '/two-factor/send-otp',
+    '/two-factor/verify-otp',
+  ],
   emailVerification: {
     /**
      * Sent by `runSignUp`, not here.
@@ -161,8 +176,20 @@ export const auth = betterAuth({
       '/sign-up/email': { window: 60 * 60, max: 5 },
     },
   },
-  // Must stay last: it reads the headers every other plugin has written.
-  plugins: [tanstackStartCookies()],
+  plugins: [
+    /**
+     * A code from an authenticator app at sign-in, for whoever turns it on
+     * (D40). Opt-in for now; making it mandatory for the accounts that read
+     * dossiers is the movement's next decision, not this file's.
+     *
+     * The plugin's defaults are kept on purpose: five tries per sign-in, then
+     * the password again; ten failures in a row lock the account's codes for
+     * fifteen minutes; the secret and the backup codes are stored encrypted.
+     */
+    twoFactor({ issuer: 'KLEA' }),
+    // Must stay last: it reads the headers every other plugin has written.
+    tanstackStartCookies(),
+  ],
   user: {
     additionalFields: {
       role: {

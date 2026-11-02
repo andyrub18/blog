@@ -119,7 +119,13 @@ export const fetchFrontPage = createServerFn({ method: 'GET' }).handler(
       return []
     })
     return renderFrontPage({
-      user: account ? { name: account.name, role: account.role } : null,
+      user: account
+        ? {
+            name: account.name,
+            role: account.role,
+            twoFactorEnabled: account.twoFactorEnabled === true,
+          }
+        : null,
       articles: articles.slice(0, 3),
       lang,
     })

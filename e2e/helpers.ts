@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto'
 import type { Page } from '@playwright/test'
 
 export const DEMO_PASSWORD = 'demo-password-123'
@@ -24,6 +25,8 @@ export const ACCOUNTS = {
   forgetful: 'forgetful@kleayiti.test',
   /** Never verified its address; following a reset link does that. */
   lostmail: 'lostmail@kleayiti.test',
+  /** Senior member the two-factor test turns codes on and off for. */
+  guarded: 'guarded@kleayiti.test',
 } as const
 
 /**
@@ -91,4 +94,26 @@ export async function submitApplication(page: Page): Promise<void> {
   }
   await page.getByRole('button', { name: /Déposer ma candidature/i }).click()
   await page.getByText(/Candidature déposée/i).waitFor({ timeout: 15_000 })
+}
+
+/**
+ * The code an authenticator app would show now for a base32 key (RFC 6238:
+ * HMAC-SHA1, 30-second steps, six digits), so the two-factor test can do what
+ * a person does with their phone.
+ */
+export function totp(base32Key: string, at: number = Date.now()): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+  let bits = ''
+  for (const char of base32Key.replace(/[\s=]/g, '').toUpperCase()) {
+    bits += alphabet.indexOf(char).toString(2).padStart(5, '0')
+  }
+  const key = Buffer.from(
+    bits.match(/.{8}/g)?.map((byte) => Number.parseInt(byte, 2)) ?? [],
+  )
+  const counter = Buffer.alloc(8)
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 1000 / 30)))
+  const mac = createHmac('sha1', key).update(counter).digest()
+  const offset = (mac.at(-1) ?? 0) & 0xf
+  const value = (mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000
+  return String(value).padStart(6, '0')
 }

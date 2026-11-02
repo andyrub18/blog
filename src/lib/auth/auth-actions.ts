@@ -23,6 +23,8 @@ export type SignInErrorCode =
 
 export type SignInResult =
   | { ok: true; user: { id: string; email: string; name: string } }
+  /** The password was right and a code from the authenticator is owed (D40). */
+  | { ok: true; twoFactor: true }
   | { ok: false; code: SignInErrorCode }
 
 export type SignUpErrorCode =
@@ -108,6 +110,14 @@ export const signInWithPassword = createServerFn({ method: 'POST' })
         body: { email: data.email, password: data.password },
         headers: getRequest().headers,
       })
+
+      // The account asks for a code as well (D40). No session exists yet, and
+      // the counters stay as they are until `verifySignInCode` accepts one: a
+      // right password is not a finished sign-in, and clearing them here would
+      // give whoever holds a stolen password a fresh budget of guesses at it.
+      if ((result as { twoFactorRedirect?: boolean }).twoFactorRedirect) {
+        return { ok: true, twoFactor: true }
+      }
 
       // Say so plainly rather than failing as a bad password. Someone who has
       // been blocked is owed the reason, and letting them think they mistyped

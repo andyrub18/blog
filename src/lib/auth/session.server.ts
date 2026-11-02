@@ -12,11 +12,15 @@ import type { SessionUser } from './session'
  *   const { requireRole } = await import('./session.server')
  */
 export async function getSession() {
-  const [{ getRequest }, { auth }] = await Promise.all([
+  const [{ getRequest }, { auth }, { headersAsOfNow }] = await Promise.all([
     import('@tanstack/solid-start/server'),
     import('./auth'),
+    import('./auth-cookies'),
   ])
-  const session = await auth.api.getSession({ headers: getRequest().headers })
+  // The cookies as this request has left them, not as it brought them: after a
+  // call that replaced the session, the old cookie names a deleted session.
+  const headers = await headersAsOfNow(getRequest().headers)
+  const session = await auth.api.getSession({ headers })
   return session as { user: SessionUser; session: { id: string; userId: string } } | null
 }
 

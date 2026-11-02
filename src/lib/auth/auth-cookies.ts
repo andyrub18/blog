@@ -40,6 +40,7 @@ export function tanstackStartCookies(): BetterAuthPlugin {
             const setCookies = headers.get('set-cookie')
             if (!setCookies) return
             await forwardSetCookieHeader(setCookies)
+            await showSolidTheCookies(headers.getSetCookie())
           }),
         },
       ],
@@ -79,4 +80,56 @@ async function forwardSetCookieHeader(setCookies: string): Promise<void> {
       // A cookie we cannot set is not worth failing the request over.
     }
   }
+}
+
+/**
+ * Write the same cookies where Solid's server-function handler reads them.
+ *
+ * After every server function, Solid re-runs the loaders of the page that
+ * called it, in the same request, so the response carries the page's fresh
+ * data. Before that it folds the cookies the call set into the request's
+ * `Cookie` header, reading them from its request event's `response` stub. Start's
+ * adapter creates no stub, and a cookie set through TanStack's `setCookie` is
+ * not there either. Turning codes at sign-in on or off replaces the session
+ * (D40): the re-run then looked the session up with the browser's old cookie,
+ * found it deleted, and expired the new one, signing the person out by the
+ * act of securing their account.
+ *
+ * So the stub is created when missing and given the raw headers. Solid also
+ * appends a stub's cookies to the final response, which then carries each one
+ * twice with the same value, in the same order; the browser keeps the last.
+ */
+async function showSolidTheCookies(setCookies: Array<string>): Promise<void> {
+  const { getRequestEvent } = await import('@solidjs/web')
+  const event = getRequestEvent() as
+    | (ReturnType<typeof getRequestEvent> & { response?: { headers: Headers } })
+    | undefined
+  if (!event) return
+  event.response ??= { headers: new Headers() }
+  for (const cookie of setCookies) event.response.headers.append('Set-Cookie', cookie)
+}
+
+/**
+ * The request's headers with the cookies this request has already set folded
+ * in, for reading the session (`getSession` in `session.server.ts`).
+ *
+ * `getRequest()` is the request as it arrived. When a call replaces the session
+ * and something later in the same request reads it — Solid's re-run of the
+ * page's loaders is the case that bit (D40) — the cookie it arrived with names
+ * a session that no longer exists, and Better Auth answers by expiring the
+ * cookie the call had just set.
+ */
+export async function headersAsOfNow(headers: Headers): Promise<Headers> {
+  const [{ getRequestEvent }, { foldSetCookies }] = await Promise.all([
+    import('@solidjs/web'),
+    import('./cookie-fold'),
+  ])
+  const event = getRequestEvent() as
+    | (ReturnType<typeof getRequestEvent> & { response?: { headers: Headers } })
+    | undefined
+  const setSoFar = event?.response?.headers.getSetCookie() ?? []
+  if (setSoFar.length === 0) return headers
+  const folded = new Headers(headers)
+  folded.set('cookie', foldSetCookies(headers.get('cookie'), setSoFar))
+  return folded
 }
