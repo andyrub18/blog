@@ -169,8 +169,16 @@ entry, but D38 moved the guest guards on login and register the same way and the
 entry did not change by a byte; measure, do not assume a `loader` splits. What
 did work was removing a guard that ran twice — the register pages repeated their
 layout's — because each copy was a server-function stub in every reader's
-bundle. If a route guard is the only thing standing between a caller and the
-data, the guard is in the wrong place anyway — see the rule above.
+bundle. `codeSplittingOptions` can move a loader into the route's chunk, but then
+it runs only after that chunk arrives: D39 measured 300 ms more per tap at
+Haitian latency, hover or not. Use it only for a route nobody reaches by a click.
+If a route guard is the only thing standing between a caller and the data, the
+guard is in the wrong place anyway — see the rule above.
+
+**Preload lists name only what a page lacks.** `preloadOnlyWhatIsMissing` in
+`vite.config.ts` drops the entry's own files from every lazy import's list of
+files to fetch: 1.2 KB of the reading view was the names of files every page
+already had (D39). `npm run budget` says so if it stops working.
 
 **A hook or component no page used before can cost every page.** Rollup groups
 shared code by which pages need it. The reset page's first draft read its query

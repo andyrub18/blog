@@ -980,6 +980,78 @@ Two things brought the page back under:
 
 The reading view: 99.7 KB, by the gauge and by the browser. 0.3 KB of headroom.
 
+## D37 — The access log is written only from our own pages
+
+The session cookie is `sameSite: 'lax'`, so a browser attaches it to any
+top-level GET navigation, including one started by a link on another site or in
+an email. Two reads that write to the access log checked *who* was asking and
+not *where from*, and both were reproduced against the running site:
+
+- **`/api/dossier/<id>/<field>`.** A link elsewhere, clicked by a signed-in
+  senior, downloaded the CV into their downloads and wrote an `access_event` in
+  their name: 200, one row per click.
+- **`fetchApplication`** (and `fetchProbationDue`) are GET server functions that
+  log. Solid checks where a call came from, but skips GET reads, on the premise
+  that a read is safe to *run* from anywhere because another site cannot *see*
+  the answer. Ours write. A link from a current browser was stopped only by
+  accident: Paraglide redirected the navigation to `/fr/_serverFn/…`, which does
+  not exist. It redirects only a request carrying `Sec-Fetch-Dest: document`, so
+  an older Safari, or a request marked cross-site, ran the function: 200, one
+  row each.
+
+This matters because the access log is the only honest basis for telling a
+member who opened their file. A log that anybody can write to in a senior's
+name says nothing, and at worst it is evidence against the wrong person. A
+forced download also leaves somebody's CV on a senior's device that they never
+chose to open.
+
+**What changed.** `sameOriginRequest` (`lib/shared/same-origin.ts`) accepts a
+request only if the browser says it came from our own page:
+
+- `Sec-Fetch-Site: same-origin` is accepted. `none` is refused along with
+  `cross-site`: a pasted URL, or a link opened from a mail client, is exactly
+  how the attack arrives.
+- A browser that sends no `Sec-Fetch-Site` falls back to `Origin`, then
+  `Referer`. Our pages always send a same-origin `Referer`. A request with
+  neither is refused.
+
+The dossier route asks it after asking who the caller is, so a visitor who is
+not signed in is still told 401. Server functions, reads included, go through
+Solid's own check: `configureServerFunctionsServer` in `src/server.ts` sets
+`protectDeclaredReads`. The `Vary` header that check adds would split a shared
+cache's entries. Nothing we serve is meant for a shared cache, so it costs
+nothing.
+
+**Hosts, not origins.** srvx builds `request.url` from the socket. The built
+server does not trust `X-Forwarded-Proto`, so behind Caddy every request reads
+`http://<host>` while the browser's `Origin` says `https://`. Solid's default
+compares exact origins against `request.url`. In production it would have
+refused every server-function POST from a browser that sends `Origin` but not
+`Sec-Fetch-Site`, sign-in on an older iPhone among them. Both checks compare
+the host, which Caddy passes through unchanged.
+
+**Not covered, on purpose: the review page itself.** A link elsewhere to
+`/fr/review/<id>` renders the application in front of the senior, and the log
+records a view. That record is true: the application was on their screen, in
+their session, visibly. Pages are not refused cross-site, because a link in a
+message is how people reach anything.
+
+**How it was checked.** Against both the dev server and a production build:
+
+- every forged path answers 403 and writes no row;
+- the page's own read and its download link still answer 200 and write one.
+
+`e2e/review.spec.ts` now downloads the CV by clicking its link, as a reviewer
+does; it used to fetch it directly, which is a request with no fetch metadata
+and is now refused. It then replays the page's reads from outside the page,
+and follows the same link from another origin. Each half of the test was run
+against the code without its half of the fix, and failed.
+
+One trap for whoever touches this next: Solid keeps this setting in module
+state, which outlives an edit to `src/server.ts` in a running dev server. The
+first "before" measurement here was taken that way and showed the fix as
+already present. Restart the server after changing it.
+
 ## D38 — Password recovery
 
 Until now a member who lost their password had no way back in, and nobody
@@ -1062,74 +1134,54 @@ reserved for it, and puts their passwords back on every run. The tests check:
 - both closed endpoints answering 404.
 
 The spec runs on one browser only, because the links work once.
-## D37 — The access log is written only from our own pages
 
-The session cookie is `sameSite: 'lax'`, so a browser attaches it to any
-top-level GET navigation, including one started by a link on another site or in
-an email. Two reads that write to the access log checked *who* was asking and
-not *where from*, and both were reproduced against the running site:
+## D39 — Room on the reading view: shorter preload lists, and loaders where they are
 
-- **`/api/dossier/<id>/<field>`.** A link elsewhere, clicked by a signed-in
-  senior, downloaded the CV into their downloads and wrote an `access_event` in
-  their name: 200, one row per click.
-- **`fetchApplication`** (and `fetchProbationDue`) are GET server functions that
-  log. Solid checks where a call came from, but skips GET reads, on the premise
-  that a read is safe to *run* from anywhere because another site cannot *see*
-  the answer. Ours write. A link from a current browser was stopped only by
-  accident: Paraglide redirected the navigation to `/fr/_serverFn/…`, which does
-  not exist. It redirects only a request carrying `Sec-Fetch-Dest: document`, so
-  an older Safari, or a request marked cross-site, ran the function: 200, one
-  row each.
+D38 left the reading view 0.1 KB of headroom, and two-factor sign-in needs at
+least a code step and a setup page. Two levers were measured. One is kept.
 
-This matters because the access log is the only honest basis for telling a
-member who opened their file. A log that anybody can write to in a senior's
-name says nothing, and at worst it is evidence against the wrong person. A
-forced download also leaves somebody's CV on a senior's device that they never
-chose to open.
+**Kept: preload lists that name only what a page lacks.** Every lazy import
+Vite writes carries the list of files to fetch with it, and each route's stub
+(all of them in the entry) wrote its list out in full. Most of each list named
+files every page has already loaded: the router, Solid, the message runtime.
+The browser skips those at run time, but every reader downloaded the names:
+4.6 KB of the reading view. `preloadOnlyWhatIsMissing` in `vite.config.ts`
+reads the finished bundle and drops the entry's own files from every list,
+keeping the rest, so a page still fetches what it needs in one round. The
+reading view went from 99.9 to 98.7 KB, the same by `npm run budget` and by a
+browser. The gauge now says so if the filtering stops: it depends on Vite
+running the plugin's `generateBundle` before writing the lists.
 
-**What changed.** `sameOriginRequest` (`lib/shared/same-origin.ts`) accepts a
-request only if the browser says it came from our own page:
+**Measured and not kept: loaders out of the entry.** The router's default code
+splitting takes only a route's component out of the entry. Every `loader`, and
+every server function it calls, ships to every reader. That is why D38's move
+from `beforeLoad` to `loader` moved nothing. `codeSplittingOptions` can put
+the loader in the route's chunk. The cost was measured with Playwright at
+300 ms latency and 1.5 Mbps, three runs per case, from click to the new page's
+content:
 
-- `Sec-Fetch-Site: same-origin` is accepted. `none` is refused along with
-  `cross-site`: a pasted URL, or a link opened from a mail client, is exactly
-  how the attack arrives.
-- A browser that sends no `Sec-Fetch-Site` falls back to `Origin`, then
-  `Referer`. Our pages always send a same-origin `Referer`. A request with
-  neither is refused.
+| Click | before | loader split |
+|---|---|---|
+| header link, after a hover | 364–941 ms | the same |
+| header link to a page with a loader, as a tap | 695–743 ms | 989–1052 ms |
+| a senior's review page to probation or members, as a tap | 1082–1138 ms | 1369–1444 ms |
+| the same, after an 800 ms hover | 370 ms | 597–662 ms |
 
-The dossier route asks it after asking who the caller is, so a visitor who is
-not signed in is still told 401. Server functions, reads included, go through
-Solid's own check: `configureServerFunctionsServer` in `src/server.ts` sets
-`protectDeclaredReads`. The `Vary` header that check adds would split a shared
-cache's entries. Nothing we serve is meant for a shared cache, so it costs
-nothing.
+A loader in the route's chunk can only run once that chunk has arrived, so the
+two round trips come one after the other, and a hover does not hide it.
+Splitting every route saved readers 1.2 KB and cost a tap on the header 300 ms.
+Splitting only the circle's and the authors' pages saved readers 0.2 KB and
+cost a senior 300 ms on every click.
 
-**Hosts, not origins.** srvx builds `request.url` from the socket. The built
-server does not trust `X-Forwarded-Proto`, so behind Caddy every request reads
-`http://<host>` while the browser's `Origin` says `https://`. Solid's default
-compares exact origins against `request.url`. In production it would have
-refused every server-function POST from a browser that sends `Origin` but not
-`Sec-Fetch-Site`, sign-in on an older iPhone among them. Both checks compare
-the host, which Caddy passes through unchanged.
+Splitting only the invitation page's loader looked free: the page is opened
+only from the email, as a full page load. It saved nothing. The governance
+server functions it calls are also called by the circle's pages, which still
+carry them, and the regrouping it caused cost more than it moved.
 
-**Not covered, on purpose: the review page itself.** A link elsewhere to
-`/fr/review/<id>` renders the application in front of the senior, and the log
-records a view. That record is true: the application was on their screen, in
-their session, visibly. Pages are not refused cross-site, because a link in a
-message is how people reach anything.
+The lever stays available. If a page has to find bytes and its loader is never
+reached by a click, splitting it costs nobody a round trip. Measure first.
 
-**How it was checked.** Against both the dev server and a production build:
-
-- every forged path answers 403 and writes no row;
-- the page's own read and its download link still answer 200 and write one.
-
-`e2e/review.spec.ts` now downloads the CV by clicking its link, as a reviewer
-does; it used to fetch it directly, which is a request with no fetch metadata
-and is now refused. It then replays the page's reads from outside the page,
-and follows the same link from another origin. Each half of the test was run
-against the code without its half of the fix, and failed.
-
-One trap for whoever touches this next: Solid keeps this setting in module
-state, which outlives an edit to `src/server.ts` in a running dev server. The
-first "before" measurement here was taken that way and showed the fix as
-already present. Restart the server after changing it.
+**Also found, and fixed on its own branch:** the "back to the article" links
+on the discussion and version pages never worked in a browser. They called
+`Route.useParams()` inside the `params` prop, which Solid compiles to a getter,
+so the hook ran inside the click handler and threw. No test clicked them.
