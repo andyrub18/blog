@@ -53,6 +53,10 @@ test('anyone can read the discussion, and is told plainly they cannot answer', a
   await expect(page.getByText(/il ne dit rien de l'agriculture/i)).toBeVisible()
   await expect(page.getByText(/Connectez-vous pour participer/i)).toBeVisible()
   await expect(page.getByRole('button', { name: /^publier$/i })).toHaveCount(0)
+
+  // And back to the article. The link used to throw on click and go nowhere.
+  await page.getByRole('link', { name: /Retour à l'article/i }).click()
+  await expect(page).toHaveURL(new RegExp(`/fr/articles/${PUBLISHED}$`))
 })
 
 test('a members-only article has no discussion for an anonymous reader', async ({

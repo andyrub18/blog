@@ -140,4 +140,10 @@ test('an article says which version it is, and its history lists what the circle
   await expect(page).toHaveURL(new RegExp(`/fr/articles/${FRENCH_ONLY}/versions$`))
   await expect(page.getByTestId('version-entry')).toHaveCount(1)
   await expect(page.getByText(/Première version publiée/i)).toBeVisible()
+
+  // And back. The link used to throw on click and leave the reader where they were.
+  await waitForInteractive(page)
+  await page.getByRole('link', { name: /Retour à l'article/i }).click()
+  await expect(page).toHaveURL(new RegExp(`/fr/articles/${FRENCH_ONLY}$`))
+  await expect(page.getByText(/Version 1 · approuvée le/i)).toBeVisible()
 })

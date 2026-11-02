@@ -20,6 +20,10 @@ export const Route = createFileRoute('/_app/articles/$slug_/versions')({
 
 function VersionsPage() {
   const result = Route.useLoaderData()
+  // Read once, here. Inside the `params` prop the hook ran on every read of
+  // the prop, the click handler's included, and Solid refuses a hook there:
+  // the link threw and went nowhere.
+  const params = Route.useParams()
   const history = () => {
     const loaded = result()
     return loaded.ok ? loaded.value : null
@@ -37,7 +41,7 @@ function VersionsPage() {
         <div class="mb-6 flex items-center justify-between gap-4">
           <Link
             to="/articles/$slug"
-            params={{ slug: Route.useParams()().slug }}
+            params={{ slug: params().slug }}
             class="text-sm text-accent hover:underline"
           >
             ← {m.forum_backToArticle()}
