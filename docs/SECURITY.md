@@ -143,7 +143,10 @@ forget — a legitimate senior member account that has been compromised or turne
 20. **Password policy:** raise `minPasswordLength` from 8 to 12, and check candidates
     against the HaveIBeenPwned k-anonymity range API — it never sends the password or its
     full hash, and it stops credential-stuffing at the source. Offer passkeys.
-21. **CSRF:** Better Auth covers its own endpoints; verify origin on our server functions.
+21. ~~**CSRF:** Better Auth covers its own endpoints; verify origin on our server functions.~~
+    **DONE** (D37). Every server function, GET reads included, answers only our own
+    pages (`protectDeclaredReads`, `src/server.ts`), and so does the dossier download
+    (`sameOriginRequest`). Both compare hosts: behind Caddy the app sees `http://`.
 22. Optional but advisable: ClamAV scan on uploaded PDFs and DOCX files. Companion PDFs
     are the case where it matters most, because they are the one upload served to the
     public; `lib/articles/companion/pdf.ts` refuses active content but parses with a library that is no

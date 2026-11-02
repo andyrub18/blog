@@ -15,13 +15,19 @@ export const Route = createFileRoute('/api/dossier/$')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        const [{ getSession }, { readDossierFile }, { clientIp }, { hasAtLeastRole }] =
-          await Promise.all([
-            import('../../../lib/auth/session.server'),
-            import('../../../lib/membership/dossier'),
-            import('../../../lib/shared/rate-limit'),
-            import('../../../lib/db/schema'),
-          ])
+        const [
+          { getSession },
+          { readDossierFile },
+          { clientIp },
+          { hasAtLeastRole },
+          { sameOriginRequest },
+        ] = await Promise.all([
+          import('../../../lib/auth/session.server'),
+          import('../../../lib/membership/dossier'),
+          import('../../../lib/shared/rate-limit'),
+          import('../../../lib/db/schema'),
+          import('../../../lib/shared/same-origin'),
+        ])
 
         // Checked here, not only in a route guard: this is a public URL.
         //
@@ -35,6 +41,14 @@ export const Route = createFileRoute('/api/dossier/$')({
           return new Response('Unauthorized', { status: 401 })
         }
         if (!hasAtLeastRole(session.user.role, 'senior_member')) {
+          return new Response('Forbidden', { status: 403 })
+        }
+        // Only the application's own page may ask for its files. The session
+        // cookie rides along on a link from anywhere, so without this a link on
+        // another site, or in an email, made a senior's browser fetch a CV —
+        // writing their name into the access log for a file they never chose to
+        // open, and leaving it in their downloads (D37).
+        if (!sameOriginRequest(request)) {
           return new Response('Forbidden', { status: 403 })
         }
         const reviewer = session.user
