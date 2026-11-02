@@ -154,4 +154,28 @@ console.log(
     `each new route adds roughly 0.5 KB to every page.`,
 )
 
+// The preload lists in the entry's chunks should name only files a page does
+// not already have; `preloadOnlyWhatIsMissing` in `vite.config.ts` drops the
+// rest, 1.2 KB of the reading view (D39). It depends on the order Vite runs
+// its hooks in, and when that changes it stops without a word, so look.
+const loadedEverywhere = new Set(
+  [...closure(entry)].map((key) => manifest[key]?.file).filter(Boolean),
+)
+const named = new Set()
+for (const [, file] of weigh(entry).chunks) {
+  const code = readFileSync(join(PUBLIC, file), 'utf8')
+  for (const list of code.matchAll(/m\.f=\[([^\]]*)\]/g)) {
+    for (const quoted of list[1].matchAll(/"([^"]+)"/g)) {
+      if (loadedEverywhere.has(quoted[1])) named.add(quoted[1])
+    }
+  }
+}
+if (named.size > 0) {
+  console.log(
+    `\nPreload lists in the entry name ${named.size} files every page already loads ` +
+      `(${[...named].slice(0, 3).join(', ')}…): preloadOnlyWhatIsMissing in ` +
+      'vite.config.ts is not taking effect.',
+  )
+}
+
 process.exit(kb < BUDGET_KB ? 0 : 1)
