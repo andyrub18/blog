@@ -5,7 +5,6 @@ import {
   Outlet,
   Scripts,
 } from '@tanstack/solid-router'
-import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { Loading } from 'solid-js'
 
 import { getLocale } from '../paraglide/runtime'
@@ -40,7 +39,6 @@ function RootComponent() {
       <body>
         <Loading>
           <Outlet />
-          <TanStackRouterDevtools />
         </Loading>
         <Scripts />
       </body>
