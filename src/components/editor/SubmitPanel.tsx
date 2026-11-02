@@ -134,7 +134,7 @@ export default function SubmitPanel(props: Props) {
                   <Link
                     to="/review/articles/$submissionId"
                     params={{ submissionId: round.submissionId }}
-                    class="text-xs text-[#00209F] hover:underline"
+                    class="text-xs text-accent hover:underline"
                   >
                     {m.submit_open()}
                   </Link>
@@ -202,7 +202,7 @@ export default function SubmitPanel(props: Props) {
                       [field.key]: e.currentTarget.value,
                     }))
                   }
-                  class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                  class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                 />
               </label>
             )}
@@ -212,7 +212,7 @@ export default function SubmitPanel(props: Props) {
             <button
               type="submit"
               disabled={busy() || langs().length === 0}
-              class="h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+              class="h-10 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
             >
               {busy() ? m.submit_submitting() : m.submit_cta()}
             </button>
@@ -220,7 +220,7 @@ export default function SubmitPanel(props: Props) {
 
           <div aria-live="polite" class="min-h-5 text-sm">
             <Show when={error()}>
-              {(message) => <p class="text-[#A3261F]">{message()}</p>}
+              {(message) => <p class="text-danger">{message()}</p>}
             </Show>
           </div>
         </form>

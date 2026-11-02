@@ -21,22 +21,20 @@ export default function LanguageSwitcher() {
   }
 
   return (
-    /* `flex-wrap`, because there are four of these now and the row they sit in
-       also carries a link. On a 360 px phone the fourth would otherwise push
-       the group off the side of the screen rather than onto a second line. */
-    <fieldset
-      class="inline-flex flex-wrap items-center gap-1 rounded-md border border-neutral-200 bg-white p-0.5 text-xs"
-      aria-label={m.common_switchLanguage()}
-    >
+    /* A column, because it lives in the header's language menu. Each language
+       is named in itself, and carries its own `lang`, so a screen reader says
+       "Kreyòl" in Creole rather than spelling it out in French. */
+    <fieldset class="flex flex-col" aria-label={m.common_switchLanguage()}>
       <For each={LOCALES}>
         {(code) => (
           <button
             type="button"
+            lang={code}
             onClick={() => handleChange(code)}
             class={
               code === getLocale()
-                ? 'rounded bg-neutral-900 px-2 py-1 font-semibold text-white'
-                : 'rounded px-2 py-1 text-neutral-700 hover:bg-neutral-100'
+                ? 'flex min-h-11 w-full items-center rounded-lg px-3 text-left text-[15px] font-bold text-accent'
+                : 'flex min-h-11 w-full items-center rounded-lg px-3 text-left text-[15px] text-ink hover:bg-neutral-100 hover:text-accent'
             }
             aria-current={code === getLocale() ? 'true' : undefined}
           >

@@ -24,6 +24,7 @@ import { ARTICLE_ERROR_MESSAGE } from '../../../lib/articles/article-messages'
 import type { DocNode } from '../../../lib/articles/prosemirror'
 import { fetchRounds } from '../../../lib/deliberation/article-review-actions'
 import { m } from '../../../paraglide/messages'
+import { getLocale } from '../../../paraglide/runtime'
 
 type Search = { lang?: Locale }
 
@@ -57,16 +58,16 @@ function EditorPage() {
   }
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-10">
+    <main class="flex-1 bg-neutral-50 px-4 py-10">
       <div class="mx-auto w-full max-w-3xl">
-        <Link to="/write" class="text-sm text-[#00209F] hover:underline">
+        <Link to="/write" class="text-sm text-accent hover:underline">
           ← {m.write_backToDesk()}
         </Link>
 
         <Show
           when={article()}
           fallback={
-            <p class="mt-6 rounded-lg border border-neutral-200 bg-white p-6 text-sm text-[#A3261F]">
+            <p class="mt-6 rounded-lg border border-neutral-200 bg-white p-6 text-sm text-danger">
               {ARTICLE_ERROR_MESSAGE[refusal()]()}
             </p>
           }
@@ -143,7 +144,7 @@ function Editing(props: EditingProps) {
         setError(ARTICLE_ERROR_MESSAGE[result.code]())
         return
       }
-      setSavedAt(new Date(result.value.savedAt).toLocaleTimeString())
+      setSavedAt(new Date(result.value.savedAt).toLocaleTimeString(getLocale()))
       setDirty(false)
       setTextVersion((n) => n + 1)
       await props.onChanged()
@@ -193,7 +194,7 @@ function Editing(props: EditingProps) {
             <Link
               to="/articles/$slug"
               params={{ slug: props.article.slug }}
-              class="text-[#00209F] hover:underline"
+              class="text-accent hover:underline"
             >
               {m.write_viewPublished()}
             </Link>
@@ -232,7 +233,7 @@ function Editing(props: EditingProps) {
             setTitle(e.currentTarget.value)
             setDirty(true)
           }}
-          class="h-10 rounded-md border border-neutral-300 bg-white px-3 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+          class="h-10 rounded-md border border-neutral-300 bg-white px-3 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
         />
       </label>
 
@@ -245,7 +246,7 @@ function Editing(props: EditingProps) {
             setSummary(e.currentTarget.value)
             setDirty(true)
           }}
-          class="rounded-md border border-neutral-300 bg-white px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+          class="rounded-md border border-neutral-300 bg-white px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
         >
           {props.article.summary}
         </textarea>
@@ -269,7 +270,7 @@ function Editing(props: EditingProps) {
           type="button"
           disabled={busy() !== null}
           onClick={() => void save()}
-          class="h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+          class="h-10 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
         >
           {busy() === 'save' ? m.write_saving() : m.write_save()}
         </button>
@@ -285,7 +286,7 @@ function Editing(props: EditingProps) {
             type="button"
             disabled={busy() !== null}
             onClick={() => void withdraw()}
-            class="h-10 rounded-md border border-[#A3261F] px-4 text-sm font-semibold text-[#A3261F] hover:bg-red-50 disabled:opacity-60"
+            class="h-10 rounded-md border border-danger px-4 text-sm font-semibold text-danger hover:bg-red-50 disabled:opacity-60"
           >
             {busy() === 'publish' ? m.write_publishing() : m.write_unpublish()}
           </button>
@@ -307,9 +308,7 @@ function Editing(props: EditingProps) {
       </div>
 
       <div aria-live="polite" class="min-h-5 text-sm">
-        <Show when={error()}>
-          {(message) => <p class="text-[#A3261F]">{message()}</p>}
-        </Show>
+        <Show when={error()}>{(message) => <p class="text-danger">{message()}</p>}</Show>
       </div>
 
       {/*

@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import LoginForm from '../../../components/auth/LoginForm'
-import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import { m } from '../../../paraglide/messages'
 
 const ensureGuest = createServerFn({ method: 'GET' }).handler(async () => {
@@ -17,41 +16,35 @@ export const Route = createFileRoute('/_app/auth/login')({
 
 function LoginPage() {
   return (
-    <main class="min-h-screen flex items-center justify-center bg-linear-to-br from-neutral-50 via-white to-neutral-100 px-4 py-12">
+    <main class="flex flex-1 justify-center bg-surface px-4 py-12">
       <div class="w-full max-w-md">
-        <div class="flex justify-end mb-4">
-          <LanguageSwitcher />
-        </div>
-
-        <div class="flex flex-col items-center gap-3 mb-8">
-          <img
-            src="/kleLogo.jpeg"
-            alt={m.common_appName()}
-            class="h-20 w-20 rounded-full object-cover ring-4 ring-white shadow-md"
-          />
-          <h1 class="text-2xl font-bold text-neutral-900 text-center">
-            {m.auth_login_title()}
-          </h1>
-          <p class="text-sm text-neutral-600 text-center max-w-xs">
-            {m.auth_login_subtitle()}
+        <div class="rounded-2xl border border-line bg-raised p-6 sm:p-8">
+          <div class="mb-6 flex flex-col items-center gap-3 text-center">
+            {/* Decorative: the header names the movement. */}
+            <img
+              src="/emblem.png"
+              alt=""
+              width="80"
+              height="120"
+              class="h-[120px] w-20"
+            />
+            <h1 class="font-serif text-3xl font-bold">{m.auth_login_title()}</h1>
+            <p class="max-w-xs text-[15px] text-ink-soft">{m.auth_login_subtitle()}</p>
+          </div>
+          <LoginForm />
+          <p class="mt-6 border-t border-line pt-5 text-center text-[15px] text-ink-soft">
+            {m.auth_login_noAccount()}{' '}
+            <Link to="/auth/register" class="font-semibold text-accent hover:underline">
+              {m.auth_login_register()}
+            </Link>
           </p>
         </div>
-
-        <div class="bg-white border border-neutral-200 rounded-xl shadow-sm p-6 sm:p-8">
-          <LoginForm />
-        </div>
-
-        <p class="mt-6 text-center text-sm text-neutral-600">
-          {m.auth_login_noAccount()}{' '}
-          <Link to="/auth/register" class="font-medium text-[#00209F] hover:underline">
-            {m.auth_login_register()}
+        <p class="mt-5 text-center text-sm text-muted">
+          {m.common_readingIsFree()}{' '}
+          <Link to="/articles" class="font-semibold text-accent hover:underline">
+            {m.common_browseArticles()}
           </Link>
         </p>
-
-        <div class="mt-8 flex items-center justify-center gap-1.5">
-          <span class="block h-1 w-6 rounded-full bg-[#00209F]" />
-          <span class="block h-1 w-6 rounded-full bg-[#D21034]" />
-        </div>
       </div>
     </main>
   )

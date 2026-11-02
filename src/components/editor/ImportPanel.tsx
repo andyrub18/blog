@@ -125,7 +125,7 @@ export default function ImportPanel(props: Props) {
           <span class="text-xs text-neutral-500">{m.import_langHint()}</span>
           <select
             name="lang"
-            class="h-10 rounded-md border border-neutral-300 px-3 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+            class="h-10 rounded-md border border-neutral-300 px-3 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
           >
             <For each={LOCALES}>
               {(lang) => (
@@ -157,7 +157,7 @@ export default function ImportPanel(props: Props) {
           <button
             type="submit"
             disabled={busy()}
-            class="h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+            class="h-10 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
           >
             {busy() ? m.import_importing() : m.import_cta()}
           </button>
@@ -165,7 +165,7 @@ export default function ImportPanel(props: Props) {
 
         <div aria-live="polite" class="min-h-5 text-sm">
           <Show when={error()}>
-            {(message) => <p class="text-[#A3261F]">{message()}</p>}
+            {(message) => <p class="text-danger">{message()}</p>}
           </Show>
         </div>
       </form>

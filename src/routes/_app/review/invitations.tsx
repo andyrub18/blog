@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
-import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import {
   fetchInvitations,
   issueInvitationAction,
@@ -8,6 +7,7 @@ import {
 } from '../../../lib/membership/governance-actions'
 import { GOVERNANCE_ERROR_MESSAGE } from '../../../lib/membership/governance-messages'
 import { m } from '../../../paraglide/messages'
+import { getLocale } from '../../../paraglide/runtime'
 
 export const Route = createFileRoute('/_app/review/invitations')({
   loader: () => fetchInvitations(),
@@ -72,16 +72,17 @@ function Invitations() {
   }
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-12">
+    <main class="flex-1 bg-neutral-50 px-4 py-12">
       <div class="mx-auto w-full max-w-3xl">
         <div class="mb-4 flex items-center justify-between gap-4">
-          <h1 class="text-2xl font-bold text-neutral-900">{m.invitations_title()}</h1>
-          <LanguageSwitcher />
+          <h1 class="font-serif text-3xl font-bold text-neutral-900">
+            {m.invitations_title()}
+          </h1>
         </div>
         <p class="mb-2 text-sm text-neutral-600">{m.invitations_subtitle()}</p>
         <Link
           to="/review/members"
-          class="mb-6 inline-block text-sm text-[#00209F] hover:underline"
+          class="mb-6 inline-block text-sm text-accent hover:underline"
         >
           {m.roster_title()} →
         </Link>
@@ -97,7 +98,7 @@ function Invitations() {
               name="email"
               value={email()}
               onInput={(e) => setEmail(e.currentTarget.value)}
-              class="h-11 rounded-md border border-neutral-300 px-3 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+              class="h-11 rounded-md border border-neutral-300 px-3 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </label>
           <label class="flex flex-col gap-1 text-sm">
@@ -115,21 +116,21 @@ function Invitations() {
               rows="3"
               name="note"
               onInput={(e) => setNote(e.currentTarget.value)}
-              class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+              class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </label>
           <div>
             <button
               type="submit"
               disabled={busy()}
-              class="h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+              class="h-10 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
             >
               {busy() ? m.invitations_issuing() : m.invitations_issue()}
             </button>
           </div>
           <div aria-live="polite" class="min-h-5 text-sm">
             <Show when={error()}>
-              {(message) => <p class="text-[#A3261F]">{message()}</p>}
+              {(message) => <p class="text-danger">{message()}</p>}
             </Show>
           </div>
         </form>
@@ -172,7 +173,7 @@ function Invitations() {
                     </p>
                     <p class="truncate text-xs text-neutral-500">
                       {stateOf(row)} · {m.invitations_expiresOn()}{' '}
-                      {new Date(row.expiresAt).toLocaleDateString()}
+                      {new Date(row.expiresAt).toLocaleDateString(getLocale())}
                       <Show when={row.inviterName}> · {row.inviterName}</Show>
                     </p>
                   </div>

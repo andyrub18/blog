@@ -890,3 +890,59 @@ about OAuth and magic links, neither of which we enable), and with it `seroval`
 and 1.6.7 has five advisories from late October, among them an unauthenticated
 event-loop DoS and deserialization calling attacker-chosen functions. It costs
 0.2 KB on the article page, leaving 1.0 KB of headroom.
+
+## D35 — The interface: a header, a theme, and pages rendered as words
+
+Nine phases built the movement's processes and no way to move between them: no
+header, no sign-in link on the home page, a forum that said "sign in" with
+nothing to click, the logo on one page as a 95 KB photograph cropped into a
+circle. The tests passed throughout — they sign in by going to `/fr/auth/login`
+directly. The interface was designed with KLEA on a shared canvas first, then
+built against it.
+
+**A header and a footer on every page** (`components/layout/`). Its menus —
+language, account, the phone's "Menu" — are `<details>`, so they open before
+the bundle has arrived; one effect closes them after a choice. Together they
+cost the reading view 0.3 KB, taken out of the headroom: the per-page language
+bars they replaced gave some back.
+
+**One theme, two sets of colours, chosen by the device.** `styles.css` names each
+colour once; the dark set applies under `prefers-color-scheme: dark`. No switch:
+a manual one needs a control on every page and a cookie the server reads, and is
+worth adding only if members ask. The flag's blue is the light accent; the dark
+set uses a lighter blue, because #00209F on a dark ground cannot be read, and
+lightens the flag stripe for the same reason. Tailwind's greys, `white` and the
+status colours are mapped onto the theme, so the forty files written before it
+follow dark mode without being rewritten. Every text pair was measured at 4.5:1
+or better in both sets.
+
+**Pages that only link are rendered on the server.** As components, the new home
+page measured 105.9 KB: every sentence explaining the movement shipped in all
+four languages, and each message shared with another page became its own file
+with its own overhead. `front-page.ts` renders the home page and the article
+index as HTML in the reader's language instead — the reading view's approach,
+for the reading view's reason — and the home page is now 96.0 KB, lighter than
+the page it replaced. The home page degrades rather than fails: if the article
+list cannot be read, it renders without it.
+
+**The logo, at the sizes it is shown.** The emblem is 11.9 KB at 320 px, the
+header mark 2.2 KB, the favicon a real `.ico`; the template's React icons, its
+manifest, the unused social-login icons and the `kleLogo*` files from before the
+rename are gone. At 16 px the roots become noise: a simplified mark for the
+favicon is KLEA's to design. The source image is in `docs/brand/`.
+
+**Dates in the page's language.** Twelve places formatted dates in the browser's
+default locale — "11/2/2026, 10:39 AM" on a French page. They now use the
+locale the page is in, on the server and in the browser alike.
+
+Not done in this pass: password recovery (there is no server side for it yet,
+so the sign-in page offers no link to it), counts on the signed-in home, an
+"author" badge in the forum, and the forms, editor and review pages beyond what
+the theme gives them. The Creole, English and Spanish strings added here want a
+native reader before release.
+
+**The next 6 KB.** Paraglide imports a URLPattern polyfill unconditionally:
+6.1 KB gzipped on every page, including the browsers that have URLPattern
+built in. Loading it only where it is missing would give the budget back more
+than this whole interface spent — but it sits under the locale routing that
+D23 and D28 had to repair, and deserves its own change and its own tests.

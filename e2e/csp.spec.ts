@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { ACCOUNTS, signIn, waitForInteractive } from './helpers'
+import { ACCOUNTS, openLanguageMenu, signIn, waitForInteractive } from './helpers'
 
 /**
  * The Content-Security-Policy, against a production build (SECURITY.md P0 #6).
@@ -70,6 +70,7 @@ test('a page still answers clicks under the policy', async ({ page }) => {
   await page.getByRole('button', { name: /Se connecter/i }).click()
   await expect(page.getByText(/adresse courriel/i).first()).toBeVisible()
   // Client-side navigation, through the router.
+  await openLanguageMenu(page)
   await page.getByRole('button', { name: 'Kreyòl' }).click()
   await expect(page).toHaveURL(/\/ht\/auth\/login/)
   expect(await violations()).toEqual([])

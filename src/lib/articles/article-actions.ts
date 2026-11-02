@@ -4,7 +4,6 @@ import type { ArticleVisibility } from '../db/schema'
 import { resolveRequestLocale } from '../email/locale'
 import type { DiscussionTail } from '../forum/forum'
 import type {
-  ArticleCard,
   ArticleError,
   AuthoredArticle,
   EditableArticle,
@@ -48,16 +47,17 @@ export type ActionResult<T> =
   | { ok: false; code: ArticleErrorCode }
 
 /** The signed-in account, or null. Never throws: anonymous reading is normal here. */
-async function currentViewer(): Promise<Viewer | null> {
+async function currentAccount() {
   const { getSession } = await import('../auth/session.server')
   const session = await getSession()
   if (!session?.user) return null
   if (session.user.memberStatus === 'blocked') return null
-  return {
-    id: session.user.id,
-    role: session.user.role,
-    memberStatus: session.user.memberStatus,
-  }
+  return session.user
+}
+
+async function currentViewer(): Promise<Viewer | null> {
+  const user = await currentAccount()
+  return user ? { id: user.id, role: user.role, memberStatus: user.memberStatus } : null
 }
 
 /** The signed-in account, required. Redirects the way every other guard does. */
@@ -88,11 +88,53 @@ function localeOf(value: unknown): Locale {
   return isLocale(value) ? value : resolveRequestLocale()
 }
 
-export const fetchArticleIndex = createServerFn({ method: 'GET' }).handler(
-  async (): Promise<Array<ArticleCard>> => {
+/**
+ * The home page and the article index, as finished markup (`front-page.ts`).
+ *
+ * Both pages only link, and both are mostly words; rendered here the reader
+ * receives one language as HTML instead of every translation as JavaScript.
+ * Which articles appear is still `listPublished`'s decision, given the viewer —
+ * null included — exactly as before.
+ */
+export const fetchFrontPage = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<string> => {
+    const account = await currentAccount()
+    const lang = resolveRequestLocale()
+    const [{ listPublished }, { renderFrontPage }] = await Promise.all([
+      import('./articles'),
+      import('./front-page'),
+    ])
+    // The front door opens even when the article list cannot be read: the
+    // welcome, the explanation and the ways in need no database, and a visitor
+    // who meets an error page here does not come back to find out why.
+    const articles = await listPublished({
+      lang,
+      viewer: account
+        ? { id: account.id, role: account.role, memberStatus: account.memberStatus }
+        : null,
+    }).catch((error: unknown) => {
+      console.error(
+        `[front-page] latest articles unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      )
+      return []
+    })
+    return renderFrontPage({
+      user: account ? { name: account.name, role: account.role } : null,
+      articles: articles.slice(0, 3),
+      lang,
+    })
+  },
+)
+
+export const fetchArticleIndexPage = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<string> => {
     const viewer = await currentViewer()
-    const { listPublished } = await import('./articles')
-    return listPublished({ lang: resolveRequestLocale(), viewer })
+    const lang = resolveRequestLocale()
+    const [{ listPublished }, { renderArticleIndex }] = await Promise.all([
+      import('./articles'),
+      import('./front-page'),
+    ])
+    return renderArticleIndex({ articles: await listPublished({ lang, viewer }), lang })
   },
 )
 

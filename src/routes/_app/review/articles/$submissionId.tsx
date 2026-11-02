@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
 import VersionChanges from '../../../../components/articles/VersionChanges'
-import LanguageSwitcher from '../../../../components/LanguageSwitcher'
 import { LOCALE_LABELS } from '../../../../i18n'
 import type { VersionOutcome } from '../../../../lib/db/schema'
 import {
@@ -104,13 +103,12 @@ function Deliberation() {
   }
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-12">
+    <main class="flex-1 bg-neutral-50 px-4 py-12">
       <div class="mx-auto w-full max-w-3xl">
         <div class="mb-4 flex items-center justify-between gap-4">
-          <Link to="/review/articles" class="text-sm text-[#00209F] hover:underline">
+          <Link to="/review/articles" class="text-sm text-accent hover:underline">
             ← {m.deliberation_title()}
           </Link>
-          <LanguageSwitcher />
         </div>
 
         <Show
@@ -124,7 +122,7 @@ function Deliberation() {
           {(loaded) => (
             <div class="flex flex-col gap-6">
               <header>
-                <h1 class="text-2xl font-bold text-neutral-900">
+                <h1 class="font-serif text-3xl font-bold text-neutral-900">
                   {loaded().submission.slug}
                 </h1>
                 <p class="mt-1 text-sm text-neutral-600">
@@ -252,7 +250,7 @@ function Deliberation() {
                             <a
                               href={`/api/companion/review/${loaded().submission.id}/${version.lang}`}
                               download
-                              class="font-medium text-[#00209F] hover:underline"
+                              class="font-medium text-accent hover:underline"
                             >
                               {m.deliberation_companionDownload()}
                             </a>
@@ -262,7 +260,7 @@ function Deliberation() {
                     </div>
 
                     <details class="mt-4">
-                      <summary class="cursor-pointer text-sm font-medium text-[#00209F]">
+                      <summary class="cursor-pointer text-sm font-medium text-accent">
                         {m.deliberation_fullText()}
                       </summary>
                       <div class="article-prose mt-4" innerHTML={version.html} />
@@ -288,7 +286,7 @@ function Deliberation() {
                           <span
                             class={
                               reviewer.stance === 'contradictor'
-                                ? 'rounded bg-[#A3261F] px-2 py-0.5 text-xs font-medium text-white'
+                                ? 'rounded bg-danger px-2 py-0.5 text-xs font-medium text-white'
                                 : 'rounded bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-700'
                             }
                           >
@@ -313,7 +311,7 @@ function Deliberation() {
                                 }),
                               )
                             }
-                            class="shrink-0 text-xs text-[#A3261F] hover:underline disabled:opacity-60"
+                            class="shrink-0 text-xs text-danger hover:underline disabled:opacity-60"
                           >
                             {m.deliberation_unassign()}
                           </button>
@@ -378,7 +376,7 @@ function Deliberation() {
                           }),
                         )
                       }
-                      class="h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                      class="h-10 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
                     >
                       {busy() === 'assign'
                         ? m.deliberation_assigning()
@@ -399,7 +397,7 @@ function Deliberation() {
                           }),
                         )
                       }
-                      class="mt-4 h-10 rounded-md bg-[#1F6B45] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                      class="mt-4 h-10 rounded-md bg-ok px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
                     >
                       {busy() === 'open'
                         ? m.deliberation_opening()
@@ -431,7 +429,7 @@ function Deliberation() {
                         <p
                           class={
                             tally.accepted
-                              ? 'mt-1 text-xs text-[#1F6B45]'
+                              ? 'mt-1 text-xs text-ok'
                               : 'mt-1 text-xs text-amber-700'
                           }
                         >
@@ -476,7 +474,7 @@ function Deliberation() {
                                   [lang]: e.currentTarget.value,
                                 }))
                               }
-                              class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                              class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                             />
                           </label>
                           <div class="mt-2 flex flex-wrap gap-2">
@@ -562,7 +560,7 @@ function Deliberation() {
                       {OUTCOME_MESSAGE[decision().outcome]?.() ?? decision().outcome}{' '}
                       {METHOD_MESSAGE[decision().method]?.() ?? ''} ·{' '}
                       {m.deliberation_decidedOn()}{' '}
-                      {new Date(decision().decidedAt).toLocaleDateString()}
+                      {new Date(decision().decidedAt).toLocaleDateString(getLocale())}
                     </p>
                     <p class="mt-2 whitespace-pre-wrap text-sm text-green-900">
                       {decision().tallyJson.rationale}
@@ -588,7 +586,7 @@ function Deliberation() {
                       rows="3"
                       name="decisionRationale"
                       onInput={(e) => setDecisionRationale(e.currentTarget.value)}
-                      class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                      class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </label>
                   <label class="mt-3 flex flex-col gap-1 text-sm">
@@ -628,7 +626,7 @@ function Deliberation() {
                         }),
                       )
                     }
-                    class="mt-4 h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                    class="mt-4 h-10 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
                   >
                     {busy() === 'decide'
                       ? m.deliberation_deciding()
@@ -639,7 +637,7 @@ function Deliberation() {
 
               <div aria-live="polite" class="min-h-5 text-sm">
                 <Show when={error()}>
-                  {(message) => <p class="text-[#A3261F]">{message()}</p>}
+                  {(message) => <p class="text-danger">{message()}</p>}
                 </Show>
               </div>
             </div>

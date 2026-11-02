@@ -23,7 +23,7 @@ type Field = 'contributionPlan' | 'cv' | 'vision' | 'contribution'
 type FieldErrors = Partial<Record<Field, string>>
 
 const FILE_CLASS =
-  'block w-full text-sm text-neutral-700 file:mr-4 file:h-10 file:rounded-md file:border-0 file:bg-[#00209F] file:px-4 file:font-medium file:text-white hover:file:opacity-95'
+  'block w-full text-sm text-neutral-700 file:mr-4 file:h-10 file:rounded-md file:border-0 file:bg-accent file:px-4 file:font-medium file:text-white hover:file:opacity-95'
 
 export default function ApplyForm() {
   const router = useRouter()
@@ -95,11 +95,11 @@ export default function ApplyForm() {
             id="contributionPlan"
             name="contributionPlan"
             rows="6"
-            class="rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+            class="rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             aria-invalid={errors().contributionPlan ? 'true' : undefined}
           />
           <Show when={errors().contributionPlan}>
-            {(message) => <span class="text-xs text-[#D21034]">{message()}</span>}
+            {(message) => <span class="text-xs text-danger">{message()}</span>}
           </Show>
         </label>
 
@@ -118,14 +118,14 @@ export default function ApplyForm() {
         <button
           type="submit"
           disabled={submitting()}
-          class="h-11 rounded-md bg-linear-to-r from-[#00209F] to-[#D21034] text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-95 disabled:opacity-60"
+          class="h-11 rounded-md bg-accent hover:bg-accent-hover text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-95 disabled:opacity-60"
         >
           {submitting() ? m.apply_submitting() : m.apply_submit()}
         </button>
 
         <div id="apply-status" aria-live="polite" class="min-h-5 text-sm">
           <Show when={serverError()}>
-            {(message) => <p class="text-[#D21034]">{message()}</p>}
+            {(message) => <p class="text-danger">{message()}</p>}
           </Show>
         </div>
       </form>
@@ -148,7 +148,7 @@ function FileField(props: { name: string; label: string; error?: string }) {
         aria-invalid={props.error ? 'true' : undefined}
       />
       <Show when={props.error}>
-        {(message) => <span class="text-xs text-[#D21034]">{message()}</span>}
+        {(message) => <span class="text-xs text-danger">{message()}</span>}
       </Show>
     </div>
   )

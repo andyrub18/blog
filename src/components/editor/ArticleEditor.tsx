@@ -287,7 +287,7 @@ export default function ArticleEditor(props: Props) {
         </button>
       </div>
 
-      <div aria-live="polite" class="empty:hidden px-3 text-sm text-[#A3261F]">
+      <div aria-live="polite" class="empty:hidden px-3 text-sm text-danger">
         {linkError() ? m.write_linkRejected() : ''}
       </div>
 

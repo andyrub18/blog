@@ -20,7 +20,7 @@ export default function ApplicationFiled() {
     <div class="flex flex-col items-center gap-3 text-center">
       <h2 class="text-lg font-semibold text-neutral-900">{m.apply_successTitle()}</h2>
       <p class="text-sm text-neutral-700">{m.apply_successHint()}</p>
-      <Link to="/articles" class="text-sm font-medium text-[#00209F] hover:underline">
+      <Link to="/articles" class="text-sm font-medium text-accent hover:underline">
         {m.articles_backToIndex()}
       </Link>
     </div>

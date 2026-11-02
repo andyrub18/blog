@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { For, Show } from 'solid-js'
-import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import { LOCALE_LABELS } from '../../../i18n'
 import { fetchArticle } from '../../../lib/articles/article-actions'
 import type { DiscussionTail as Tail } from '../../../lib/forum/forum'
 import { m } from '../../../paraglide/messages'
+import { getLocale } from '../../../paraglide/runtime'
 
 /**
  * The reading view.
@@ -35,18 +35,18 @@ function ArticlePage() {
   }
 
   return (
-    <main class="min-h-screen bg-white px-4 py-12">
-      <div class="mx-auto w-full max-w-2xl">
-        <div class="mb-6 flex items-center justify-between gap-4">
-          <Link to="/articles" class="text-sm text-[#00209F] hover:underline">
-            ← {m.articles_backToIndex()}
-          </Link>
-          <LanguageSwitcher />
-        </div>
+    <main class="flex-1 px-4 pt-6 pb-16 md:px-6">
+      <div class="mx-auto w-full max-w-6xl">
+        <Link
+          to="/articles"
+          class="inline-flex min-h-11 items-center text-[15px] font-semibold text-accent hover:underline"
+        >
+          ← {m.articles_backToIndex()}
+        </Link>
 
         <Show when={article()} fallback={<Refusal code={refusal()} />}>
           {(loaded) => (
-            <article>
+            <article class="mt-4">
               <Show when={loaded().lang !== loaded().requestedLang}>
                 {/*
                  * Never require every language. An author writes what they can;
@@ -71,23 +71,49 @@ function ArticlePage() {
                 </aside>
               </Show>
 
-              <Show when={loaded().visibility === 'members'}>
-                <p class="mb-3 inline-block rounded bg-neutral-900 px-2 py-0.5 text-xs font-medium text-white">
-                  {m.articles_membersOnly()}
+              <header class="max-w-[42rem]">
+                <Show when={loaded().visibility === 'members'}>
+                  <p class="mb-3 inline-block rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
+                    {m.articles_membersOnly()}
+                  </p>
+                </Show>
+                <h1 class="font-serif text-[2rem] leading-tight font-bold md:text-[2.875rem]">
+                  {loaded().title}
+                </h1>
+                <p class="mt-4 font-serif text-xl leading-relaxed text-ink-soft">
+                  {loaded().summary}
                 </p>
-              </Show>
-
-              <h1 class="text-3xl leading-tight font-bold text-neutral-900">
-                {loaded().title}
-              </h1>
-              <p class="mt-3 text-base text-neutral-600">{loaded().summary}</p>
-              <p class="mt-3 text-xs text-neutral-500">
-                {m.articles_by()} {loaded().authorName}
-                <Show when={loaded().publishedAt}>
-                  {(date) => <> · {new Date(date()).toLocaleDateString()}</>}
-                </Show>{' '}
-                · {m.articles_readingTime({ minutes: loaded().readingMinutes })}
-              </p>
+                <p class="mt-4 text-sm text-muted">
+                  {m.articles_by()}{' '}
+                  <strong class="text-ink">{loaded().authorName}</strong>
+                  <Show when={loaded().publishedAt}>
+                    {(date) => (
+                      <>
+                        {' '}
+                        ·{' '}
+                        {new Date(date()).toLocaleDateString(getLocale(), {
+                          dateStyle: 'long',
+                        })}
+                      </>
+                    )}
+                  </Show>{' '}
+                  · {m.articles_readingTime({ minutes: loaded().readingMinutes })}
+                </p>
+                <Show when={loaded().availableLangs.length > 1}>
+                  <p class="mt-2 text-sm text-muted">
+                    {m.articles_availableIn()}{' '}
+                    <For
+                      each={loaded().availableLangs.filter((l) => l !== loaded().lang)}
+                    >
+                      {(lang) => (
+                        <span class="mr-2 font-semibold text-ink">
+                          {languageName(lang)}
+                        </span>
+                      )}
+                    </For>
+                  </p>
+                </Show>
+              </header>
 
               {/*
                * Safe because this string was produced by `renderDocument`
@@ -96,16 +122,10 @@ function ArticlePage() {
                * author-supplied text reaches it without `escapeHtml`, and the
                * only attributes in it are ones the renderer writes itself.
                */}
-              <div class="article-prose mt-8" innerHTML={loaded().html} />
-
-              <Show when={loaded().availableLangs.length > 1}>
-                <footer class="mt-10 border-t border-neutral-200 pt-4 text-sm text-neutral-600">
-                  {m.articles_availableIn()}{' '}
-                  <For each={loaded().availableLangs.filter((l) => l !== loaded().lang)}>
-                    {(lang) => <span class="mr-2">{languageName(lang)}</span>}
-                  </For>
-                </footer>
-              </Show>
+              <div
+                class="article-layout mt-8 border-t border-line pt-8"
+                innerHTML={loaded().html}
+              />
 
               <DiscussionTail slug={loaded().slug} tail={loaded().discussion} />
             </article>
@@ -125,8 +145,8 @@ function ArticlePage() {
  */
 function Refusal(props: { code: string | null }) {
   return (
-    <div class="rounded-lg border border-neutral-200 bg-neutral-50 p-6">
-      <p class="text-sm text-neutral-700">
+    <div class="mt-4 max-w-[42rem] rounded-xl border border-line bg-surface p-6">
+      <p class="text-ink-soft">
         {props.code === 'FORBIDDEN'
           ? m.articles_errors_forbidden()
           : m.articles_errors_notFound()}
@@ -134,7 +154,7 @@ function Refusal(props: { code: string | null }) {
       <Show when={props.code === 'FORBIDDEN'}>
         <Link
           to="/auth/login"
-          class="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95"
+          class="mt-4 inline-flex min-h-12 items-center justify-center rounded-lg bg-accent px-5 font-semibold text-on-accent hover:bg-accent-hover"
         >
           {m.articles_signIn()}
         </Link>
@@ -157,8 +177,8 @@ function Refusal(props: { code: string | null }) {
  */
 function DiscussionTail(props: { slug: string; tail: Tail }) {
   return (
-    <section class="mt-12 border-t border-neutral-200 pt-6">
-      <h2 class="text-lg font-semibold text-neutral-900">
+    <section class="mt-14 max-w-[42rem] rounded-xl border border-line bg-surface p-6 md:p-7">
+      <h2 class="font-serif text-2xl font-bold">
         {props.tail.total > 0
           ? m.forum_responses({ count: props.tail.total })
           : m.forum_noResponses()}
@@ -171,7 +191,7 @@ function DiscussionTail(props: { slug: string; tail: Tail }) {
       <Link
         to="/articles/$slug/discussion"
         params={{ slug: props.slug }}
-        class="mt-6 inline-flex h-10 items-center justify-center rounded-md border border-[#00209F] px-4 text-sm font-semibold text-[#00209F] hover:bg-[#00209F]/5"
+        class="mt-6 inline-flex min-h-12 items-center justify-center rounded-lg bg-accent px-5 font-semibold text-on-accent hover:bg-accent-hover"
       >
         {props.tail.total > 0 ? m.forum_readFullThread() : m.forum_join()}
       </Link>
@@ -182,11 +202,11 @@ function DiscussionTail(props: { slug: string; tail: Tail }) {
 /** One post in the tail. Text nodes only — see `DiscussionThread`. */
 function TailPost(props: { post: Tail['recent'][number] }) {
   return (
-    <li class="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-      <p class="text-sm font-medium text-neutral-900">
+    <li class="rounded-lg border border-line bg-raised p-4">
+      <p class="text-sm font-bold text-ink">
         {props.post.authorName}
-        <span class="ml-2 text-xs font-normal text-neutral-500">
-          {new Date(props.post.createdAt).toLocaleDateString()}
+        <span class="ml-2 font-normal text-muted">
+          {new Date(props.post.createdAt).toLocaleDateString(getLocale())}
         </span>
       </p>
       {/*
@@ -196,7 +216,7 @@ function TailPost(props: { post: Tail['recent'][number] }) {
        * text node — the `innerHTML` above is safe only because the renderer
        * wrote it, and a forum post is written by whoever registered today.
        */}
-      <p class="mt-1 text-sm whitespace-pre-line text-neutral-700">{props.post.body}</p>
+      <p class="mt-1 whitespace-pre-line text-neutral-800">{props.post.body}</p>
     </li>
   )
 }

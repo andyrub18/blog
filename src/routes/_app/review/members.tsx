@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
-import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import {
   fetchRoster,
   openNomination,
@@ -51,21 +50,22 @@ function Roster() {
   }
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-12">
+    <main class="flex-1 bg-neutral-50 px-4 py-12">
       <div class="mx-auto w-full max-w-3xl">
         <div class="mb-4 flex items-center justify-between gap-4">
-          <h1 class="text-2xl font-bold text-neutral-900">{m.roster_title()}</h1>
-          <LanguageSwitcher />
+          <h1 class="font-serif text-3xl font-bold text-neutral-900">
+            {m.roster_title()}
+          </h1>
         </div>
         <p class="mb-2 text-sm text-neutral-600">{m.roster_subtitle()}</p>
         <div class="mb-6 flex flex-wrap gap-4 text-sm">
-          <Link to="/review" class="text-[#00209F] hover:underline">
+          <Link to="/review" class="text-accent hover:underline">
             {m.review_title()} →
           </Link>
-          <Link to="/review/promotions" class="text-[#00209F] hover:underline">
+          <Link to="/review/promotions" class="text-accent hover:underline">
             {m.promotions_title()} →
           </Link>
-          <Link to="/review/invitations" class="text-[#00209F] hover:underline">
+          <Link to="/review/invitations" class="text-accent hover:underline">
             {m.invitations_title()} →
           </Link>
         </div>
@@ -192,7 +192,7 @@ function RosterRow(props: {
             rows="2"
             name={`rationale-${props.person.id}`}
             onInput={(e) => props.onRationale(e.currentTarget.value)}
-            class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+            class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
         </label>
 
@@ -202,7 +202,7 @@ function RosterRow(props: {
             disabled={props.busy}
             onClick={() => props.onBlockToggle()}
             class={`h-10 rounded-md px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60 ${
-              blocked() ? 'bg-[#1F6B45]' : 'bg-[#A3261F]'
+              blocked() ? 'bg-ok' : 'bg-danger'
             }`}
           >
             {props.busy
@@ -228,7 +228,7 @@ function RosterRow(props: {
 
         <div aria-live="polite" class="mt-3 min-h-5 text-sm">
           <Show when={props.error}>
-            {(message) => <p class="text-[#A3261F]">{message()}</p>}
+            {(message) => <p class="text-danger">{message()}</p>}
           </Show>
         </div>
       </Show>

@@ -19,7 +19,7 @@ before touching auth, uploads, or anything that reads a dossier.
 
 **2. First-load weight is a feature, not a nicety.** Readers arrive on slow,
 metered Haitian mobile data. The budget is **under 100 KB gzipped** of client
-JS for an article page, and it currently has about **1.0 KB** of headroom — the
+JS for an article page, and it currently has about **0.7 KB** of headroom — the
 next thing added to that page has to find bytes before it spends them.
 Measure before and after any dependency addition:
 
@@ -193,7 +193,32 @@ longest document. `fetchArticle` returns HTML and deliberately strips the
 ProseMirror document from the payload — sending both would put the same article on the wire twice, on
 the one page the budget exists for. `innerHTML` on that string is safe *because*
 the renderer wrote every tag and escaped every author-supplied character; it
-would not be safe for HTML from anywhere else.
+would not be safe for HTML from anywhere else. The version line, the PDF and the
+contents list arrive inside an `<aside class="article-aside">` ahead of the
+body; the stylesheet alone makes it a column beside the text on a wide screen.
+
+**A page that only links, and is mostly words, is rendered on the server.** The
+home page and the article index come from `lib/articles/front-page.ts` as HTML in
+the reader's language, the reading view's approach applied to whole pages. A
+Paraglide message ships *every* translation to the browser, so as components the
+home page's explanation cost 105.9 KB against the budget; as HTML it is 96.0 KB.
+The same rules hold: escape every value and every message, emit localized
+`<a href>`, and keep the result for `innerHTML` only because the renderer wrote
+it. A page with anything to *do* — a form, a poller — stays a component.
+
+**Colours come from the theme, never from a hex value in a class.** `styles.css`
+names every colour once (`bg-page`, `bg-surface`, `bg-raised`, `text-ink`,
+`text-muted`, `bg-accent`, `text-on-accent`, `border-line`, `text-danger`,
+`text-ok`) with a light set and a dark set, and the dark set applies when the
+device asks for it — no switch, no script, no flash of the wrong colours. Tailwind's
+`neutral-*`, `white` and the few status colours are mapped onto it as well, which
+is why screens written before the theme follow dark mode untouched. A
+`bg-[#…]` written today is a colour that stays light in dark mode.
+
+**The header's menus are `<details>`.** Language, account and the phone's
+"Menu" open without JavaScript; the one effect in `SiteHeader` only closes them
+after a choice or an outside click. The languages are therefore not on screen
+until the menu opens — in e2e, `openLanguageMenu(page)` first.
 
 **Never import `@tiptap/*` anywhere but inside the editor's effect.** It is
 126 KB gzipped. `components/editor/ArticleEditor.tsx` loads it with a dynamic

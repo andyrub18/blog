@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
-import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import { LOCALE_LABELS, LOCALES } from '../../../i18n'
 import {
   createArticleAction,
@@ -64,11 +63,12 @@ function WriteDesk() {
   }
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-12">
+    <main class="flex-1 bg-neutral-50 px-4 py-12">
       <div class="mx-auto w-full max-w-3xl">
         <div class="mb-4 flex items-center justify-between gap-4">
-          <h1 class="text-2xl font-bold text-neutral-900">{m.write_title()}</h1>
-          <LanguageSwitcher />
+          <h1 class="font-serif text-3xl font-bold text-neutral-900">
+            {m.write_title()}
+          </h1>
         </div>
         <p class="mb-6 text-sm text-neutral-600">{m.write_subtitle()}</p>
 
@@ -86,7 +86,7 @@ function WriteDesk() {
                 minlength={MIN_ARTICLE_TITLE_CHARS}
                 required
                 onInput={(e) => setTitle(e.currentTarget.value)}
-                class="h-10 rounded-md border border-neutral-300 px-3 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                class="h-10 rounded-md border border-neutral-300 px-3 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
             </label>
 
@@ -108,7 +108,7 @@ function WriteDesk() {
                 minlength={MIN_ARTICLE_SUMMARY_CHARS}
                 required
                 onInput={(e) => setSummary(e.currentTarget.value)}
-                class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
             </label>
 
@@ -125,7 +125,7 @@ function WriteDesk() {
                     e.currentTarget.value === 'members' ? 'members' : 'public',
                   )
                 }
-                class="h-10 rounded-md border border-neutral-300 px-3 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                class="h-10 rounded-md border border-neutral-300 px-3 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
               >
                 <option value="public">{m.write_visibilityPublic()}</option>
                 <option value="members">{m.write_visibilityMembers()}</option>
@@ -136,7 +136,7 @@ function WriteDesk() {
               <button
                 type="submit"
                 disabled={busy()}
-                class="h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                class="h-10 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
               >
                 {busy() ? m.write_creating() : m.write_create()}
               </button>
@@ -144,7 +144,7 @@ function WriteDesk() {
 
             <div aria-live="polite" class="min-h-5 text-sm">
               <Show when={error()}>
-                {(message) => <p class="text-[#A3261F]">{message()}</p>}
+                {(message) => <p class="text-danger">{message()}</p>}
               </Show>
             </div>
           </form>
@@ -177,7 +177,7 @@ function WriteDesk() {
                     <Link
                       to="/write/$articleId"
                       params={{ articleId: item.articleId }}
-                      class="shrink-0 rounded-md bg-[#00209F] px-4 py-2 text-sm font-semibold text-white hover:opacity-95"
+                      class="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-95"
                     >
                       {m.write_open()}
                     </Link>

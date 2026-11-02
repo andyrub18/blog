@@ -23,18 +23,19 @@ must have before that page is interactive.
 
 | Page | Client JS, gzipped |
 |---|---|
-| Shared entry, on every page | **94.8 KB** |
-| `/articles/{slug}` — the reading view | **99.0 KB** |
-| `/articles` | 97.2 KB |
-| `/` — the home page | 97.8 KB |
-| `/articles/{slug}/discussion` — the forum | 104.0 KB (opened from an article) |
-| `/write/{id}` — the editor, before TipTap loads | 120.1 KB (author screen) |
+| Shared entry, on every page | **95.8 KB** |
+| `/articles/{slug}` — the reading view | **99.3 KB** |
+| `/articles` | 96.1 KB |
+| `/` — the home page | 96.0 KB |
+| `/articles/{slug}/discussion` — the forum | 104.8 KB (opened from an article) |
+| `/write/{id}` — the editor, before TipTap loads | 121.2 KB (author screen) |
 | TipTap itself, fetched only when the editor mounts | +126 KB, in two chunks |
 
-**The budget is met, with 1.0 KB of headroom.** It was not, for three phases:
+**The budget is met, with 0.7 KB of headroom.** It was not, for three phases:
 the reading view peaked at 103.8 KB after phase 3. Two things fixed it, and a
 third gave 0.5 KB back afterwards — see the trend below. The patched `seroval`
-took 0.2 KB of it back (D34).
+took 0.2 KB of it back (D34), and the header and footer every page now carries
+took 0.3 KB more (D35).
 
 **TanStack Query was in every page and nothing used it.** The scaffold put a
 `QueryClient` in the router context and it had been shipping to every reader
@@ -123,7 +124,7 @@ After the phases:
 | Protected text | Readers see the revision the circle approved; edits after publication are drafts until a new round | **Done** — D30 |
 | Versions | Numbered per language, text and PDF together; readers see which version and what changed, the circle sees every change | **Done** — D31 |
 | Deployment gate | The P0s below, and `SECURITY.md`'s | **In progress** — Google sign-in retired (D27); headers, CSP, secure cookies, rate-limit bypass, startup guards, `DEPLOYMENT.md` (D32). Left: Resend domain, Turnstile keys, a host |
-| Interface review | The whole organisation gives its opinion on the UI, then it is revised | After the deployment gate |
+| Interface review | The whole organisation gives its opinion on the UI, then it is revised | **First pass done** — header, footer, theme and dark mode, the pages a visitor walks through (D35). Next: the organisation's opinion |
 
 Phase 1 comes before articles because the role rename is cheap now and expensive
 once articles exist and carry authorship.

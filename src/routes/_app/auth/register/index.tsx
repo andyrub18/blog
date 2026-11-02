@@ -1,43 +1,62 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
-import LanguageSwitcher from '../../../../components/LanguageSwitcher'
+import { For } from 'solid-js'
 import { m } from '../../../../paraglide/messages'
 
 export const Route = createFileRoute('/_app/auth/register/')({
   component: RegisterChooser,
 })
 
+/**
+ * Two kinds of account, and what each one asks before anybody starts filling
+ * in a form. The member application wants three PDFs and a review by senior
+ * members; finding that out halfway through is how people give up.
+ */
 function RegisterChooser() {
   return (
-    <main class="min-h-screen flex items-center justify-center bg-linear-to-br from-neutral-50 via-white to-neutral-100 px-4 py-12">
-      <div class="w-full max-w-2xl">
-        <div class="flex justify-end mb-4">
-          <LanguageSwitcher />
-        </div>
-        <div class="flex flex-col items-center gap-3 mb-8">
-          <h1 class="text-2xl font-bold text-neutral-900 text-center">
-            {m.auth_register_chooserTitle()}
-          </h1>
-          <p class="text-sm text-neutral-600 text-center max-w-md">
+    <main class="flex flex-1 justify-center bg-surface px-4 py-12">
+      <div class="w-full max-w-4xl">
+        <div class="mb-8 flex flex-col items-center gap-3 text-center">
+          <h1 class="font-serif text-4xl font-bold">{m.auth_register_chooserTitle()}</h1>
+          <p class="max-w-md text-lg text-ink-soft">
             {m.auth_register_chooserSubtitle()}
           </p>
+          <p class="text-[15px] text-muted">
+            {m.common_readingIsFree()}{' '}
+            <Link to="/articles" class="font-semibold text-accent hover:underline">
+              {m.common_browseArticles()}
+            </Link>
+          </p>
         </div>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-6 md:grid-cols-2">
           <Card
             title={m.auth_register_readerTitle()}
             description={m.auth_register_readerDescription()}
+            asks={[
+              m.auth_register_askIdentity(),
+              m.auth_register_askEssay(),
+              m.auth_register_askCaptcha(),
+            ]}
             cta={m.auth_register_readerCta()}
             to="/auth/register/reader"
           />
           <Card
             title={m.auth_register_memberTitle()}
             description={m.auth_register_memberDescription()}
+            asks={[
+              m.auth_register_askIdentity(),
+              m.auth_register_askEssay(),
+              m.auth_register_askPdfs(),
+              m.auth_register_askReview(),
+            ]}
             cta={m.auth_register_memberCta()}
             to="/auth/register/member"
+            emphasis
           />
         </div>
-        <p class="mt-8 text-center text-sm text-neutral-600">
-          <Link to="/auth/login" class="font-medium text-[#00209F] hover:underline">
-            {m.auth_register_backToLogin()}
+        <p class="mt-8 text-center text-[15px] text-ink-soft">
+          {m.auth_register_common_haveAccount()}{' '}
+          <Link to="/auth/login" class="font-semibold text-accent hover:underline">
+            {m.articles_signIn()}
           </Link>
         </p>
       </div>
@@ -48,19 +67,40 @@ function RegisterChooser() {
 function Card(props: {
   title: string
   description: string
+  asks: Array<string>
   cta: string
   to: '/auth/register/reader' | '/auth/register/member'
+  emphasis?: boolean
 }) {
   return (
-    <div class="bg-white border border-neutral-200 rounded-xl shadow-sm p-6 flex flex-col gap-3">
-      <h2 class="text-lg font-semibold text-neutral-900">{props.title}</h2>
-      <p class="text-sm text-neutral-600 flex-1">{props.description}</p>
+    <section
+      class={`flex flex-col gap-4 rounded-2xl bg-raised p-7 ${props.emphasis ? 'border-2 border-accent' : 'border border-line'}`}
+    >
+      <h2 class="font-serif text-[1.75rem] font-bold">{props.title}</h2>
+      <p class="leading-relaxed text-ink-soft">{props.description}</p>
+      <div class="flex flex-1 flex-col gap-2.5 border-t border-line pt-4">
+        <h3 class="text-xs font-bold tracking-[0.08em] text-muted uppercase">
+          {m.auth_register_asksTitle()}
+        </h3>
+        <ul class="flex flex-col gap-2.5 text-[15px] leading-normal">
+          <For each={props.asks}>
+            {(ask) => (
+              <li class="flex gap-2.5">
+                <span aria-hidden="true" class="text-accent">
+                  •
+                </span>
+                {ask}
+              </li>
+            )}
+          </For>
+        </ul>
+      </div>
       <Link
         to={props.to}
-        class="inline-flex h-10 items-center justify-center rounded-md bg-[#00209F] text-white text-sm font-semibold hover:opacity-95 px-4"
+        class={`inline-flex min-h-12 items-center justify-center self-start rounded-lg px-5 font-semibold ${props.emphasis ? 'bg-accent text-on-accent hover:bg-accent-hover' : 'border border-accent-line text-accent hover:bg-accent-soft'}`}
       >
         {props.cta}
       </Link>
-    </div>
+    </section>
   )
 }

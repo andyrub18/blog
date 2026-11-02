@@ -219,9 +219,7 @@ export default function CompanionPanel(props: Props) {
             </Show>
           )}
         </Show>
-        <Show when={error()}>
-          {(message) => <p class="text-[#A3261F]">{message()}</p>}
-        </Show>
+        <Show when={error()}>{(message) => <p class="text-danger">{message()}</p>}</Show>
       </div>
 
       <form onSubmit={attach} class="mt-4 flex flex-col gap-4">
@@ -242,7 +240,7 @@ export default function CompanionPanel(props: Props) {
           <button
             type="submit"
             disabled={busy()}
-            class="h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+            class="h-10 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
           >
             {busy()
               ? m.companion_working()
@@ -255,7 +253,7 @@ export default function CompanionPanel(props: Props) {
               type="button"
               disabled={busy()}
               onClick={() => void remove()}
-              class="text-sm font-medium text-[#A3261F] hover:underline disabled:opacity-60"
+              class="text-sm font-medium text-danger hover:underline disabled:opacity-60"
             >
               {m.companion_remove()}
             </button>
