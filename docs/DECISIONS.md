@@ -848,3 +848,45 @@ it, so every deploy took the site down for 90 seconds. `src/server.ts` now
 cancels the body of every `HEAD` response (`lib/shared/head-request.ts`), and the
 database pool closes when the server does (`lib/db/shutdown.ts`): memory stays
 flat, and a restart takes a second.
+
+## D34 — "Stable" TanStack Start is not ours to take, and the newest RC waits
+
+TanStack Start's stable release is the 1.x line, and on Solid it runs Solid 1.
+Ours is Start 2, the Solid 2 adapter, still a release candidate (D6). Moving to
+the stable line means taking every component back across the migration D6
+made, and was not considered further.
+
+Bumping within the RC line was tried, to `@tanstack/solid-start` 2.0.0-rc.10 and
+`solid-js` 2.0.0-rc.20, and held back:
+
+- **It costs 7 KB on every page.** The article page went from 98.8 KB to 105.8 KB,
+  against a 100 KB budget. The router did not grow; Solid did — `@solidjs/signals`,
+  `solid-js` and `@solidjs/web` together added about 17 KB before compression,
+  measured from source maps of both builds, production files on both sides. The
+  next RC bump has to find those bytes first.
+- **It bought nothing urgent.** It is no more stable than what we run, and it does
+  not carry the fix npm audit asks for (below).
+- **`vite-plugin-solid` is now a shim** over `@solidjs/vite-plugin`, and the JSX
+  compiler (`@solidjs/compiler`, `@solidjs/babel-plugin`) comes from the plugin,
+  not from `solid-js`. Bumping the runtime alone left an rc.8 compiler emitting
+  code for an rc.20 runtime: every `onClick` in the application silently stopped
+  firing, with the build and the type check both clean. When the bump is made,
+  move to `@solidjs/vite-plugin` and pin the compiler at the runtime's version.
+
+**npm audit's critical TanStack advisory does not reach us.** GHSA-qx66-fv34-fjm8
+is a reflected XSS in `handleServerAction` in `@tanstack/start-server-core`,
+fixed in 1.169.39; every Start 2 RC, rc.10 included, still pins an earlier core,
+so audit flags it. But `@tanstack/solid-start/server` exports
+`createSolidStartHandler` as `createStartHandler`, and it sends every
+`/_serverFn/` request to Solid's own server-function handler before TanStack's
+handler sees it. `handleServerAction` is not on any path a request can take.
+Solid's handler has its own CSRF check — `Sec-Fetch-Site` must be `same-origin`
+— which TanStack's default middleware does not add on this path. Check again
+whenever the adapter changes how it dispatches.
+
+What was taken: Better Auth 1.7.4 → 1.7.15 (two advisories, critical and high,
+about OAuth and magic links, neither of which we enable), and with it `seroval`
+1.6.7 → 1.6.12. `seroval` decodes every server-function payload on the server,
+and 1.6.7 has five advisories from late October, among them an unauthenticated
+event-loop DoS and deserialization calling attacker-chosen functions. It costs
+0.2 KB on the article page, leaving 1.0 KB of headroom.

@@ -19,7 +19,7 @@ before touching auth, uploads, or anything that reads a dossier.
 
 **2. First-load weight is a feature, not a nicety.** Readers arrive on slow,
 metered Haitian mobile data. The budget is **under 100 KB gzipped** of client
-JS for an article page, and it currently has about **1.2 KB** of headroom — the
+JS for an article page, and it currently has about **1.0 KB** of headroom — the
 next thing added to that page has to find bytes before it spends them.
 Measure before and after any dependency addition:
 
@@ -524,7 +524,7 @@ failure, same as the mailer.
 breaking change lands unannounced. Upgrade deliberately, as its own commit.
 
 `.npmrc` sets `legacy-peer-deps=true` for one specific reason, documented in the
-file: Better Auth 1.7.4 declares optional peers on Solid 1 and Start 1. We do
+file: Better Auth 1.7.15 declares optional peers on Solid 1 and Start 1. We do
 not use its Solid integration. Delete that file when Better Auth ships Solid 2
 support.
 
