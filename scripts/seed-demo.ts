@@ -7,7 +7,7 @@
  * them on a deployed server would hand anyone who reads this file a senior
  * member account, and with it every applicant's CV.
  */
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { and, eq, inArray } from 'drizzle-orm'
@@ -37,9 +37,20 @@ import {
   seniorPromotionVote,
   user as userTable,
   type Role,
+  account as accountTable,
+  verification,
 } from '../src/lib/db/schema'
 
 const PASSWORD = 'demo-password-123'
+
+/**
+ * Reset links the e2e suite can follow without reading anybody's mail:
+ * `/api/auth/reset-password/<token>`. Dev only, like everything here.
+ */
+const KNOWN_RESET_TOKENS = {
+  forgetful: 'e2e-forgetful-reset-token',
+  lostmail: 'e2e-lostmail-reset-token',
+} as const
 
 const ACCOUNTS = [
   { key: 'senior', name: 'Manm Senyò', email: 'senior@kleayiti.test', role: 'senior_member' },
@@ -59,6 +70,11 @@ const ACCOUNTS = [
   // Pristine on purpose: tests that only look at the application form must not
   // share an account with tests that submit one, or they depend on run order.
   { key: 'newcomer', name: 'Nouvo', email: 'newcomer@kleayiti.test', role: 'reader' },
+  // Reserved for the password-reset tests, which change these passwords and
+  // sign every session out. `lostmail` never verified its address: following a
+  // reset link is what verifies it.
+  { key: 'forgetful', name: 'Bliye', email: 'forgetful@kleayiti.test', role: 'reader' },
+  { key: 'lostmail', name: 'Lèt Pèdi', email: 'lostmail@kleayiti.test', role: 'reader' },
 ] as const satisfies ReadonlyArray<{
   key: string
   name: string
@@ -127,6 +143,36 @@ async function ensureAccount(account: (typeof ACCOUNTS)[number]): Promise<string
 
   console.info(`· created ${account.email} (${account.role})`)
   return result.user.id
+}
+
+/**
+ * Give a reset-test account its demo password back, and a fresh reset link.
+ *
+ * The reset tests change the password and spend the link, so a run that left
+ * them as they were would leave the next run unable to sign in or to reset.
+ * The token is stored the way Better Auth stores one, as the SHA-256 of its
+ * identifier (`verification.storeIdentifier` in `auth.ts`), so the real link
+ * route finds it.
+ */
+async function resetRecoverable(
+  userId: string,
+  token: string,
+  emailVerified: boolean,
+): Promise<void> {
+  const context = await auth.$context
+  await db
+    .update(accountTable)
+    .set({ password: await context.password.hash(PASSWORD), updatedAt: new Date() })
+    .where(and(eq(accountTable.userId, userId), eq(accountTable.providerId, 'credential')))
+  await db.update(userTable).set({ emailVerified }).where(eq(userTable.id, userId))
+  // A reset token's value is the user id; nothing else in the table is keyed to it.
+  await db.delete(verification).where(eq(verification.value, userId))
+  await db.insert(verification).values({
+    id: randomUUID(),
+    identifier: createHash('sha256').update(`reset-password:${token}`).digest('base64url'),
+    value: userId,
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  })
 }
 
 const PLAN =
@@ -815,6 +861,10 @@ async function main() {
   await confirmMember(ids.confirmed)
   await confirmMember(ids.blockable)
   console.info('· confirmed and blockable are members past their probation')
+
+  await resetRecoverable(ids.forgetful, KNOWN_RESET_TOKENS.forgetful, true)
+  await resetRecoverable(ids.lostmail, KNOWN_RESET_TOKENS.lostmail, false)
+  console.info('· forgetful and lostmail (unverified) have the demo password and a reset link')
 
   await resetArticles(ids.confirmed, Object.values(ids))
   console.info('· demo articles: two published (one French-only), one members-only draft')

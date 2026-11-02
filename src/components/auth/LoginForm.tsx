@@ -1,4 +1,4 @@
-import { useRouter } from '@tanstack/solid-router'
+import { Link, useRouter } from '@tanstack/solid-router'
 import { createSignal, Show } from 'solid-js'
 import { signInWithPassword } from '../../lib/auth/auth-actions'
 import { SIGN_IN_ERROR_MESSAGE } from '../../lib/auth/auth-messages'
@@ -115,6 +115,12 @@ export default function LoginForm() {
           {(message) => <span class="text-xs text-danger">{message()}</span>}
         </Show>
       </label>
+      <Link
+        to="/auth/reset-password"
+        class="-mt-2 self-end text-sm font-semibold text-accent hover:underline"
+      >
+        {m.auth_reset_forgot()}
+      </Link>
 
       <button
         type="submit"

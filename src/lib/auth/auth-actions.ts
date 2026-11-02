@@ -1,5 +1,4 @@
 import { createServerFn } from '@tanstack/solid-start'
-import type { RateLimitAction, RateLimitRule } from '../shared/rate-limit'
 import {
   EMAIL_RE,
   isValidEssay,
@@ -74,46 +73,6 @@ export type ApplyResult =
   | { ok: true; applicationId: string }
   | { ok: false; code: ApplyErrorCode }
 
-/**
- * Throttle and bot-check a request before it reaches Better Auth.
- *
- * Better Auth's own rate limiting and captcha plugin hook `onRequest`, so they
- * only cover traffic that arrives at `/api/auth/*`. These flows call
- * `auth.api.*` directly from a server function, which never touches that path —
- * so the protection has to live here or it does not exist at all.
- */
-async function guard(input: {
-  action: RateLimitAction
-  captchaToken?: string | null
-  extraKey?: string
-  extraRule?: RateLimitRule
-}): Promise<
-  { ok: true; ip: string } | { ok: false; code: 'RATE_LIMITED' | 'CAPTCHA_FAILED' }
-> {
-  const [{ getRequest }, { consume, clientIp, RULES: R }] = await Promise.all([
-    import('@tanstack/solid-start/server'),
-    import('../shared/rate-limit'),
-  ])
-  const headers = getRequest().headers
-  const ip = clientIp(headers)
-
-  const byIp = await consume(`${input.action}:ip:${ip}`, R[input.action])
-  if (!byIp.allowed) return { ok: false, code: 'RATE_LIMITED' }
-
-  if (input.extraKey && input.extraRule) {
-    const extra = await consume(input.extraKey, input.extraRule)
-    if (!extra.allowed) return { ok: false, code: 'RATE_LIMITED' }
-  }
-
-  if (input.captchaToken !== undefined) {
-    const { verifyCaptcha } = await import('./captcha')
-    const result = await verifyCaptcha(input.captchaToken, ip)
-    if (!result.ok) return { ok: false, code: 'CAPTCHA_FAILED' }
-  }
-
-  return { ok: true, ip }
-}
-
 export const signInWithPassword = createServerFn({ method: 'POST' })
   .inputValidator((data: { email: string; password: string }) => {
     if (!data || typeof data.email !== 'string' || typeof data.password !== 'string') {
@@ -131,6 +90,7 @@ export const signInWithPassword = createServerFn({ method: 'POST' })
     // Only failures count, and a success clears it, so this cannot be used to
     // lock a member out of their own account by guessing at them.
     const emailKey = `sign-in:email:${data.email}`
+    const { guard } = await import('./guard')
     const gate = await guard({
       action: 'signIn',
       extraKey: emailKey,
@@ -212,6 +172,7 @@ export const signUpReader = createServerFn({ method: 'POST' })
     },
   )
   .handler(async ({ data }): Promise<SignUpResult> => {
+    const { guard } = await import('./guard')
     const gate = await guard({
       action: 'signUp',
       captchaToken: data.captchaToken ?? null,
@@ -277,6 +238,7 @@ export const signUpMember = createServerFn({ method: 'POST' })
     // better than a challenge does, and a captcha would only tax the most
     // committed applicants. Volume abuse is a rate-limiting problem, which the
     // per-IP counter below handles.
+    const { guard } = await import('./guard')
     const gate = await guard({ action: 'signUp' })
     if (!gate.ok) return { ok: false, code: gate.code }
 
@@ -379,6 +341,7 @@ export const signUpInvited = createServerFn({ method: 'POST' })
     },
   )
   .handler(async ({ data }): Promise<SignUpResult> => {
+    const { guard } = await import('./guard')
     const gate = await guard({ action: 'signUp' })
     if (!gate.ok) return { ok: false, code: gate.code }
 
@@ -505,6 +468,7 @@ export const resendVerificationEmail = createServerFn({ method: 'POST' })
   })
   .handler(async ({ data }): Promise<{ ok: boolean }> => {
     // Unthrottled, this is a free way to mail-bomb any address on demand.
+    const { guard } = await import('./guard')
     const gate = await guard({ action: 'resendVerification' })
     if (!gate.ok) return { ok: false }
 
@@ -669,6 +633,7 @@ export const applyForMembership = createServerFn({ method: 'POST' })
     }
   })
   .handler(async ({ data }): Promise<ApplyResult> => {
+    const { guard } = await import('./guard')
     const gate = await guard({ action: 'signUp' })
     if (!gate.ok) return { ok: false, code: 'RATE_LIMITED' }
 

@@ -32,9 +32,11 @@ export default defineConfig({
       // The review flows are not responsive-specific, and running them twice would
       // double the sign-ins — enough to trip our own per-IP rate limit, which
       // buckets every local caller together when no proxy sets
-      // `x-forwarded-for`. Correctness of the flow is covered on chromium.
+      // `x-forwarded-for`. Correctness of the flow is covered on chromium. The
+      // reset tests also spend single-use links the seed made: a second browser
+      // would find them spent.
       testIgnore:
-        /(review|probation|governance|write|deliberation|import|companion|protected-text)\.spec\.ts/,
+        /(review|probation|governance|write|deliberation|import|companion|protected-text|password-reset)\.spec\.ts/,
     },
   ],
   webServer: process.env.E2E_BASE_URL

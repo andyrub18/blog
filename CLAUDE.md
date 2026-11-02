@@ -149,15 +149,25 @@ in the browser can carry active content.
 guard is UX. A `createServerFn` is a public HTTP endpoint and must re-check the
 caller's role itself, every time.
 
-**A guard in `beforeLoad` is paid for by every page; the same guard in a `loader`
-is not.** `beforeLoad` runs before the route's component is resolved, so its
-module — and every server function it calls — sits in the eagerly loaded route
-tree that ships with the entry. A `loader` splits with the route. Moving
-`/apply`'s eligibility check from one to the other took 0.7 KB off the shared
-entry and 0.5 KB off the reading view, a page that has nothing to do with
-applying. Prefer a `loader` unless the check must run before the component
-exists; if a route guard is the only thing standing between a caller and the
+**Whatever a route's definition references is paid for by every page.** The
+route tree ships with the entry, and the router's default splitting takes only
+the component out of it: `beforeLoad`, `loader`, `validateSearch` and every
+server function they call stay in the entry. Moving `/apply`'s eligibility
+check from `beforeLoad` to a `loader` was once measured at 0.7 KB off the shared
+entry, but D38 moved the guest guards on login and register the same way and the
+entry did not change by a byte; measure, do not assume a `loader` splits. What
+did work was removing a guard that ran twice — the register pages repeated their
+layout's — because each copy was a server-function stub in every reader's
+bundle. If a route guard is the only thing standing between a caller and the
 data, the guard is in the wrong place anyway — see the rule above.
+
+**A hook or component no page used before can cost every page.** Rollup groups
+shared code by which pages need it. The reset page's first draft read its query
+with `useSearch`, used `Switch`, and imported `guard` from `auth-actions.ts`.
+Together they split the router's shared chunk and the preload helper out
+into new chunks, and the reading view, which uses none of them, grew 1.1 KB.
+Reach for what the site already ships (`Show`, `useLocation`) and compare
+`npm run budget` before and after.
 
 **Never trust `file.type` on an upload.** It is set by the client. Check magic
 bytes — `stageApplicationPdf` in `src/lib/membership/uploads.ts` is the reference.
@@ -537,8 +547,17 @@ locally without Cloudflare or Resend credentials, set `ALLOW_INSECURE_LOCAL=true
 hook `onRequest`, so they only protect traffic that reaches `/api/auth/*`.
 Sign-in and sign-up go through server functions that call `auth.api.*`
 in-process and never touch that path. Their protection lives in `guard()` in
-`auth-actions.ts`, and any new auth-adjacent server function needs to call it
-too — nothing else will.
+`auth/guard.ts`, and any new auth-adjacent server function needs to call it
+too — nothing else will. Import it inside the handler, as every caller does: a
+static import kept it in the browser's build, and with it the rate limiter and
+the database as browser chunks (D38).
+
+**Password recovery never says whether an account exists.** The request form
+answers the same for any address, and the mail is sent without being awaited so
+that the reply's timing does not tell either (D38). Better Auth's own
+`/request-password-reset` and `/reset-password` are closed over HTTP
+(`disabledPaths`); `password-reset-actions.ts` reaches them in-process, behind
+`guard()` and a limit per address. Reset tokens are stored hashed.
 
 Counters are in Postgres (`auth_throttle`), not memory: an in-memory counter
 resets on deploy and is per-instance, so an attacker gets a fresh budget from

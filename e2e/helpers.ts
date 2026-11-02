@@ -20,6 +20,10 @@ export const ACCOUNTS = {
   confirmed: 'confirmed@kleayiti.test',
   /** Reserved for the blocking test, so it does not lock another test out. */
   blockable: 'blockable@kleayiti.test',
+  /** The reset test changes this password; the seed puts it back. */
+  forgetful: 'forgetful@kleayiti.test',
+  /** Never verified its address; following a reset link does that. */
+  lostmail: 'lostmail@kleayiti.test',
 } as const
 
 /**
@@ -48,11 +52,15 @@ export async function openLanguageMenu(page: Page): Promise<void> {
 }
 
 /** Sign in through the real form, so the session cookie is set the way it is in life. */
-export async function signIn(page: Page, email: string): Promise<void> {
+export async function signIn(
+  page: Page,
+  email: string,
+  password: string = DEMO_PASSWORD,
+): Promise<void> {
   await page.goto('/fr/auth/login')
   await waitForInteractive(page)
   await page.getByLabel(/courriel/i).fill(email)
-  await page.getByLabel(/mot de passe/i).fill(DEMO_PASSWORD)
+  await page.getByLabel(/mot de passe/i).fill(password)
   await page.getByRole('button', { name: /^se connecter$/i }).click()
   await page.waitForURL(/\/fr\/?$/, { timeout: 15_000 })
 }

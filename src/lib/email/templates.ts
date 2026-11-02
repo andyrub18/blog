@@ -90,6 +90,61 @@ export function renderVerificationEmail(input: {
   }
 }
 
+/**
+ * The password-reset link, in the language the person asked in.
+ *
+ * Says how long the link lasts and that nothing changes until it is used:
+ * anybody can ask for a reset in somebody else's name, and the person who
+ * receives one they did not ask for should know they can simply ignore it.
+ */
+export function renderPasswordResetEmail(input: {
+  name: string
+  url: string
+  locale: Locale
+}): RenderedEmail {
+  const { name, url, locale } = input
+  const heading = m.email_reset_heading({}, { locale })
+  const intro = m.email_reset_intro({ name }, { locale })
+  const cta = m.email_reset_cta({}, { locale })
+  const fallback = m.email_verify_fallback({}, { locale })
+  const expiry = m.email_reset_expiry({}, { locale })
+  const ignore = m.email_reset_ignore({}, { locale })
+  const signoff = m.email_common_signoff({}, { locale })
+  const footer = m.email_common_footer({}, { locale })
+
+  const body = `
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.6">${escapeHtml(intro)}</p>
+    <p style="margin:0 0 20px">
+      <a href="${escapeHtml(url)}" style="display:inline-block;background:#1b3fa0;color:#ffffff;text-decoration:none;padding:11px 20px;border-radius:4px;font-size:15px;font-weight:600">${escapeHtml(cta)}</a>
+    </p>
+    <p style="margin:0 0 6px;font-size:13px;color:#4a5462">${escapeHtml(fallback)}</p>
+    <p style="margin:0 0 20px;font-size:13px;word-break:break-all"><a href="${escapeHtml(url)}" style="color:#1b3fa0">${escapeHtml(url)}</a></p>
+    <p style="margin:0 0 12px;font-size:13px;color:#4a5462">${escapeHtml(expiry)}</p>
+    <p style="margin:0;font-size:13px;color:#727d8c">${escapeHtml(ignore)}</p>`
+
+  const text = [
+    heading,
+    '',
+    intro,
+    '',
+    `${cta}:`,
+    url,
+    '',
+    expiry,
+    '',
+    ignore,
+    '',
+    signoff,
+    footer,
+  ].join('\n')
+
+  return {
+    subject: m.email_reset_subject({}, { locale }),
+    html: layout(locale, escapeHtml(heading), body),
+    text,
+  }
+}
+
 /** The cooptation invitation, naming the sponsor who vouched. */
 export function renderInvitationEmail(input: {
   sponsor: string
