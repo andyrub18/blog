@@ -23,17 +23,18 @@ must have before that page is interactive.
 
 | Page | Client JS, gzipped |
 |---|---|
-| Shared entry, on every page | **94.6 KB** |
-| `/articles/{slug}` — the reading view | **98.8 KB** |
-| `/articles` | 97.0 KB |
-| `/` — the home page | 97.6 KB |
-| `/articles/{slug}/discussion` — the forum | 103.8 KB (opened from an article) |
-| `/write/{id}` — the editor, before TipTap loads | 119.9 KB (author screen) |
+| Shared entry, on every page | **94.8 KB** |
+| `/articles/{slug}` — the reading view | **99.0 KB** |
+| `/articles` | 97.2 KB |
+| `/` — the home page | 97.8 KB |
+| `/articles/{slug}/discussion` — the forum | 104.0 KB (opened from an article) |
+| `/write/{id}` — the editor, before TipTap loads | 120.1 KB (author screen) |
 | TipTap itself, fetched only when the editor mounts | +126 KB, in two chunks |
 
-**The budget is met, with 1.2 KB of headroom.** It was not, for three phases:
+**The budget is met, with 1.0 KB of headroom.** It was not, for three phases:
 the reading view peaked at 103.8 KB after phase 3. Two things fixed it, and a
-third gave 0.5 KB back afterwards — see the trend below.
+third gave 0.5 KB back afterwards — see the trend below. The patched `seroval`
+took 0.2 KB of it back (D34).
 
 **TanStack Query was in every page and nothing used it.** The scaffold put a
 `QueryClient` in the router context and it had been shipping to every reader
