@@ -1,16 +1,11 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
-import { createServerFn } from '@tanstack/solid-start'
 import RegisterReaderForm from '../../../../components/auth/RegisterReaderForm'
 import { m } from '../../../../paraglide/messages'
 
-const ensureGuest = createServerFn({ method: 'GET' }).handler(async () => {
-  const { redirectIfAuthenticated } = await import('../../../../lib/auth/session.server')
-
-  await redirectIfAuthenticated()
-})
-
+// No guard of its own: the `/auth/register` layout turns a signed-in visitor
+// away before this page loads. A second copy here was a second server-function
+// stub in the bundle every page loads, for a check that had already run.
 export const Route = createFileRoute('/_app/auth/register/reader')({
-  beforeLoad: () => ensureGuest(),
   component: RegisterReaderPage,
 })
 

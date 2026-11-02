@@ -48,6 +48,18 @@ export const RULES = {
   signInPerEmail: { limit: 10, windowSeconds: 60 * 60 },
   signUp: { limit: 5, windowSeconds: 60 * 60 },
   resendVerification: { limit: 5, windowSeconds: 60 * 60 },
+  /**
+   * A reset request sends mail to whatever address it names, so it has the
+   * limits of a mailer someone else controls: per address, so one inbox cannot
+   * be flooded from many connections, and per IP, looser than that, so one
+   * connection cannot walk through a list. Three an hour also caps what a
+   * stranger can do to someone's own resets: delay them by an hour, no more.
+   */
+  requestPasswordReset: { limit: 10, windowSeconds: 60 * 60 },
+  requestPasswordResetPerEmail: { limit: 3, windowSeconds: 60 * 60 },
+  // The token is 24 random characters and expires in an hour; this is not what
+  // stops guessing it. It keeps the endpoint from being a free probe.
+  resetPassword: { limit: 10, windowSeconds: 15 * 60 },
   // The invitation lookup is public by necessity — the holder has no account
   // yet. A 32-byte token is not guessable, so this is not really brute-force
   // defence; it stops the endpoint being used as a free probe.

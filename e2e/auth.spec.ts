@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { waitForInteractive } from './helpers'
+import { ACCOUNTS, signIn, waitForInteractive } from './helpers'
 
 /**
  * Sign-in and registration form behaviour.
@@ -70,5 +70,18 @@ test.describe('reader registration', () => {
     await waitForInteractive(page)
     await page.getByRole('button', { name: /Créer mon compte/i }).click()
     await expect(page.locator('[aria-invalid="true"]')).not.toHaveCount(0)
+  })
+
+  /**
+   * The `/auth/register` layout is the only guard on these pages; the copies
+   * each page used to carry were removed to make room in the bundle.
+   */
+  test('turns away somebody already signed in', async ({ page }) => {
+    test.skip(needsDb, 'requires E2E_DATABASE and seeded accounts')
+    await signIn(page, ACCOUNTS.reader)
+    for (const path of ['/fr/auth/register/reader', '/fr/auth/register/member']) {
+      await page.goto(path)
+      await expect(page).toHaveURL(/\/fr\/?$/)
+    }
   })
 })

@@ -980,6 +980,88 @@ Two things brought the page back under:
 
 The reading view: 99.7 KB, by the gauge and by the browser. 0.3 KB of headroom.
 
+## D38 — Password recovery
+
+Until now a member who lost their password had no way back in, and nobody
+could restore one for them: no admin screen sets passwords, on purpose.
+Recovery is a link sent to the address on the account, and it has to work
+without turning the reset form into a way to test addresses.
+
+**One page, two states.** `/auth/reset-password` asks for an address. The
+link in the mail goes to Better Auth's `/api/auth/reset-password/<token>`,
+which checks the token and comes back to the same page with `?token=` (or
+`?error=INVALID_TOKEN` when it is expired or spent), and the page asks for the
+new password, twice. The link lands in the language of the mail (D23). The
+sign-in form has a "Mot de passe oublié ?" link.
+
+**What it refuses to say.** The request is answered the same for any address:
+"if an account exists for this address, a link has just been sent". Better
+Auth already fakes its database work for an unknown address, but it awaits the
+mail callback for a known one, so a slow mailer would have answered "yes, a
+member" in the timing of the reply. `sendResetPassword` sends without awaiting;
+the mailer logs its own failures, never the link. Locally, a known address
+answered in 69–100 ms and an unknown one in 58–69. That is warm-up and an insert
+against a lookup, not the mail.
+
+**What a reset does.** It signs the account out everywhere
+(`revokeSessionsOnPasswordReset`). Somebody resets either because the password
+is lost or because somebody else has it, and in the second case a surviving
+session keeps the intruder in. It also verifies the address
+(`onPasswordReset`): following a link sent to an address proves it as well as
+the verification mail does, and without this a person whose verification mail
+never arrived could reset and still be refused at sign-in.
+
+**What it keeps out.**
+
+- Better Auth's `/request-password-reset` and `/reset-password` are closed over
+  HTTP (`disabledPaths`). Open, the first would mail any address with only a
+  per-IP limit in the way. The server functions in `password-reset-actions.ts`
+  call both in-process, behind `guard()`: ten requests an hour per connection,
+  three per address. The address limit caps what a stranger can do to
+  somebody's resets: delay them an hour.
+- Tokens are stored as their SHA-256 (`verification.storeIdentifier`). A
+  backup is another copy of the database (SECURITY.md P4), and should not hold
+  working links.
+- The rate-limit rules named `/forget-password`, which is no longer a path in
+  Better Auth; they are gone.
+
+**What it cost, and where the bytes came from.** The first version cost the
+reading view 1.1 KB, with 0.3 KB of headroom. None of it was the page:
+
+- `useSearch` and `Switch` were new to the client, and Rollup split the
+  router's shared chunk to give them homes.
+- `guard`, exported from `auth-actions.ts` for the new module to import, stayed
+  in the browser's copy of it. Its dynamic imports, the rate limiter, the
+  captcha check and through them the database, were emitted as browser chunks.
+  Their use of Vite's preload helper moved the helper into a chunk of its own,
+  which every route stub then imported.
+
+`guard` now lives in `auth/guard.ts`, imported inside each handler. The page
+reads its query with `useLocation`, already shipped for the language switcher,
+and uses `Show`. A `loader` in place of `useSearch` did not help: the router's
+default splitting leaves loaders in the entry. Moving the guest guards on login
+and register from `beforeLoad` to `loader` was measured too, and moved nothing.
+What paid for the route was a duplicate: `/auth/register/reader` and `/member`
+each re-ran the guard their layout already runs, two server-function stubs in
+every reader's bundle. They are gone, and `e2e/auth.spec.ts` checks the layout
+still turns a signed-in visitor away.
+
+The reading view: 99.9 KB by the gauge and by a browser. 0.1 KB of headroom.
+
+**Tests.** `e2e/password-reset.spec.ts` follows the real link. The demo seed
+stores a known token, hashed the way Better Auth stores one, for two accounts
+reserved for it, and puts their passwords back on every run. The tests check:
+
+- the same answer for a known and an unknown address;
+- a dead link coming back in the mail's language;
+- the passwords asked twice;
+- another session signed out;
+- the old password refused, the new one accepted;
+- the link spent after one use;
+- an unverified account verified by the reset;
+- both closed endpoints answering 404.
+
+The spec runs on one browser only, because the links work once.
 ## D37 — The access log is written only from our own pages
 
 The session cookie is `sameSite: 'lax'`, so a browser attaches it to any

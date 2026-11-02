@@ -64,4 +64,12 @@ describe('RULES', () => {
   it('throttles verification resends, which would otherwise be a mail bomb', () => {
     expect(RULES.resendVerification.limit).toBeLessThanOrEqual(5)
   })
+
+  /** A reset request mails whatever address it names, from any connection. */
+  it('throttles reset requests per address, tighter than per connection', () => {
+    expect(RULES.requestPasswordResetPerEmail.limit).toBeLessThanOrEqual(3)
+    expect(RULES.requestPasswordResetPerEmail.limit).toBeLessThan(
+      RULES.requestPasswordReset.limit,
+    )
+  })
 })

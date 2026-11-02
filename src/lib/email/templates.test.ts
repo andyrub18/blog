@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderVerificationEmail } from './templates'
+import { renderPasswordResetEmail, renderVerificationEmail } from './templates'
 
 const URL_ = 'https://kleayiti.com/api/auth/verify-email?token=abc123'
 
@@ -74,5 +74,49 @@ describe('renderVerificationEmail', () => {
       locale: 'fr',
     })
     expect(mail.html).toContain('token=a&amp;callback=b')
+  })
+})
+
+describe('renderPasswordResetEmail', () => {
+  const RESET_URL =
+    'https://kleayiti.com/api/auth/reset-password/tok?callbackURL=%2Fht%2Fauth%2Freset-password'
+
+  it('renders in the language it was asked in', () => {
+    const mail = renderPasswordResetEmail({
+      name: 'Anderson',
+      url: RESET_URL,
+      locale: 'ht',
+    })
+    expect(mail.subject).toContain('modpas')
+    expect(mail.html).toContain('Bonjou Anderson')
+    expect(mail.html).toContain('lang="ht"')
+  })
+
+  it('carries the link in the button and as plain text', () => {
+    const mail = renderPasswordResetEmail({ name: 'A', url: RESET_URL, locale: 'fr' })
+    expect(mail.html).toContain(`href="${RESET_URL}"`)
+    expect(mail.text).toContain(RESET_URL)
+    expect(mail.text).not.toContain('<')
+  })
+
+  /**
+   * Anybody can ask for a reset in somebody else's name. The person who gets
+   * one they did not ask for has to be told that nothing changes unless they
+   * use it, and that the link does not last.
+   */
+  it('says the link expires and can be ignored', () => {
+    const mail = renderPasswordResetEmail({ name: 'A', url: RESET_URL, locale: 'fr' })
+    expect(mail.text).toContain('une heure')
+    expect(mail.text).toContain('ne change pas')
+  })
+
+  it('escapes a hostile display name', () => {
+    const mail = renderPasswordResetEmail({
+      name: '<img src=x onerror="alert(1)">',
+      url: RESET_URL,
+      locale: 'fr',
+    })
+    expect(mail.html).not.toContain('<img')
+    expect(mail.html).toContain('&lt;img')
   })
 })

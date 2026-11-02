@@ -46,6 +46,7 @@ const PAGES = [
   '/fr/articles/sitiyasyon-ekonomik-nan-peyi-a/discussion',
   '/fr/auth/login',
   '/fr/auth/register/reader',
+  '/fr/auth/reset-password',
 ]
 
 for (const path of PAGES) {

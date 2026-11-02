@@ -16,6 +16,7 @@ import { Route as AppArticlesIndexRouteImport } from './routes/_app/articles/ind
 import { Route as AppArticlesSlugRouteImport } from './routes/_app/articles/$slug'
 import { Route as AppAuthLoginRouteImport } from './routes/_app/auth/login'
 import { Route as AppAuthRegisterRouteImport } from './routes/_app/auth/register'
+import { Route as AppAuthResetPasswordRouteImport } from './routes/_app/auth/reset-password'
 import { Route as AppReviewIndexRouteImport } from './routes/_app/review/index'
 import { Route as AppReviewApplicationIdRouteImport } from './routes/_app/review/$applicationId'
 import { Route as AppReviewInvitationsRouteImport } from './routes/_app/review/invitations'
@@ -68,6 +69,11 @@ const AppAuthLoginRoute = AppAuthLoginRouteImport.update({
 const AppAuthRegisterRoute = AppAuthRegisterRouteImport.update({
   id: '/auth/register',
   path: '/auth/register',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAuthResetPasswordRoute = AppAuthResetPasswordRouteImport.update({
+  id: '/auth/reset-password',
+  path: '/auth/reset-password',
   getParentRoute: () => AppRoute,
 } as any)
 const AppReviewIndexRoute = AppReviewIndexRouteImport.update({
@@ -174,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/articles/$slug': typeof AppArticlesSlugRoute
   '/auth/login': typeof AppAuthLoginRoute
   '/auth/register': typeof AppAuthRegisterRouteWithChildren
+  '/auth/reset-password': typeof AppAuthResetPasswordRoute
   '/review/$applicationId': typeof AppReviewApplicationIdRoute
   '/review/invitations': typeof AppReviewInvitationsRoute
   '/review/members': typeof AppReviewMembersRoute
@@ -200,6 +207,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/articles/$slug': typeof AppArticlesSlugRoute
   '/auth/login': typeof AppAuthLoginRoute
+  '/auth/reset-password': typeof AppAuthResetPasswordRoute
   '/review/$applicationId': typeof AppReviewApplicationIdRoute
   '/review/invitations': typeof AppReviewInvitationsRoute
   '/review/members': typeof AppReviewMembersRoute
@@ -229,6 +237,7 @@ export interface FileRoutesById {
   '/_app/articles/$slug': typeof AppArticlesSlugRoute
   '/_app/auth/login': typeof AppAuthLoginRoute
   '/_app/auth/register': typeof AppAuthRegisterRouteWithChildren
+  '/_app/auth/reset-password': typeof AppAuthResetPasswordRoute
   '/_app/review/$applicationId': typeof AppReviewApplicationIdRoute
   '/_app/review/invitations': typeof AppReviewInvitationsRoute
   '/_app/review/members': typeof AppReviewMembersRoute
@@ -258,6 +267,7 @@ export interface FileRouteTypes {
     | '/articles/$slug'
     | '/auth/login'
     | '/auth/register'
+    | '/auth/reset-password'
     | '/review/$applicationId'
     | '/review/invitations'
     | '/review/members'
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/'
     | '/articles/$slug'
     | '/auth/login'
+    | '/auth/reset-password'
     | '/review/$applicationId'
     | '/review/invitations'
     | '/review/members'
@@ -312,6 +323,7 @@ export interface FileRouteTypes {
     | '/_app/articles/$slug'
     | '/_app/auth/login'
     | '/_app/auth/register'
+    | '/_app/auth/reset-password'
     | '/_app/review/$applicationId'
     | '/_app/review/invitations'
     | '/_app/review/members'
@@ -390,6 +402,13 @@ declare module '@tanstack/solid-router' {
       path: '/auth/register'
       fullPath: '/auth/register'
       preLoaderRoute: typeof AppAuthRegisterRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/auth/reset-password': {
+      id: '/_app/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AppAuthResetPasswordRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/review/': {
@@ -552,6 +571,7 @@ interface AppRouteChildren {
   AppArticlesSlugRoute: typeof AppArticlesSlugRoute
   AppAuthLoginRoute: typeof AppAuthLoginRoute
   AppAuthRegisterRoute: typeof AppAuthRegisterRouteWithChildren
+  AppAuthResetPasswordRoute: typeof AppAuthResetPasswordRoute
   AppReviewApplicationIdRoute: typeof AppReviewApplicationIdRoute
   AppReviewInvitationsRoute: typeof AppReviewInvitationsRoute
   AppReviewMembersRoute: typeof AppReviewMembersRoute
@@ -573,6 +593,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppArticlesSlugRoute: AppArticlesSlugRoute,
   AppAuthLoginRoute: AppAuthLoginRoute,
   AppAuthRegisterRoute: AppAuthRegisterRouteWithChildren,
+  AppAuthResetPasswordRoute: AppAuthResetPasswordRoute,
   AppReviewApplicationIdRoute: AppReviewApplicationIdRoute,
   AppReviewInvitationsRoute: AppReviewInvitationsRoute,
   AppReviewMembersRoute: AppReviewMembersRoute,
