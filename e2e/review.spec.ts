@@ -36,6 +36,12 @@ test('a senior member reviews a dossier and approves it', async ({ page }) => {
   await waitForInteractive(page)
   await expect(page.getByText(ACCOUNTS.applicant)).toBeVisible()
 
+  const reads: Array<string> = []
+  page.on('request', (request) => {
+    if (request.method() === 'GET' && request.url().includes('/_serverFn/')) {
+      reads.push(request.url())
+    }
+  })
   await page
     .getByRole('listitem')
     .filter({ hasText: ACCOUNTS.applicant })
@@ -43,17 +49,46 @@ test('a senior member reviews a dossier and approves it', async ({ page }) => {
     .click()
   await expect(page.getByText(/Plan de contribution/i)).toBeVisible()
 
-  // The dossier is downloadable, and only as an attachment.
-  const href = await page
-    .getByRole('link', { name: /Télécharger le CV/i })
-    .getAttribute('href')
-  const file = await page.request.get(href as string)
+  // Opening the application writes to the access log, so the reads the page
+  // made answer only the page. Replayed with the cookie and nothing about where
+  // they came from — what a link elsewhere sends from a browser without fetch
+  // metadata — each is refused (D37).
+  expect(reads.length).toBeGreaterThan(0)
+  for (const url of reads) {
+    expect((await page.request.get(url, { maxRedirects: 0 })).status()).toBe(403)
+  }
+
+  // The dossier downloads from its page, and only as an attachment.
+  const cv = page.getByRole('link', { name: /Télécharger le CV/i })
+  const [file] = await Promise.all([
+    page.waitForResponse((response) => response.url().includes('/api/dossier/')),
+    page.waitForEvent('download'),
+    cv.click(),
+  ])
   expect(file.status()).toBe(200)
   expect(file.headers()['content-type']).toContain('application/pdf')
   // A PDF rendered inline can carry active content.
   expect(file.headers()['content-disposition']).toContain('attachment')
   expect(file.headers()['x-content-type-options']).toBe('nosniff')
   expect(file.headers()['cache-control']).toContain('no-store')
+
+  // The same link on another site is refused. The session cookie travels with
+  // it, and the download would put this senior's name in the access log for a
+  // file they never chose to open (D37).
+  const elsewhere = await page.context().newPage()
+  await elsewhere.route('http://elsewhere.test/', (route) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: `<a href="${file.url()}">CV</a>`,
+    }),
+  )
+  await elsewhere.goto('http://elsewhere.test/')
+  const [refused] = await Promise.all([
+    elsewhere.waitForResponse((response) => response.url().includes('/api/dossier/')),
+    elsewhere.getByRole('link').click(),
+  ])
+  expect(refused.status()).toBe(403)
+  await elsewhere.close()
 
   // A decision with no written reason is refused.
   await page.getByRole('button', { name: /^Approuver$/i }).click()
