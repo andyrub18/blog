@@ -1,14 +1,13 @@
 import { render, screen } from '@solidjs/testing-library'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const push = vi.fn()
 const setLocale = vi.fn()
 let currentLocale = 'fr'
+let location = { pathname: '/fr/auth/login', searchStr: '' }
 
 vi.mock('@tanstack/solid-router', () => ({
-  useRouter: () => ({ history: { push } }),
-  useLocation: () => () => ({ pathname: '/fr/auth/login' }),
+  useLocation: () => () => location,
 }))
 
 // Partial mock: the compiled messages import other runtime exports, so
@@ -21,49 +20,70 @@ vi.mock('../paraglide/runtime', async (importOriginal) => ({
 
 const { default: LanguageSwitcher } = await import('./LanguageSwitcher')
 
+/** jsdom cannot follow a link; the browser's half of the click is not under test. */
+const stayPut = (event: Event) => event.preventDefault()
+
 describe('LanguageSwitcher', () => {
   beforeEach(() => {
-    push.mockClear()
     setLocale.mockClear()
     currentLocale = 'fr'
+    location = { pathname: '/fr/auth/login', searchStr: '' }
+    document.addEventListener('click', stayPut)
   })
+  afterEach(() => document.removeEventListener('click', stayPut))
 
   it('offers every supported language by its own name', () => {
     render(() => <LanguageSwitcher />)
-    expect(screen.getByRole('button', { name: 'Français' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Kreyòl' })).toBeInTheDocument()
+    for (const name of ['Français', 'Kreyòl', 'English', 'Español']) {
+      expect(screen.getByRole('link', { name })).toBeInTheDocument()
+    }
   })
 
   it('marks the active language for assistive technology', () => {
     render(() => <LanguageSwitcher />)
-    expect(screen.getByRole('button', { name: 'Français' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Français' })).toHaveAttribute(
       'aria-current',
       'true',
     )
-    expect(screen.getByRole('button', { name: 'Kreyòl' })).not.toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Kreyòl' })).not.toHaveAttribute(
       'aria-current',
     )
   })
 
-  it('keeps the reader on the same page when switching language', async () => {
-    const user = userEvent.setup()
+  it('links to the same page in the other language', () => {
     render(() => <LanguageSwitcher />)
-    await user.click(screen.getByRole('button', { name: 'Kreyòl' }))
-
-    expect(setLocale).toHaveBeenCalledWith('ht', { reload: false })
     // /fr/auth/login -> /ht/auth/login, not back to the home page, and not
     // /ht/fr/auth/login — the old prefix must be stripped before the new one.
     // Real deLocalizeHref/localizeHref run here, so this exercises the actual
     // URL patterns from src/i18n/paraglide-options.ts.
-    expect(push).toHaveBeenCalledWith(expect.stringMatching(/^\/ht\/auth\/login$/))
+    expect(screen.getByRole('link', { name: 'Kreyòl' })).toHaveAttribute(
+      'href',
+      '/ht/auth/login',
+    )
+  })
+
+  it('keeps the query string, so an invitation survives a change of language', () => {
+    location = { pathname: '/fr/auth/register/invited', searchStr: '?token=abc123' }
+    render(() => <LanguageSwitcher />)
+    expect(screen.getByRole('link', { name: 'Español' })).toHaveAttribute(
+      'href',
+      '/es/auth/register/invited?token=abc123',
+    )
+  })
+
+  it('remembers the choice for the next unprefixed visit', async () => {
+    const user = userEvent.setup()
+    render(() => <LanguageSwitcher />)
+    await user.click(screen.getByRole('link', { name: 'Kreyòl' }))
+
+    expect(setLocale).toHaveBeenCalledWith('ht', { reload: false })
   })
 
   it('does nothing when the active language is chosen again', async () => {
     const user = userEvent.setup()
     render(() => <LanguageSwitcher />)
-    await user.click(screen.getByRole('button', { name: 'Français' }))
+    await user.click(screen.getByRole('link', { name: 'Français' }))
 
     expect(setLocale).not.toHaveBeenCalled()
-    expect(push).not.toHaveBeenCalled()
   })
 })

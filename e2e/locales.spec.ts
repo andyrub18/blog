@@ -70,9 +70,9 @@ test('an article written in both languages falls back to the base locale', async
 test('every interface language is reachable from the switcher', async ({ page }) => {
   await page.goto(`/fr/articles/${BOTH_LANGUAGES}`)
   await openLanguageMenu(page)
-  const switcher = page.getByRole('group', { name: /Changer de langue/i })
+  const switcher = page.getByRole('navigation', { name: /Changer de langue/i })
   for (const label of ['Français', 'Kreyòl', 'English', 'Español']) {
-    await expect(switcher.getByRole('button', { name: label })).toBeVisible()
+    await expect(switcher.getByRole('link', { name: label })).toBeVisible()
   }
 })
 

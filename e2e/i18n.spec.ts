@@ -25,14 +25,19 @@ test.describe('language routing', () => {
   test('switching language keeps you on the same page', async ({ page }) => {
     await page.goto('/fr/auth/login')
     await openLanguageMenu(page)
-    await page.getByRole('button', { name: 'Kreyòl' }).click()
+    await page.getByRole('link', { name: 'Kreyòl' }).click()
     await expect(page).toHaveURL(/\/ht\/auth\/login\/?$/)
+    // The page itself, not only its address. Switching used to change the URL
+    // over a page that stayed in French, and this test, checking the URL alone,
+    // passed throughout.
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ht')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Byenveni')
   })
 
   test('the language choice survives a reload', async ({ page }) => {
     await page.goto('/fr')
     await openLanguageMenu(page)
-    await page.getByRole('button', { name: 'Kreyòl' }).click()
+    await page.getByRole('link', { name: 'Kreyòl' }).click()
     await expect(page).toHaveURL(/\/ht\/?$/)
     await page.reload()
     await expect(page).toHaveURL(/\/ht\/?$/)
