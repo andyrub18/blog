@@ -2,15 +2,8 @@ import { LOCALE_LABELS, type Locale } from '../../i18n'
 import { m } from '../../paraglide/messages'
 import { localizeHref } from '../../paraglide/runtime'
 import type { Role } from '../db/schema'
-import {
-  ICON_APPLICATIONS,
-  ICON_APPLY,
-  ICON_BOOK,
-  ICON_DELIBERATION,
-  ICON_PEN,
-  ICON_PROBATION,
-  iconSvg,
-} from '../shared/icons'
+import { ICON_APPLICATIONS, ICON_APPLY, ICON_BOOK, ICON_PEN } from '../shared/icons'
+import { ICON_DELIBERATION, ICON_PROBATION, iconSvg } from '../shared/icons-workspace'
 import type { ArticleCard } from './articles'
 import { escapeHtml as e } from './prosemirror'
 
@@ -22,7 +15,7 @@ import { escapeHtml as e } from './prosemirror'
  * on how a text gets published, three steps, two kinds of account. Written as
  * components, every one of those sentences shipped to the browser in all four
  * languages, because a Paraglide message carries every translation — the home
- * page measured 105.9 KB against a 100 KB budget. Rendered here, the reader gets
+ * page cost 7 KB more than the same page rendered here. Rendered here, the reader gets
  * one language, as HTML, and the page ships no JavaScript of its own: the
  * reading view's approach (`renderOutlineToHtml`), for the same reason.
  *

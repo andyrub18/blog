@@ -18,26 +18,30 @@ find .output/public/assets -name '*.js' | while read f; do gzip -c "$f" | wc -c;
 
 The number that matters is per page, not the total across every route. Measure
 it with `npm run build && npm run budget`, which walks Vite's manifest and sums
-the static import closure of the entry plus one route — the chunks a browser
-must have before that page is interactive.
+the static import closure of the entry, the layouts, and one route — the chunks
+a browser must have before that page is interactive. The layouts were missing
+until D36, and every figure the gauge printed while the header lived in one was
+5.6 KB too low.
 
 | Page | Client JS, gzipped |
 |---|---|
-| Shared entry, on every page | **95.9 KB** |
-| `/articles/{slug}` — the reading view | **99.4 KB** |
-| `/articles` | 96.2 KB |
-| `/` — the home page | 96.1 KB |
-| `/articles/{slug}/discussion` — the forum | 104.9 KB (opened from an article) |
-| `/write/{id}` — the editor, before TipTap loads | 121.2 KB (author screen) |
+| Shared entry and layout, on every page | **96.4 KB** |
+| `/articles/{slug}` — the reading view | **99.7 KB** |
+| `/articles` | 96.6 KB |
+| `/` — the home page | 96.6 KB |
+| `/articles/{slug}/discussion` — the forum | 105.2 KB (opened from an article) |
+| `/write/{id}` — the editor, before TipTap loads | 126.3 KB (author screen) |
 | TipTap itself, fetched only when the editor mounts | +126 KB, in two chunks |
 
-**The budget is met, with 0.6 KB of headroom.** It was not, for three phases:
-the reading view peaked at 103.8 KB after phase 3. Two things fixed it, and a
-third gave 0.5 KB back afterwards — see the trend below. The patched `seroval`
-took 0.2 KB of it back (D34), and the header and footer every page now carries
-took 0.3 KB more (D35). The editor's icons and file picker took 0.1 KB from
-every page without being on any of them: four routes now list those shared
-files by name in the preload lists that ship with the entry.
+**The budget is met, with 0.3 KB of headroom** — measured the same in a
+browser loading a production build. It was not, for three phases: the reading
+view peaked at 103.8 KB after phase 3. Two things fixed it, and a third gave
+0.5 KB back afterwards — see the trend below. It was not again after the
+interface (D35): the header, footer and their icons came to 6 KB on every
+page, and the gauge, blind to the layout they live in, reported 99.4 KB for a
+page that downloaded 105.1. Loading the URLPattern polyfill only where a
+browser lacks `URLPattern` gave 4.7 KB back, and trimming what the header and
+footer import gave the rest (D36).
 
 **TanStack Query was in every page and nothing used it.** The scaffold put a
 `QueryClient` in the router context and it had been shipping to every reader

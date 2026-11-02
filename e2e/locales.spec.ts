@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { openLanguageMenu } from './helpers'
+import { openLanguageMenu, waitForInteractive } from './helpers'
 
 /**
  * The four interface languages, and what a reader gets in each.
@@ -92,4 +92,40 @@ test('a Spanish article page loads no editor and no forum script', async ({ page
   await page.goto(`/es/articles/${BOTH_LANGUAGES}`)
   expect(scripts.filter((url) => /ArticleEditor/i.test(url))).toEqual([])
   expect(scripts.filter((url) => /DiscussionThread|PostComposer/i.test(url))).toEqual([])
+})
+
+/**
+ * The URLPattern polyfill, which `src/client.tsx` fetches only where it is
+ * missing (older Safari, older Firefox). It used to ship to every reader: 6.1 KB
+ * on every page, for the few browsers that need it.
+ */
+test.describe('the URLPattern polyfill', () => {
+  test('a browser that has URLPattern never downloads it', async ({ page }) => {
+    const scripts: Array<string> = []
+    page.on('request', (r) => {
+      if (r.resourceType() === 'script') scripts.push(r.url())
+    })
+    await page.goto(`/fr/articles/${BOTH_LANGUAGES}`)
+    await waitForInteractive(page)
+    expect(scripts.filter((url) => /urlpattern/i.test(url))).toEqual([])
+  })
+
+  test('a browser without it still starts, and still changes language', async ({
+    page,
+  }) => {
+    // Before any script on the page runs: the browser the polyfill is for.
+    await page.addInitScript(() => {
+      delete (globalThis as { URLPattern?: unknown }).URLPattern
+    })
+    const scripts: Array<string> = []
+    page.on('request', (r) => {
+      if (r.resourceType() === 'script') scripts.push(r.url())
+    })
+    await page.goto(`/fr/articles/${BOTH_LANGUAGES}`)
+    await openLanguageMenu(page)
+    expect(scripts.some((url) => /urlpattern/i.test(url))).toBe(true)
+
+    await page.getByRole('link', { name: 'Kreyòl' }).click()
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ht')
+  })
 })

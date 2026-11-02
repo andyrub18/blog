@@ -9,13 +9,14 @@ const LINK = 'block py-2.5 text-[15px] text-neutral-700 hover:text-accent hover:
  * The foot of every page: who this is, and the two doors a newcomer looks for.
  *
  * Deliberately short. It ships with every page, so each message in it is paid
- * for by the reader of every article; everything here is already in the header
- * except the sentence that reading needs no account.
+ * for by the reader of every article: everything here is already in the header.
+ * That reading needs no account is said where it decides something — on the
+ * sign-in and account pages.
  */
 export default function SiteFooter(props: { user: SessionUser | null }) {
   return (
     <footer class="border-t border-line bg-surface">
-      <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 pt-10 pb-6 md:flex-row md:justify-between md:px-6">
+      <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 pt-10 pb-10 md:flex-row md:justify-between md:px-6">
         <div class="flex max-w-md flex-col gap-3">
           <div class="flex items-center gap-2.5">
             <img
@@ -47,9 +48,6 @@ export default function SiteFooter(props: { user: SessionUser | null }) {
           </Show>
         </div>
       </div>
-      <p class="mx-auto max-w-6xl border-t border-line px-4 pt-4 pb-8 text-[13px] text-muted md:px-6">
-        {m.common_readingIsFree()}
-      </p>
     </footer>
   )
 }

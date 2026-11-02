@@ -19,7 +19,7 @@ before touching auth, uploads, or anything that reads a dossier.
 
 **2. First-load weight is a feature, not a nicety.** Readers arrive on slow,
 metered Haitian mobile data. The budget is **under 100 KB gzipped** of client
-JS for an article page, and it currently has about **0.6 KB** of headroom — the
+JS for an article page, and it currently has about **0.3 KB** of headroom — the
 next thing added to that page has to find bytes before it spends them.
 Measure before and after any dependency addition:
 
@@ -201,7 +201,7 @@ body; the stylesheet alone makes it a column beside the text on a wide screen.
 home page and the article index come from `lib/articles/front-page.ts` as HTML in
 the reader's language, the reading view's approach applied to whole pages. A
 Paraglide message ships *every* translation to the browser, so as components the
-home page's explanation cost 105.9 KB against the budget; as HTML it is 96.0 KB.
+home page's explanation cost 7 KB more than the same page as HTML.
 The same rules hold: escape every value and every message, emit localized
 `<a href>`, and keep the result for `innerHTML` only because the renderer wrote
 it. A page with anything to *do* — a form, a poller — stays a component.
@@ -425,6 +425,15 @@ becomes `auth_login_title`. For a message chosen at runtime (an error code, say)
 map the code to the **message function**, not to a key string — a dynamic key
 lookup defeats tree-shaking. `ERROR_MESSAGE` in `LoginForm.tsx` shows the shape.
 
+**The URLPattern polyfill loads only where it is missing.** Paraglide's runtime
+imports it unconditionally — 6.1 KB on every page, for the few browsers without
+`URLPattern`. `urlPatternOnDemand` in `vite.config.ts` turns that import into an
+empty module in the client build, and `src/client.tsx` fetches the polyfill
+before the app starts, only when `URLPattern` is absent. Nothing may call
+`URLPattern` before that entry runs; `e2e/locales.spec.ts` deletes it from the
+page and checks the site still starts. A dev server started before
+`src/client.tsx` existed keeps Start's default entry: restart it.
+
 Adding an **interface** locale: add the code to `LOCALES` and `LOCALE_LABELS` in
 `src/i18n/index.ts`, add `messages/<code>.json`, add it to
 `project.inlang/settings.json`, and add a `urlPatterns` entry in
@@ -473,6 +482,13 @@ Three layers — three Vitest projects plus Playwright:
   `src/routes/_app.tsx` sets `data-hydrated` on `<html>` once the client takes
   over, and the helper waits for it. Without it the suite passes on a warm
   server and fails on a cold one.
+
+`npm run budget` counts the layouts as well as the page. A layout's component is
+split from the entry like a page's, and the gauge once walked only the entry and
+the page: when `_app`'s component took on the header and footer it was 5.6 KB
+loaded by every page and counted on none, and the gauge read 99.4 KB for an
+article page whose browser downloaded 105.1 (D36). Check a change to the layout
+against what a browser actually fetches, not only against the gauge.
 
 `npm run budget` matches route files by an anchored `.tsx` key, not a prefix. It
 once used a prefix, and `articles/$slug` silently matched
