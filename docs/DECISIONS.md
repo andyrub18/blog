@@ -979,3 +979,75 @@ Two things brought the page back under:
   who pays for them (`icons.ts`, `icons-workspace.ts`).
 
 The reading view: 99.7 KB, by the gauge and by the browser. 0.3 KB of headroom.
+
+## D37 — The access log is written only from our own pages
+
+The session cookie is `sameSite: 'lax'`, so a browser attaches it to any
+top-level GET navigation, including one started by a link on another site or in
+an email. Two reads that write to the access log checked *who* was asking and
+not *where from*, and both were reproduced against the running site:
+
+- **`/api/dossier/<id>/<field>`.** A link elsewhere, clicked by a signed-in
+  senior, downloaded the CV into their downloads and wrote an `access_event` in
+  their name: 200, one row per click.
+- **`fetchApplication`** (and `fetchProbationDue`) are GET server functions that
+  log. Solid checks where a call came from, but skips GET reads, on the premise
+  that a read is safe to *run* from anywhere because another site cannot *see*
+  the answer. Ours write. A link from a current browser was stopped only by
+  accident: Paraglide redirected the navigation to `/fr/_serverFn/…`, which does
+  not exist. It redirects only a request carrying `Sec-Fetch-Dest: document`, so
+  an older Safari, or a request marked cross-site, ran the function: 200, one
+  row each.
+
+This matters because the access log is the only honest basis for telling a
+member who opened their file. A log that anybody can write to in a senior's
+name says nothing, and at worst it is evidence against the wrong person. A
+forced download also leaves somebody's CV on a senior's device that they never
+chose to open.
+
+**What changed.** `sameOriginRequest` (`lib/shared/same-origin.ts`) accepts a
+request only if the browser says it came from our own page:
+
+- `Sec-Fetch-Site: same-origin` is accepted. `none` is refused along with
+  `cross-site`: a pasted URL, or a link opened from a mail client, is exactly
+  how the attack arrives.
+- A browser that sends no `Sec-Fetch-Site` falls back to `Origin`, then
+  `Referer`. Our pages always send a same-origin `Referer`. A request with
+  neither is refused.
+
+The dossier route asks it after asking who the caller is, so a visitor who is
+not signed in is still told 401. Server functions, reads included, go through
+Solid's own check: `configureServerFunctionsServer` in `src/server.ts` sets
+`protectDeclaredReads`. The `Vary` header that check adds would split a shared
+cache's entries. Nothing we serve is meant for a shared cache, so it costs
+nothing.
+
+**Hosts, not origins.** srvx builds `request.url` from the socket. The built
+server does not trust `X-Forwarded-Proto`, so behind Caddy every request reads
+`http://<host>` while the browser's `Origin` says `https://`. Solid's default
+compares exact origins against `request.url`. In production it would have
+refused every server-function POST from a browser that sends `Origin` but not
+`Sec-Fetch-Site`, sign-in on an older iPhone among them. Both checks compare
+the host, which Caddy passes through unchanged.
+
+**Not covered, on purpose: the review page itself.** A link elsewhere to
+`/fr/review/<id>` renders the application in front of the senior, and the log
+records a view. That record is true: the application was on their screen, in
+their session, visibly. Pages are not refused cross-site, because a link in a
+message is how people reach anything.
+
+**How it was checked.** Against both the dev server and a production build:
+
+- every forged path answers 403 and writes no row;
+- the page's own read and its download link still answer 200 and write one.
+
+`e2e/review.spec.ts` now downloads the CV by clicking its link, as a reviewer
+does; it used to fetch it directly, which is a request with no fetch metadata
+and is now refused. It then replays the page's reads from outside the page,
+and follows the same link from another origin. Each half of the test was run
+against the code without its half of the fix, and failed.
+
+One trap for whoever touches this next: Solid keeps this setting in module
+state, which outlives an edit to `src/server.ts` in a running dev server. The
+first "before" measurement here was taken that way and showed the fix as
+already present. Restart the server after changing it.

@@ -145,6 +145,17 @@ is being able to say who opened it and when. Never add a read path that skips
 the log. Dossiers are also served as attachments, never inline — a PDF rendered
 in the browser can carry active content.
 
+**A GET that writes answers only our own pages.** The session cookie is
+`sameSite: 'lax'`, so it rides along on a link from any site or email, and a
+link elsewhere used to write a senior's name into the access log (D37). Server
+functions are covered for every method: `src/server.ts` turns on Solid's check
+for GET reads too. A route outside them that does anything on a GET — the
+dossier download is the example — calls `sameOriginRequest` itself, after
+asking who. Test it by following a link from another origin, not with
+`page.request`, which sends no fetch metadata and is refused like the attack.
+Solid holds that setting in module state: after changing it, restart the dev
+server, or the old value keeps answering.
+
 **Authorise inside every server function, not only in route guards.** A route
 guard is UX. A `createServerFn` is a public HTTP endpoint and must re-check the
 caller's role itself, every time.

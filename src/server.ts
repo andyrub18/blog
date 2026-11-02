@@ -1,9 +1,11 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomBytes } from 'node:crypto'
+import { configureServerFunctionsServer } from '@solidjs/web/server-functions/server'
 import handler from '@tanstack/solid-start/server-entry'
 import { servedOverHttps } from './lib/auth/transport'
 import { installNonceStore } from './lib/shared/csp-nonce'
 import { withoutHeadBody } from './lib/shared/head-request'
+import { sameHost } from './lib/shared/same-origin'
 import { securityHeaders, withSecurityHeaders } from './lib/shared/security-headers'
 import { paraglideMiddleware } from './paraglide/server.js'
 
@@ -21,6 +23,28 @@ const https = servedOverHttps()
  */
 const nonces = new AsyncLocalStorage<string>()
 installNonceStore(nonces)
+
+/**
+ * Every server function answers only this site's own pages — reads included.
+ *
+ * Solid checks where a call came from, but by default not for a GET, on the
+ * premise that a read is safe to run from anywhere: another site cannot see the
+ * answer. Ours are not all safe to run. `fetchApplication` and
+ * `fetchProbationDue` write to the access log, so a link elsewhere could put a
+ * senior's name in it. The only thing in the way was Paraglide redirecting the
+ * navigation to a localized URL, which it does only for a browser that sends
+ * `Sec-Fetch-Dest` (D37). Nothing we send is meant for a shared cache, so the
+ * `Vary` the check adds costs nothing.
+ *
+ * `origin` compares hosts, for the reason `sameHost` gives; Solid's default
+ * compares with `request.url`, which says `http://` behind Caddy.
+ */
+configureServerFunctionsServer({
+  csrf: {
+    protectDeclaredReads: true,
+    origin: (origin, request) => sameHost(origin, request.url),
+  },
+})
 
 /**
  * Server entry.
