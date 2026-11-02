@@ -1,6 +1,14 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { For, Show } from 'solid-js'
+import Icon from '../../../components/Icon'
 import { fetchReviewQueue } from '../../../lib/membership/review-actions'
+import {
+  ICON_DELIBERATION,
+  ICON_INVITATION,
+  ICON_PROBATION,
+  ICON_PROMOTION,
+  ICON_ROSTER,
+} from '../../../lib/shared/icons'
 import { m } from '../../../paraglide/messages'
 import { getLocale } from '../../../paraglide/runtime'
 
@@ -43,26 +51,31 @@ function ReviewQueue() {
         <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Area
             to="/review/articles"
+            icon={ICON_DELIBERATION}
             title={m.deliberation_title()}
             text={m.deliberation_subtitle()}
           />
           <Area
             to="/review/probation"
+            icon={ICON_PROBATION}
             title={m.probation_title()}
             text={m.probation_subtitle()}
           />
           <Area
             to="/review/promotions"
+            icon={ICON_PROMOTION}
             title={m.promotions_title()}
             text={m.promotions_subtitle()}
           />
           <Area
             to="/review/members"
+            icon={ICON_ROSTER}
             title={m.roster_title()}
             text={m.roster_subtitle()}
           />
           <Area
             to="/review/invitations"
+            icon={ICON_INVITATION}
             title={m.invitations_title()}
             text={m.invitations_subtitle()}
           />
@@ -117,6 +130,7 @@ function Area(props: {
     | '/review/promotions'
     | '/review/members'
     | '/review/invitations'
+  icon: string
   title: string
   text: string
 }) {
@@ -125,7 +139,12 @@ function Area(props: {
       to={props.to}
       class="flex flex-col gap-2 rounded-xl border border-line bg-raised p-5 hover:border-accent-line"
     >
-      <span class="font-bold text-ink">{props.title} →</span>
+      <span class="flex items-center gap-2.5 font-bold text-ink">
+        <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
+          <Icon d={props.icon} />
+        </span>
+        {props.title}
+      </span>
       <span class="text-sm leading-relaxed text-ink-soft">{props.text}</span>
     </Link>
   )

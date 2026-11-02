@@ -3,6 +3,7 @@ import { createSignal, Show } from 'solid-js'
 import { type ApplyErrorCode, applyForMembership } from '../../lib/auth/auth-actions'
 import { MAX_PDF_BYTES, MIN_CONTRIBUTION_PLAN_CHARS } from '../../lib/shared/validation'
 import { m } from '../../paraglide/messages'
+import FilePicker from '../FilePicker'
 import ApplicationFiled from './ApplicationFiled'
 
 type MessageFn = () => string
@@ -21,9 +22,6 @@ const ERROR_MESSAGE: Record<ApplyErrorCode, MessageFn> = {
 
 type Field = 'contributionPlan' | 'cv' | 'vision' | 'contribution'
 type FieldErrors = Partial<Record<Field, string>>
-
-const FILE_CLASS =
-  'block w-full text-sm text-neutral-700 file:mr-4 file:h-10 file:rounded-md file:border-0 file:bg-accent file:px-4 file:font-medium file:text-white hover:file:opacity-95'
 
 export default function ApplyForm() {
   const router = useRouter()
@@ -103,13 +101,20 @@ export default function ApplyForm() {
           </Show>
         </label>
 
-        <FileField name="cv" label={m.auth_register_member_cv()} error={errors().cv} />
-        <FileField
+        <FilePicker
+          name="cv"
+          accept="application/pdf"
+          label={m.auth_register_member_cv()}
+          error={errors().cv}
+        />
+        <FilePicker
+          accept="application/pdf"
           name="vision"
           label={m.auth_register_member_vision()}
           error={errors().vision}
         />
-        <FileField
+        <FilePicker
+          accept="application/pdf"
           name="contribution"
           label={m.auth_register_member_contribution()}
           error={errors().contribution}
@@ -130,26 +135,5 @@ export default function ApplyForm() {
         </div>
       </form>
     </Show>
-  )
-}
-
-function FileField(props: { name: string; label: string; error?: string }) {
-  return (
-    <div class="flex flex-col gap-1 text-sm">
-      <label for={props.name} class="font-medium text-neutral-800">
-        {props.label}
-      </label>
-      <input
-        id={props.name}
-        name={props.name}
-        type="file"
-        accept="application/pdf"
-        class={FILE_CLASS}
-        aria-invalid={props.error ? 'true' : undefined}
-      />
-      <Show when={props.error}>
-        {(message) => <span class="text-xs text-danger">{message()}</span>}
-      </Show>
-    </div>
   )
 }

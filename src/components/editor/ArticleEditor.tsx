@@ -1,7 +1,25 @@
+import type { JSX } from '@solidjs/web'
 import type { Editor } from '@tiptap/core'
 import { createEffect, createSignal, For, onCleanup, Show, untrack } from 'solid-js'
 import { type DocNode, isSafeHref } from '../../lib/articles/prosemirror'
+import {
+  ICON_BOLD,
+  ICON_CODE,
+  ICON_HEADING_2,
+  ICON_HEADING_3,
+  ICON_ITALIC,
+  ICON_LINK,
+  ICON_LIST,
+  ICON_LIST_ORDERED,
+  ICON_QUOTE,
+  ICON_REDO,
+  ICON_RULE,
+  ICON_STRIKE,
+  ICON_TABLE,
+  ICON_UNDO,
+} from '../../lib/shared/icons'
 import { m } from '../../paraglide/messages'
+import Icon from '../Icon'
 
 /**
  * The writing surface. TipTap, which is ProseMirror with an API (D9).
@@ -43,11 +61,20 @@ type Props = {
   content: DocNode
   onChange: (doc: DocNode, words: number) => void
   onReady?: (handle: EditorHandle) => void
+  /** The word count of the document as opened; `onChange` carries it after. */
+  onCount?: (words: number) => void
+  /** At the end of the toolbar: what fills the editor from elsewhere. */
+  actions?: JSX.Element
+  /** Between the toolbar and the text, for what such an action opens. */
+  panel?: JSX.Element
+  /** Under the text: the word count, the save state, the save button. */
+  footer?: JSX.Element
 }
 
 type ToolbarButton = {
   key: string
   label: () => string
+  icon: string
   /** Which mark or node the button turns on, for the pressed state. */
   active?: { name: string; attrs?: Record<string, unknown> }
   run: (editor: Editor) => void
@@ -62,67 +89,82 @@ type ToolbarButton = {
  * reloading the page.
  */
 const BUTTONS: Array<ToolbarButton> = [
+  // Character formatting.
   {
     key: 'bold',
+    icon: ICON_BOLD,
     label: () => m.write_toolbar_bold(),
     active: { name: 'bold' },
     run: (e) => e.chain().focus().toggleBold().run(),
   },
   {
     key: 'italic',
+    icon: ICON_ITALIC,
     label: () => m.write_toolbar_italic(),
     active: { name: 'italic' },
     run: (e) => e.chain().focus().toggleItalic().run(),
   },
   {
     key: 'strike',
+    icon: ICON_STRIKE,
     label: () => m.write_toolbar_strike(),
     active: { name: 'strike' },
     run: (e) => e.chain().focus().toggleStrike().run(),
   },
   {
     key: 'code',
+    icon: ICON_CODE,
     label: () => m.write_toolbar_code(),
     active: { name: 'code' },
     run: (e) => e.chain().focus().toggleCode().run(),
   },
+  // Structure: the headings are what the contents list is made from.
   {
     key: 'heading2',
+    icon: ICON_HEADING_2,
     label: () => m.write_toolbar_heading2(),
     active: { name: 'heading', attrs: { level: 2 } },
     run: (e) => e.chain().focus().toggleHeading({ level: 2 }).run(),
   },
   {
     key: 'heading3',
+    icon: ICON_HEADING_3,
     label: () => m.write_toolbar_heading3(),
     active: { name: 'heading', attrs: { level: 3 } },
     run: (e) => e.chain().focus().toggleHeading({ level: 3 }).run(),
   },
+  // Blocks.
   {
     key: 'quote',
+    icon: ICON_QUOTE,
     label: () => m.write_toolbar_quote(),
     active: { name: 'blockquote' },
     run: (e) => e.chain().focus().toggleBlockquote().run(),
   },
   {
     key: 'bulletList',
+    icon: ICON_LIST,
     label: () => m.write_toolbar_bulletList(),
     active: { name: 'bulletList' },
     run: (e) => e.chain().focus().toggleBulletList().run(),
   },
   {
     key: 'orderedList',
+    icon: ICON_LIST_ORDERED,
     label: () => m.write_toolbar_orderedList(),
     active: { name: 'orderedList' },
     run: (e) => e.chain().focus().toggleOrderedList().run(),
   },
+  // Insertions.
   {
     key: 'rule',
+    icon: ICON_RULE,
     label: () => m.write_toolbar_rule(),
     run: (e) => e.chain().focus().setHorizontalRule().run(),
   },
   {
     key: 'table',
+    icon: ICON_TABLE,
     label: () => m.write_toolbar_table(),
     active: { name: 'table' },
     run: (e) =>
@@ -194,18 +236,15 @@ export default function ArticleEditor(props: Props) {
           content: initial,
           onUpdate: ({ editor: current }) => {
             setRevision((n) => n + 1)
-            props.onChange(
-              current.getJSON() as DocNode,
-              current.state.doc
-                .textBetween(0, current.state.doc.content.size, ' ')
-                .split(/\s+/)
-                .filter(Boolean).length,
-            )
+            props.onChange(current.getJSON() as DocNode, countWords(current))
           },
           onSelectionUpdate: () => setRevision((n) => n + 1),
         })
         setEditor(instance)
         setReady(true)
+        // The count of the text the author opened, not of their first edit:
+        // until then the footer said "0 words" under a page of text.
+        props.onCount?.(countWords(instance))
         props.onReady?.({
           replace: (next) => {
             // `emitUpdate` stays on, so the route's own copy of the document
@@ -245,49 +284,84 @@ export default function ArticleEditor(props: Props) {
   }
 
   return (
-    <div class="rounded-lg border border-neutral-300 bg-white">
-      <div class="flex flex-wrap gap-1 border-b border-neutral-200 p-2">
+    <div class="rounded-xl border border-line bg-raised">
+      {/*
+       * Icons, each named by its `aria-label` and, on hover, its `title`: a
+       * screen reader says "Gras", and so does the tooltip for somebody who
+       * does not recognise the B. Sticky, because a proposal runs to pages and
+       * the formatting is needed at the bottom as much as at the top.
+       */}
+      <div
+        role="toolbar"
+        aria-label={m.write_toolbarLabel()}
+        class="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 rounded-t-xl border-b border-line bg-raised px-2 py-1.5"
+      >
         <For each={BUTTONS}>
           {(button) => (
-            <button
-              type="button"
-              disabled={!ready()}
-              aria-pressed={isActive(button) ? 'true' : 'false'}
-              onClick={() => {
-                const instance = editor()
-                if (instance) button.run(instance)
-              }}
-              class="rounded px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 aria-pressed:bg-neutral-900 aria-pressed:text-white"
-            >
-              {button.label()}
-            </button>
+            <>
+              <Show when={GROUP_STARTS.has(button.key)}>
+                <Separator />
+              </Show>
+              <button
+                type="button"
+                disabled={!ready()}
+                aria-label={button.label()}
+                title={button.label()}
+                aria-pressed={isActive(button) ? 'true' : 'false'}
+                onClick={() => {
+                  const instance = editor()
+                  if (instance) button.run(instance)
+                }}
+                class={TOOL}
+              >
+                <Icon d={button.icon} />
+              </button>
+            </>
           )}
         </For>
         <button
           type="button"
+          disabled={!ready()}
+          aria-label={m.write_toolbar_link()}
+          title={m.write_toolbar_link()}
           onClick={addLink}
-          class="rounded px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
+          class={TOOL}
         >
-          {m.write_toolbar_link()}
+          <Icon d={ICON_LINK} />
         </button>
-        <span class="grow" />
+        <Separator />
         <button
           type="button"
+          disabled={!ready()}
+          aria-label={m.write_toolbar_undo()}
+          title={m.write_toolbar_undo()}
           onClick={() => editor()?.chain().focus().undo().run()}
-          class="rounded px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
+          class={TOOL}
         >
-          {m.write_toolbar_undo()}
+          <Icon d={ICON_UNDO} />
         </button>
         <button
           type="button"
+          disabled={!ready()}
+          aria-label={m.write_toolbar_redo()}
+          title={m.write_toolbar_redo()}
           onClick={() => editor()?.chain().focus().redo().run()}
-          class="rounded px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
+          class={TOOL}
         >
-          {m.write_toolbar_redo()}
+          <Icon d={ICON_REDO} />
         </button>
+        {/*
+         * Each slot is read once, not tested first: a JSX prop is a getter that
+         * builds its element on every read, so `<Show when={props.actions}>`
+         * around `{props.actions}` would build the button twice to show it once.
+         */}
+        <span class="grow" />
+        {props.actions}
       </div>
 
-      <div aria-live="polite" class="empty:hidden px-3 text-sm text-danger">
+      {props.panel}
+
+      <div aria-live="polite" class="empty:hidden px-5 pt-3 text-sm text-danger">
         {linkError() ? m.write_linkRejected() : ''}
       </div>
 
@@ -296,9 +370,28 @@ export default function ArticleEditor(props: Props) {
        * connection is the case this project designs for.
        */}
       <Show when={!ready()}>
-        <p class="px-4 py-3 text-sm text-neutral-500">{m.write_editorLoading()}</p>
+        <p class="px-5 py-4 text-sm text-muted">{m.write_editorLoading()}</p>
       </Show>
-      <div ref={host} class="article-prose px-4 py-3" />
+      <div ref={host} class="article-prose px-5 py-4 md:px-8 md:py-6" />
+
+      <div class="flex flex-wrap items-center gap-3 rounded-b-xl border-t border-line bg-surface px-4 py-3 empty:hidden">
+        {props.footer}
+      </div>
     </div>
   )
+}
+
+function countWords(editor: Editor): number {
+  const doc = editor.state.doc
+  return doc.textBetween(0, doc.content.size, ' ').split(/\s+/).filter(Boolean).length
+}
+
+const TOOL =
+  'inline-flex size-9 items-center justify-center rounded-md text-neutral-700 hover:bg-neutral-100 hover:text-ink disabled:opacity-40 aria-pressed:bg-accent-soft aria-pressed:text-accent'
+
+/** Where a new group of the toolbar begins: structure, blocks, insertions. */
+const GROUP_STARTS = new Set(['heading2', 'quote', 'rule'])
+
+function Separator() {
+  return <span aria-hidden="true" class="mx-1 h-6 w-px bg-line" />
 }

@@ -23,19 +23,21 @@ must have before that page is interactive.
 
 | Page | Client JS, gzipped |
 |---|---|
-| Shared entry, on every page | **95.8 KB** |
-| `/articles/{slug}` — the reading view | **99.3 KB** |
-| `/articles` | 96.1 KB |
-| `/` — the home page | 96.0 KB |
-| `/articles/{slug}/discussion` — the forum | 104.8 KB (opened from an article) |
+| Shared entry, on every page | **95.9 KB** |
+| `/articles/{slug}` — the reading view | **99.4 KB** |
+| `/articles` | 96.2 KB |
+| `/` — the home page | 96.1 KB |
+| `/articles/{slug}/discussion` — the forum | 104.9 KB (opened from an article) |
 | `/write/{id}` — the editor, before TipTap loads | 121.2 KB (author screen) |
 | TipTap itself, fetched only when the editor mounts | +126 KB, in two chunks |
 
-**The budget is met, with 0.7 KB of headroom.** It was not, for three phases:
+**The budget is met, with 0.6 KB of headroom.** It was not, for three phases:
 the reading view peaked at 103.8 KB after phase 3. Two things fixed it, and a
 third gave 0.5 KB back afterwards — see the trend below. The patched `seroval`
 took 0.2 KB of it back (D34), and the header and footer every page now carries
-took 0.3 KB more (D35).
+took 0.3 KB more (D35). The editor's icons and file picker took 0.1 KB from
+every page without being on any of them: four routes now list those shared
+files by name in the preload lists that ship with the entry.
 
 **TanStack Query was in every page and nothing used it.** The scaffold put a
 `QueryClient` in the router context and it had been shipping to every reader

@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
+import Icon from '../../../components/Icon'
 import { LOCALE_LABELS, LOCALES } from '../../../i18n'
 import {
   createArticleAction,
   fetchMyArticles,
 } from '../../../lib/articles/article-actions'
 import { ARTICLE_ERROR_MESSAGE } from '../../../lib/articles/article-messages'
+import { ICON_PEN, ICON_PLUS } from '../../../lib/shared/icons'
 import {
   MIN_ARTICLE_SUMMARY_CHARS,
   MIN_ARTICLE_TITLE_CHARS,
@@ -72,8 +74,11 @@ function WriteDesk() {
         </div>
         <p class="mb-6 text-sm text-neutral-600">{m.write_subtitle()}</p>
 
-        <section class="mb-8 rounded-lg border border-neutral-200 bg-white p-6">
-          <h2 class="text-lg font-semibold text-neutral-900">{m.write_newTitle()}</h2>
+        <section class="mb-8 rounded-xl border border-line bg-raised p-6">
+          <h2 class="flex items-center gap-2 text-lg font-bold text-ink">
+            <Icon d={ICON_PLUS} class="size-5 text-accent" />
+            {m.write_newTitle()}
+          </h2>
           <p class="mt-1 mb-4 text-sm text-neutral-600">{m.write_newSubtitle()}</p>
 
           <form onSubmit={create} class="flex flex-col gap-4">
@@ -136,8 +141,9 @@ function WriteDesk() {
               <button
                 type="submit"
                 disabled={busy()}
-                class="h-10 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-accent px-4 font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-60"
               >
+                <Icon d={ICON_PLUS} />
                 {busy() ? m.write_creating() : m.write_create()}
               </button>
             </div>
@@ -161,10 +167,10 @@ function WriteDesk() {
           <ul class="flex flex-col gap-3">
             <For each={articles()}>
               {(item) => (
-                <li class="rounded-lg border border-neutral-200 bg-white p-4">
+                <li class="rounded-xl border border-line bg-raised p-5">
                   <div class="flex items-start justify-between gap-4">
                     <div class="min-w-0">
-                      <p class="truncate font-medium text-neutral-900">
+                      <p class="truncate font-serif text-lg font-bold text-ink">
                         {item.translations[0]?.title || item.slug}
                       </p>
                       <p class="mt-1 text-xs text-neutral-500">
@@ -177,8 +183,9 @@ function WriteDesk() {
                     <Link
                       to="/write/$articleId"
                       params={{ articleId: item.articleId }}
-                      class="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-95"
+                      class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-accent px-4 font-semibold text-on-accent hover:bg-accent-hover"
                     >
+                      <Icon d={ICON_PEN} class="size-4" />
                       {m.write_open()}
                     </Link>
                   </div>

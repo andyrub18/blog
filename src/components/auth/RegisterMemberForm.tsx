@@ -4,6 +4,7 @@ import { createSignal, Show } from 'solid-js'
 import { signUpMember } from '../../lib/auth/auth-actions'
 import { SIGN_UP_ERROR_MESSAGE } from '../../lib/auth/auth-messages'
 import { m } from '../../paraglide/messages'
+import FilePicker from '../FilePicker'
 import VerifyEmailNotice from './VerifyEmailNotice'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -151,23 +152,24 @@ export default function RegisterMemberForm() {
 
         <p class="text-xs text-neutral-500">{m.auth_register_member_pdfHint()}</p>
 
-        <Field label={m.auth_register_member_cv()} error={errors().cv}>
-          <input name="cv" type="file" accept="application/pdf" class={fileClass} />
-        </Field>
-        <Field label={m.auth_register_member_vision()} error={errors().vision}>
-          <input name="vision" type="file" accept="application/pdf" class={fileClass} />
-        </Field>
-        <Field
+        <FilePicker
+          name="cv"
+          accept="application/pdf"
+          label={m.auth_register_member_cv()}
+          error={errors().cv}
+        />
+        <FilePicker
+          name="vision"
+          accept="application/pdf"
+          label={m.auth_register_member_vision()}
+          error={errors().vision}
+        />
+        <FilePicker
+          name="contribution"
+          accept="application/pdf"
           label={m.auth_register_member_contribution()}
           error={errors().contribution}
-        >
-          <input
-            name="contribution"
-            type="file"
-            accept="application/pdf"
-            class={fileClass}
-          />
-        </Field>
+        />
 
         <button
           type="submit"
@@ -191,9 +193,6 @@ export default function RegisterMemberForm() {
 
 const inputClass =
   'h-11 px-3 rounded-md border border-neutral-300 bg-white text-neutral-900 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20'
-
-const fileClass =
-  'block w-full text-sm text-neutral-700 file:mr-4 file:h-10 file:px-4 file:rounded-md file:border-0 file:bg-accent file:text-white file:font-medium hover:file:opacity-95'
 
 function Field(props: { label: string; error?: string; children: JSX.Element }) {
   return (

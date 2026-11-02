@@ -2,6 +2,15 @@ import { LOCALE_LABELS, type Locale } from '../../i18n'
 import { m } from '../../paraglide/messages'
 import { localizeHref } from '../../paraglide/runtime'
 import type { Role } from '../db/schema'
+import {
+  ICON_APPLICATIONS,
+  ICON_APPLY,
+  ICON_BOOK,
+  ICON_DELIBERATION,
+  ICON_PEN,
+  ICON_PROBATION,
+  iconSvg,
+} from '../shared/icons'
 import type { ArticleCard } from './articles'
 import { escapeHtml as e } from './prosemirror'
 
@@ -27,6 +36,9 @@ const BUTTON =
 const BUTTON_QUIET =
   'inline-flex min-h-12 items-center justify-center rounded-lg border border-accent-line bg-raised px-5 font-semibold text-accent hover:bg-accent-soft'
 const SECTION_TITLE = 'font-serif text-3xl font-bold'
+/** An icon in a soft square, at the head of a card. */
+const badge = (d: string) =>
+  `<span class="inline-flex size-11 items-center justify-center rounded-xl bg-accent-soft text-accent">${iconSvg(d, 'size-6')}</span>`
 
 export type FrontPageUser = { name: string; role: Role }
 
@@ -79,9 +91,9 @@ export function renderFrontPage(input: {
     `<ol class="mt-8 grid gap-8 md:grid-cols-3">${steps}</ol></div></section>` +
     // The two kinds of account.
     `<section class="px-4 pb-20 md:px-6"><div class="mx-auto max-w-6xl"><h2 class="${SECTION_TITLE}">${e(m.home_joinTitle())}</h2><div class="mt-6 grid gap-6 md:grid-cols-2">` +
-    `<div class="flex flex-col items-start gap-3 rounded-xl border border-line bg-raised p-7"><h3 class="font-serif text-2xl font-bold">${e(m.auth_register_readerTitle())}</h3>` +
+    `<div class="flex flex-col items-start gap-3 rounded-xl border border-line bg-raised p-7">${badge(ICON_BOOK)}<h3 class="font-serif text-2xl font-bold">${e(m.auth_register_readerTitle())}</h3>` +
     `<p class="leading-relaxed text-ink-soft">${e(m.auth_register_readerDescription())}</p><a href="${href('/auth/register/reader')}" class="${BUTTON_QUIET}">${e(m.auth_register_readerCta())}</a></div>` +
-    `<div class="flex flex-col items-start gap-3 rounded-xl border border-accent-line bg-accent-soft p-7"><h3 class="font-serif text-2xl font-bold">${e(m.auth_register_memberTitle())}</h3>` +
+    `<div class="flex flex-col items-start gap-3 rounded-xl border border-accent-line bg-accent-soft p-7"><span class="inline-flex size-11 items-center justify-center rounded-xl bg-accent text-on-accent">${iconSvg(ICON_PEN, 'size-6')}</span><h3 class="font-serif text-2xl font-bold">${e(m.auth_register_memberTitle())}</h3>` +
     `<p class="leading-relaxed text-ink-soft">${e(m.auth_register_memberDescription())}</p><a href="${href('/auth/register/member')}" class="${BUTTON}">${e(m.auth_register_memberCta())}</a></div>` +
     `</div></div></section>`
   )
@@ -100,22 +112,40 @@ function renderDesk(user: FrontPageUser, href: (path: string) => string): string
     senior_member: m.common_roleSenior,
     super_admin: m.common_roleAdmin,
   }[user.role]()
-  const door = (path: string, title: string, text: string) =>
+  const door = (path: string, icon: string, title: string, text: string) =>
     `<a href="${href(path)}" class="flex flex-col gap-2 rounded-xl border border-line bg-raised p-6 hover:border-accent-line">` +
-    `<span class="text-[17px] font-bold text-ink">${e(title)}</span><span class="flex-1 text-[15px] leading-relaxed text-ink-soft">${e(text)}</span>` +
+    `${badge(icon)}<span class="mt-1 text-[17px] font-bold text-ink">${e(title)}</span><span class="flex-1 text-[15px] leading-relaxed text-ink-soft">${e(text)}</span>` +
     `<span class="font-semibold text-accent">${e(m.write_open())} →</span></a>`
 
   const doors = [
-    senior ? door('/review', m.review_title(), m.review_subtitle()) : '',
     senior
-      ? door('/review/articles', m.deliberation_title(), m.deliberation_subtitle())
+      ? door('/review', ICON_APPLICATIONS, m.review_title(), m.review_subtitle())
       : '',
-    senior ? door('/review/probation', m.probation_title(), m.probation_subtitle()) : '',
-    user.role !== 'reader' ? door('/write', m.write_title(), m.write_subtitle()) : '',
+    senior
+      ? door(
+          '/review/articles',
+          ICON_DELIBERATION,
+          m.deliberation_title(),
+          m.deliberation_subtitle(),
+        )
+      : '',
+    senior
+      ? door(
+          '/review/probation',
+          ICON_PROBATION,
+          m.probation_title(),
+          m.probation_subtitle(),
+        )
+      : '',
+    user.role !== 'reader'
+      ? door('/write', ICON_PEN, m.write_title(), m.write_subtitle())
+      : '',
     // The promotion path: read and take part first, then apply.
-    user.role === 'reader' ? door('/apply', m.apply_title(), m.apply_subtitle()) : '',
     user.role === 'reader'
-      ? door('/articles', m.articles_title(), m.articles_subtitle())
+      ? door('/apply', ICON_APPLY, m.apply_title(), m.apply_subtitle())
+      : '',
+    user.role === 'reader'
+      ? door('/articles', ICON_BOOK, m.articles_title(), m.articles_subtitle())
       : '',
   ].join('')
 

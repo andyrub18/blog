@@ -19,7 +19,7 @@ before touching auth, uploads, or anything that reads a dossier.
 
 **2. First-load weight is a feature, not a nicety.** Readers arrive on slow,
 metered Haitian mobile data. The budget is **under 100 KB gzipped** of client
-JS for an article page, and it currently has about **0.7 KB** of headroom — the
+JS for an article page, and it currently has about **0.6 KB** of headroom — the
 next thing added to that page has to find bytes before it spends them.
 Measure before and after any dependency addition:
 
@@ -573,6 +573,14 @@ createEffect(
 
 Anything placed in `__root.tsx`'s `shellComponent` will not run on the client at
 all: the shell is server-rendered only.
+
+**One copy of Solid in the page, or every click runs twice.** Solid hangs one
+click listener on the document and calls the handler stored on the element. A
+library that brings its own Solid — `@tanstack/solid-router-devtools` did, for its
+panel — adds a second listener that calls the same handlers: every `onClick` ran
+twice in development, a toggle undid itself, a save went out twice and looked
+fine. The devtools are gone for that reason. When a click "does nothing", count
+the document's click listeners before reading the component.
 
 ## Style
 
