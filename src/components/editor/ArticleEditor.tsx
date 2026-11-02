@@ -17,7 +17,7 @@ import {
   ICON_STRIKE,
   ICON_TABLE,
   ICON_UNDO,
-} from '../../lib/shared/icons'
+} from '../../lib/shared/icons-workspace'
 import { m } from '../../paraglide/messages'
 import Icon from '../Icon'
 

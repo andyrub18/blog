@@ -24,7 +24,7 @@ import {
 import { ARTICLE_ERROR_MESSAGE } from '../../../lib/articles/article-messages'
 import type { DocNode } from '../../../lib/articles/prosemirror'
 import { fetchRounds } from '../../../lib/deliberation/article-review-actions'
-import { ICON_FILE_IMPORT, ICON_SAVE } from '../../../lib/shared/icons'
+import { ICON_FILE_IMPORT, ICON_SAVE } from '../../../lib/shared/icons-workspace'
 import { m } from '../../../paraglide/messages'
 import { getLocale } from '../../../paraglide/runtime'
 

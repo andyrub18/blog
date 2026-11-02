@@ -6,7 +6,7 @@ import type {
 import { importDocx } from '../../lib/articles/import/docx-actions'
 import type { ImportReport } from '../../lib/articles/import/html-to-prosemirror'
 import type { DocNode } from '../../lib/articles/prosemirror'
-import { ICON_CLOSE, ICON_FILE_IMPORT } from '../../lib/shared/icons'
+import { ICON_CLOSE, ICON_FILE_IMPORT } from '../../lib/shared/icons-workspace'
 import { m } from '../../paraglide/messages'
 import FilePicker from '../FilePicker'
 import Icon from '../Icon'

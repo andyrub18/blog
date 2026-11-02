@@ -1,5 +1,5 @@
 import { createEffect, createSignal, createUniqueId, Show } from 'solid-js'
-import { ICON_UPLOAD } from '../lib/shared/icons'
+import { ICON_UPLOAD } from '../lib/shared/icons-workspace'
 import { m } from '../paraglide/messages'
 import Icon from './Icon'
 

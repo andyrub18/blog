@@ -453,6 +453,16 @@ body {
   margin: 0;
   padding: 0.875rem 1.25rem;
 }
+/* The icons the server writes into the aside (`iconSvg`): a line's own colour
+   would make the history and download marks as grey as the text beside them. */
+.article-aside .article-icon {
+  color: var(--color-accent);
+  display: inline-block;
+  height: 1.05rem;
+  margin-right: 0.45rem;
+  vertical-align: -0.2em;
+  width: 1.05rem;
+}
 .article-aside .article-companion a {
   color: var(--color-accent);
   display: block;

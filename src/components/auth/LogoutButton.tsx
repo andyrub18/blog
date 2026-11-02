@@ -1,9 +1,10 @@
+import type { JSX } from '@solidjs/web'
 import { useRouter } from '@tanstack/solid-router'
-import { createSignal, Show } from 'solid-js'
+import { createSignal } from 'solid-js'
 import { signOut } from '../../lib/auth/auth-actions'
 import { m } from '../../paraglide/messages'
 
-export default function LogoutButton(props: { class?: string }) {
+export default function LogoutButton(props: { class?: string; icon?: JSX.Element }) {
   const router = useRouter()
   const [loading, setLoading] = createSignal(false)
 
@@ -28,9 +29,10 @@ export default function LogoutButton(props: { class?: string }) {
         'h-9 px-4 text-sm font-medium border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60'
       }
     >
-      <Show when={loading()} fallback={m.common_logout()}>
-        {m.auth_login_submitting()}
-      </Show>
+      {props.icon}
+      {/* Disabled while it works, and still named for what it does: it used to
+          say "Connexion…", the sign-in form's word, while signing out. */}
+      {m.common_logout()}
     </button>
   )
 }

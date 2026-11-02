@@ -8,7 +8,7 @@ import {
   ICON_PROBATION,
   ICON_PROMOTION,
   ICON_ROSTER,
-} from '../../../lib/shared/icons'
+} from '../../../lib/shared/icons-workspace'
 import { m } from '../../../paraglide/messages'
 import { getLocale } from '../../../paraglide/runtime'
 

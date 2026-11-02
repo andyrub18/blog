@@ -8,7 +8,7 @@ import {
   removeCompanionPdf,
 } from '../../lib/articles/companion/companion-actions'
 import type { PdfCleaning } from '../../lib/articles/companion/pdf'
-import { ICON_FILE_TEXT } from '../../lib/shared/icons'
+import { ICON_FILE_TEXT } from '../../lib/shared/icons-workspace'
 import { formatMegabytes } from '../../lib/shared/validation'
 import { m } from '../../paraglide/messages'
 import { getLocale } from '../../paraglide/runtime'

@@ -7,7 +7,7 @@ import {
   fetchMyArticles,
 } from '../../../lib/articles/article-actions'
 import { ARTICLE_ERROR_MESSAGE } from '../../../lib/articles/article-messages'
-import { ICON_PEN, ICON_PLUS } from '../../../lib/shared/icons'
+import { ICON_FILE_TEXT, ICON_PLUS } from '../../../lib/shared/icons-workspace'
 import {
   MIN_ARTICLE_SUMMARY_CHARS,
   MIN_ARTICLE_TITLE_CHARS,
@@ -185,7 +185,7 @@ function WriteDesk() {
                       params={{ articleId: item.articleId }}
                       class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-accent px-4 font-semibold text-on-accent hover:bg-accent-hover"
                     >
-                      <Icon d={ICON_PEN} class="size-4" />
+                      <Icon d={ICON_FILE_TEXT} class="size-4" />
                       {m.write_open()}
                     </Link>
                   </div>

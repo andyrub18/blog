@@ -1,22 +1,54 @@
 import { Link } from '@tanstack/solid-router'
 import { createEffect, Show } from 'solid-js'
 import type { SessionUser } from '../../lib/auth/session'
+import {
+  ICON_APPLICATIONS,
+  ICON_APPLY,
+  ICON_BOOK,
+  ICON_HOME,
+  ICON_PEN,
+  ICON_SIGN_IN,
+  ICON_SIGN_OUT,
+} from '../../lib/shared/icons'
 import { m } from '../../paraglide/messages'
 import { getLocale } from '../../paraglide/runtime'
 import LogoutButton from '../auth/LogoutButton'
 import LanguageSwitcher from '../LanguageSwitcher'
 
 const NAV_LINK =
-  'inline-flex min-h-11 items-center rounded-md px-3 text-[15px] font-semibold text-neutral-700 hover:bg-neutral-100 hover:text-accent'
+  'inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-[15px] font-semibold text-neutral-700 hover:bg-neutral-100 hover:text-accent'
 const NAV_ACTIVE = { class: 'bg-accent-soft text-accent' }
 const PILL =
   'inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-line bg-raised px-2.5 text-sm font-semibold text-neutral-700 hover:border-neutral-300'
 const PANEL =
   'absolute top-[calc(100%+8px)] right-0 z-30 flex min-w-60 flex-col rounded-xl border border-line bg-raised p-1.5 shadow-lg'
 const ITEM =
-  'flex min-h-11 w-full items-center rounded-lg px-3 text-left text-[15px] text-ink hover:bg-neutral-100 hover:text-accent'
+  'flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-[15px] text-ink hover:bg-neutral-100 hover:text-accent'
 const PRIMARY =
-  'inline-flex min-h-11 items-center justify-center rounded-lg bg-accent px-4 text-[15px] font-semibold whitespace-nowrap text-on-accent hover:bg-accent-hover'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 text-[15px] font-semibold whitespace-nowrap text-on-accent hover:bg-accent-hover'
+
+/**
+ * The header's own icon, not `components/Icon`. That component is shared with
+ * the writing and review pages, and anything shared by more than one chunk gets
+ * a file of its own — one more request and 0.3 KB on every page, the article
+ * page included. Drawn here, the header's icons travel inside the header.
+ */
+function HeaderIcon(props: { d: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="size-5 shrink-0"
+    >
+      <path d={props.d} />
+    </svg>
+  )
+}
 
 function Chevron() {
   return (
@@ -91,15 +123,18 @@ export default function SiteHeader(props: { user: SessionUser | null }) {
 
         <nav aria-label={m.common_mainNav()} class="hidden items-center gap-1 md:flex">
           <Link to="/articles" class={NAV_LINK} activeProps={NAV_ACTIVE}>
+            <HeaderIcon d={ICON_BOOK} />
             {m.articles_nav()}
           </Link>
           <Show when={canWrite()}>
             <Link to="/write" class={NAV_LINK} activeProps={NAV_ACTIVE}>
+              <HeaderIcon d={ICON_PEN} />
               {m.write_nav()}
             </Link>
           </Show>
           <Show when={canReview()}>
             <Link to="/review" class={NAV_LINK} activeProps={NAV_ACTIVE}>
+              <HeaderIcon d={ICON_APPLICATIONS} />
               {m.review_nav()}
             </Link>
           </Show>
@@ -135,11 +170,13 @@ export default function SiteHeader(props: { user: SessionUser | null }) {
               <div class="hidden items-center gap-2 md:flex">
                 <Link
                   to="/auth/login"
-                  class="inline-flex min-h-11 items-center rounded-lg px-3.5 text-[15px] font-semibold text-accent hover:bg-accent-soft"
+                  class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3.5 text-[15px] font-semibold text-accent hover:bg-accent-soft"
                 >
+                  <HeaderIcon d={ICON_SIGN_IN} />
                   {m.articles_signIn()}
                 </Link>
                 <Link to="/auth/register" class={PRIMARY}>
+                  <HeaderIcon d={ICON_APPLY} />
                   {m.auth_login_register()}
                 </Link>
               </div>
@@ -159,19 +196,22 @@ export default function SiteHeader(props: { user: SessionUser | null }) {
                 </summary>
                 <div class={PANEL}>
                   <Link to="/" class={ITEM}>
+                    <HeaderIcon d={ICON_HOME} />
                     {m.common_mySpace()}
                   </Link>
                   <Show when={canWrite()}>
                     <Link to="/write" class={ITEM}>
-                      {m.write_title()}
+                      <HeaderIcon d={ICON_PEN} />
+                      {m.write_nav()}
                     </Link>
                   </Show>
                   <Show when={canReview()}>
                     <Link to="/review" class={ITEM}>
+                      <HeaderIcon d={ICON_APPLICATIONS} />
                       {m.review_nav()}
                     </Link>
                   </Show>
-                  <LogoutButton class={ITEM} />
+                  <LogoutButton class={ITEM} icon={<HeaderIcon d={ICON_SIGN_OUT} />} />
                 </div>
               </details>
             )}
@@ -194,23 +234,28 @@ export default function SiteHeader(props: { user: SessionUser | null }) {
             </summary>
             <div class={PANEL}>
               <Link to="/articles" class={ITEM}>
+                <HeaderIcon d={ICON_BOOK} />
                 {m.articles_nav()}
               </Link>
               <Show when={canWrite()}>
                 <Link to="/write" class={ITEM}>
+                  <HeaderIcon d={ICON_PEN} />
                   {m.write_nav()}
                 </Link>
               </Show>
               <Show when={canReview()}>
                 <Link to="/review" class={ITEM}>
+                  <HeaderIcon d={ICON_APPLICATIONS} />
                   {m.review_nav()}
                 </Link>
               </Show>
               <Show when={!props.user}>
                 <Link to="/auth/login" class={ITEM}>
+                  <HeaderIcon d={ICON_SIGN_IN} />
                   {m.articles_signIn()}
                 </Link>
                 <Link to="/auth/register" class={`${PRIMARY} m-1.5`}>
+                  <HeaderIcon d={ICON_APPLY} />
                   {m.auth_login_register()}
                 </Link>
               </Show>

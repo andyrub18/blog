@@ -8,7 +8,7 @@ import {
   OUTCOME_MESSAGE,
   SUBMISSION_STATUS_MESSAGE,
 } from '../../lib/deliberation/deliberation-messages'
-import { ICON_SEND } from '../../lib/shared/icons'
+import { ICON_SEND } from '../../lib/shared/icons-workspace'
 import { m } from '../../paraglide/messages'
 import Icon from '../Icon'
 
