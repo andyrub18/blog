@@ -9,7 +9,7 @@ import ResendVerification from './ResendVerification'
 type FieldErrors = Partial<Record<'email' | 'password', string>>
 
 const INPUT_CLASS =
-  'h-11 px-3 rounded-md border border-neutral-300 bg-white text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20'
+  'h-11 px-3 rounded-md border border-neutral-300 bg-white text-neutral-900 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20'
 
 export default function LoginForm() {
   const router = useRouter()
@@ -96,7 +96,7 @@ export default function LoginForm() {
           aria-invalid={errors().email ? 'true' : undefined}
         />
         <Show when={errors().email}>
-          {(message) => <span class="text-xs text-[#D21034]">{message()}</span>}
+          {(message) => <span class="text-xs text-danger">{message()}</span>}
         </Show>
       </label>
 
@@ -112,21 +112,21 @@ export default function LoginForm() {
           aria-invalid={errors().password ? 'true' : undefined}
         />
         <Show when={errors().password}>
-          {(message) => <span class="text-xs text-[#D21034]">{message()}</span>}
+          {(message) => <span class="text-xs text-danger">{message()}</span>}
         </Show>
       </label>
 
       <button
         type="submit"
         disabled={submitting()}
-        class="h-11 rounded-md bg-linear-to-r from-[#00209F] to-[#D21034] text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-95 disabled:opacity-60"
+        class="h-11 rounded-md bg-accent hover:bg-accent-hover text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-95 disabled:opacity-60"
       >
         {submitting() ? m.auth_login_submitting() : m.auth_login_submit()}
       </button>
 
       <div id="login-status" aria-live="polite" class="min-h-5 text-sm">
         <Show when={serverError()}>
-          {(message) => <p class="text-[#D21034]">{message()}</p>}
+          {(message) => <p class="text-danger">{message()}</p>}
         </Show>
         <Show when={unverified()}>
           {(email) => <ResendVerification email={email()} />}

@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { Show } from 'solid-js'
 import DiscussionThread from '../../../../components/forum/DiscussionThread'
-import LanguageSwitcher from '../../../../components/LanguageSwitcher'
 import { fetchDiscussion } from '../../../../lib/forum/forum-actions'
 import { m } from '../../../../paraglide/messages'
 
@@ -34,17 +33,16 @@ function DiscussionPage() {
   }
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-12">
+    <main class="flex-1 bg-neutral-50 px-4 py-12">
       <div class="mx-auto w-full max-w-2xl">
         <div class="mb-6 flex items-center justify-between gap-4">
           <Link
             to="/articles/$slug"
             params={{ slug: Route.useParams()().slug }}
-            class="text-sm text-[#00209F] hover:underline"
+            class="text-sm text-accent hover:underline"
           >
             ← {m.forum_backToArticle()}
           </Link>
-          <LanguageSwitcher />
         </div>
 
         <Show
@@ -61,7 +59,9 @@ function DiscussionPage() {
         >
           {(loaded) => (
             <>
-              <h1 class="text-2xl font-bold text-neutral-900">{m.forum_title()}</h1>
+              <h1 class="font-serif text-3xl font-bold text-neutral-900">
+                {m.forum_title()}
+              </h1>
               <p class="mt-1 mb-6 text-sm text-neutral-600">
                 {m.forum_aboutArticle({ title: loaded().title })}
               </p>

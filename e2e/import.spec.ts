@@ -66,6 +66,14 @@ async function openDraft(page: import('@playwright/test').Page) {
  * The write page has two file inputs since the companion PDF arrived, so
  * `[name="file"]` alone no longer says which one is meant.
  */
+/**
+ * Open the import from the editor's toolbar, where it lives: it fills the
+ * language on screen rather than sitting beside the editor as a second form.
+ */
+async function openImport(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: /Importer un fichier Word/i }).click()
+}
+
 function wordInput(page: import('@playwright/test').Page) {
   return page
     .locator('section')
@@ -76,6 +84,7 @@ function wordInput(page: import('@playwright/test').Page) {
 test('a member imports a Word file and is told what survived it', async ({ page }) => {
   await signIn(page, ACCOUNTS.confirmed)
   await openDraft(page)
+  await openImport(page)
 
   await expect(
     page.getByRole('heading', { name: /Importer un document Word/i }),
@@ -122,6 +131,7 @@ test('a file that is not a Word document is refused', async ({ page }) => {
     )
   await page.getByRole('button', { name: /Créer le brouillon/i }).click()
   await page.locator('.ProseMirror').waitFor({ timeout: 30_000 })
+  await openImport(page)
 
   // `file.type` is set by the client and is trivially spoofed, so claim to be a
   // Word file while being a PDF.

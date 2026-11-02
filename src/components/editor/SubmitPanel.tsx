@@ -8,7 +8,9 @@ import {
   OUTCOME_MESSAGE,
   SUBMISSION_STATUS_MESSAGE,
 } from '../../lib/deliberation/deliberation-messages'
+import { ICON_SEND } from '../../lib/shared/icons-workspace'
 import { m } from '../../paraglide/messages'
+import Icon from '../Icon'
 
 /**
  * Putting an article to the circle.
@@ -110,9 +112,12 @@ export default function SubmitPanel(props: Props) {
   }
 
   return (
-    <section class="rounded-lg border border-neutral-200 bg-white p-6">
-      <h2 class="text-lg font-semibold text-neutral-900">{m.submit_title()}</h2>
-      <p class="mt-1 text-sm text-neutral-600">{m.submit_subtitle()}</p>
+    <section class="rounded-xl border border-line bg-raised p-6">
+      <h2 class="flex items-center gap-2 text-lg font-bold text-ink">
+        <Icon d={ICON_SEND} class="size-5 text-accent" />
+        {m.submit_title()}
+      </h2>
+      <p class="mt-1 text-sm text-ink-soft">{m.submit_subtitle()}</p>
       <p class="mt-2 text-xs text-neutral-500">{m.submit_process()}</p>
 
       <Show when={props.rounds.length > 0}>
@@ -134,7 +139,7 @@ export default function SubmitPanel(props: Props) {
                   <Link
                     to="/review/articles/$submissionId"
                     params={{ submissionId: round.submissionId }}
-                    class="text-xs text-[#00209F] hover:underline"
+                    class="text-xs text-accent hover:underline"
                   >
                     {m.submit_open()}
                   </Link>
@@ -202,7 +207,7 @@ export default function SubmitPanel(props: Props) {
                       [field.key]: e.currentTarget.value,
                     }))
                   }
-                  class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                  class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                 />
               </label>
             )}
@@ -212,15 +217,16 @@ export default function SubmitPanel(props: Props) {
             <button
               type="submit"
               disabled={busy() || langs().length === 0}
-              class="h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+              class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-accent px-4 font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-60"
             >
+              <Icon d={ICON_SEND} />
               {busy() ? m.submit_submitting() : m.submit_cta()}
             </button>
           </div>
 
           <div aria-live="polite" class="min-h-5 text-sm">
             <Show when={error()}>
-              {(message) => <p class="text-[#A3261F]">{message()}</p>}
+              {(message) => <p class="text-danger">{message()}</p>}
             </Show>
           </div>
         </form>

@@ -37,7 +37,7 @@ export default function ResendVerification(props: { email: string }) {
         type="button"
         disabled={state() === 'sending'}
         onClick={() => void resend()}
-        class="text-sm font-medium text-[#00209F] hover:underline disabled:opacity-60"
+        class="text-sm font-medium text-accent hover:underline disabled:opacity-60"
       >
         {state() === 'sending' ? m.auth_verify_resending() : m.auth_verify_resend()}
       </button>
@@ -46,7 +46,7 @@ export default function ResendVerification(props: { email: string }) {
           <p class="text-neutral-600">{m.auth_verify_resendSent()}</p>
         </Show>
         <Show when={state() === 'failed'}>
-          <p class="text-[#D21034]">{m.auth_verify_resendFailed()}</p>
+          <p class="text-danger">{m.auth_verify_resendFailed()}</p>
         </Show>
       </div>
     </div>

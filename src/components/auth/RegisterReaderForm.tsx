@@ -16,7 +16,7 @@ type Field = 'name' | 'email' | 'password' | 'dateOfBirth' | 'essay'
 type FieldErrors = Partial<Record<Field, string>>
 
 const INPUT_CLASS =
-  'h-11 px-3 rounded-md border border-neutral-300 bg-white text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20'
+  'h-11 px-3 rounded-md border border-neutral-300 bg-white text-neutral-900 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20'
 
 export default function RegisterReaderForm() {
   const router = useRouter()
@@ -139,12 +139,12 @@ export default function RegisterReaderForm() {
             id="essay"
             name="essay"
             rows="5"
-            class="rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+            class="rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             placeholder={m.auth_register_common_essayPlaceholder()}
             aria-invalid={errors().essay ? 'true' : undefined}
           />
           <Show when={errors().essay}>
-            {(message) => <span class="text-xs text-[#D21034]">{message()}</span>}
+            {(message) => <span class="text-xs text-danger">{message()}</span>}
           </Show>
         </label>
 
@@ -153,7 +153,7 @@ export default function RegisterReaderForm() {
         <button
           type="submit"
           disabled={submitting()}
-          class="h-11 rounded-md bg-linear-to-r from-[#00209F] to-[#D21034] text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-95 disabled:opacity-60"
+          class="h-11 rounded-md bg-accent hover:bg-accent-hover text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-95 disabled:opacity-60"
         >
           {submitting()
             ? m.auth_register_common_submitting()
@@ -162,7 +162,7 @@ export default function RegisterReaderForm() {
 
         <div id="register-status" aria-live="polite" class="min-h-5 text-sm">
           <Show when={serverError()}>
-            {(message) => <p class="text-[#D21034]">{message()}</p>}
+            {(message) => <p class="text-danger">{message()}</p>}
           </Show>
         </div>
       </form>
@@ -191,7 +191,7 @@ function TextInput(props: {
         aria-invalid={props.error ? 'true' : undefined}
       />
       <Show when={props.error}>
-        {(message) => <span class="text-xs text-[#D21034]">{message()}</span>}
+        {(message) => <span class="text-xs text-danger">{message()}</span>}
       </Show>
     </label>
   )

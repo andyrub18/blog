@@ -1,8 +1,16 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { For, Show } from 'solid-js'
-import LanguageSwitcher from '../../../components/LanguageSwitcher'
+import Icon from '../../../components/Icon'
 import { fetchReviewQueue } from '../../../lib/membership/review-actions'
+import {
+  ICON_DELIBERATION,
+  ICON_INVITATION,
+  ICON_PROBATION,
+  ICON_PROMOTION,
+  ICON_ROSTER,
+} from '../../../lib/shared/icons-workspace'
 import { m } from '../../../paraglide/messages'
+import { getLocale } from '../../../paraglide/runtime'
 
 export const Route = createFileRoute('/_app/review/')({
   // The loader's server function re-checks the role itself, which is the check
@@ -16,30 +24,64 @@ function ReviewQueue() {
   const queue = Route.useLoaderData()
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-12">
-      <div class="mx-auto w-full max-w-3xl">
-        <div class="mb-4 flex items-center justify-between gap-4">
-          <h1 class="text-2xl font-bold text-neutral-900">{m.review_title()}</h1>
-          <LanguageSwitcher />
+    <main class="flex-1 bg-neutral-50 px-4 py-12">
+      <div class="mx-auto w-full max-w-5xl">
+        <h1 class="font-serif text-4xl font-bold">{m.review_title()}</h1>
+
+        {/* Said where the reviewer works, because it is true and it is the
+            point: an applicant can be told who opened their file, and when
+            (lib/membership/dossier.ts). */}
+        <p class="mt-6 flex gap-3 rounded-xl border border-accent-line bg-accent-soft p-4 text-[15px] leading-relaxed">
+          <svg
+            aria-hidden="true"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="mt-0.5 shrink-0 text-accent"
+          >
+            <rect x="4" y="11" width="16" height="10" rx="2" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+          </svg>
+          {m.review_accessLogged()}
+        </p>
+
+        <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Area
+            to="/review/articles"
+            icon={ICON_DELIBERATION}
+            title={m.deliberation_title()}
+            text={m.deliberation_subtitle()}
+          />
+          <Area
+            to="/review/probation"
+            icon={ICON_PROBATION}
+            title={m.probation_title()}
+            text={m.probation_subtitle()}
+          />
+          <Area
+            to="/review/promotions"
+            icon={ICON_PROMOTION}
+            title={m.promotions_title()}
+            text={m.promotions_subtitle()}
+          />
+          <Area
+            to="/review/members"
+            icon={ICON_ROSTER}
+            title={m.roster_title()}
+            text={m.roster_subtitle()}
+          />
+          <Area
+            to="/review/invitations"
+            icon={ICON_INVITATION}
+            title={m.invitations_title()}
+            text={m.invitations_subtitle()}
+          />
         </div>
-        <p class="mb-2 text-sm text-neutral-600">{m.review_subtitle()}</p>
-        <div class="mb-6 flex flex-wrap gap-4 text-sm">
-          <Link to="/review/articles" class="text-[#00209F] hover:underline">
-            {m.deliberation_title()} →
-          </Link>
-          <Link to="/review/probation" class="text-[#00209F] hover:underline">
-            {m.probation_title()} →
-          </Link>
-          <Link to="/review/members" class="text-[#00209F] hover:underline">
-            {m.roster_title()} →
-          </Link>
-          <Link to="/review/promotions" class="text-[#00209F] hover:underline">
-            {m.promotions_title()} →
-          </Link>
-          <Link to="/review/invitations" class="text-[#00209F] hover:underline">
-            {m.invitations_title()} →
-          </Link>
-        </div>
+
+        <h2 class="mt-10 mb-4 font-serif text-2xl font-bold">{m.review_subtitle()}</h2>
 
         <Show
           when={queue().length > 0}
@@ -60,14 +102,14 @@ function ReviewQueue() {
                     <p class="truncate text-sm text-neutral-600">{item.applicantEmail}</p>
                     <p class="mt-1 text-xs text-neutral-500">
                       {m.review_submittedOn()}{' '}
-                      {new Date(item.submittedAt).toLocaleDateString()} ·{' '}
+                      {new Date(item.submittedAt).toLocaleDateString(getLocale())} ·{' '}
                       {m.review_status()}: {item.status}
                     </p>
                   </div>
                   <Link
                     to="/review/$applicationId"
                     params={{ applicationId: item.applicationId }}
-                    class="shrink-0 rounded-md bg-[#00209F] px-4 py-2 text-sm font-semibold text-white hover:opacity-95"
+                    class="inline-flex min-h-11 shrink-0 items-center rounded-lg bg-accent px-4 font-semibold text-on-accent hover:bg-accent-hover"
                   >
                     {m.review_open()}
                   </Link>
@@ -78,5 +120,32 @@ function ReviewQueue() {
         </Show>
       </div>
     </main>
+  )
+}
+
+function Area(props: {
+  to:
+    | '/review/articles'
+    | '/review/probation'
+    | '/review/promotions'
+    | '/review/members'
+    | '/review/invitations'
+  icon: string
+  title: string
+  text: string
+}) {
+  return (
+    <Link
+      to={props.to}
+      class="flex flex-col gap-2 rounded-xl border border-line bg-raised p-5 hover:border-accent-line"
+    >
+      <span class="flex items-center gap-2.5 font-bold text-ink">
+        <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
+          <Icon d={props.icon} />
+        </span>
+        {props.title}
+      </span>
+      <span class="text-sm leading-relaxed text-ink-soft">{props.text}</span>
+    </Link>
   )
 }

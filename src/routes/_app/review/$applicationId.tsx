@@ -1,12 +1,12 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
-import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import {
   decideApplication,
   fetchApplication,
 } from '../../../lib/membership/review-actions'
 import { REVIEW_ERROR_MESSAGE } from '../../../lib/membership/review-messages'
 import { m } from '../../../paraglide/messages'
+import { getLocale } from '../../../paraglide/runtime'
 
 export const Route = createFileRoute('/_app/review/$applicationId')({
   loader: ({ params }) =>
@@ -71,13 +71,12 @@ function ReviewDetail() {
   const fileHref = (field: string) => `/api/dossier/${params().applicationId}/${field}`
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-12">
+    <main class="flex-1 bg-neutral-50 px-4 py-12">
       <div class="mx-auto w-full max-w-2xl">
         <div class="mb-6 flex items-center justify-between gap-4">
-          <Link to="/review" class="text-sm text-[#00209F] hover:underline">
+          <Link to="/review" class="text-sm text-accent hover:underline">
             ← {m.review_backToQueue()}
           </Link>
-          <LanguageSwitcher />
         </div>
 
         <Show when={data()} fallback={<p>{m.review_errors_notFound()}</p>}>
@@ -106,19 +105,19 @@ function ReviewDetail() {
                 <h2 class="mb-3 font-semibold text-neutral-900">{m.review_dossier()}</h2>
                 <ul class="flex flex-col gap-2 text-sm">
                   <li>
-                    <a href={fileHref('cv')} class="text-[#00209F] hover:underline">
+                    <a href={fileHref('cv')} class="text-accent hover:underline">
                       {m.review_downloadCv()}
                     </a>
                   </li>
                   <li>
-                    <a href={fileHref('vision')} class="text-[#00209F] hover:underline">
+                    <a href={fileHref('vision')} class="text-accent hover:underline">
                       {m.review_downloadVision()}
                     </a>
                   </li>
                   <li>
                     <a
                       href={fileHref('contribution')}
-                      class="text-[#00209F] hover:underline"
+                      class="text-accent hover:underline"
                     >
                       {m.review_downloadContribution()}
                     </a>
@@ -138,7 +137,7 @@ function ReviewDetail() {
                           {(why) => <span class="text-neutral-600"> — {why()}</span>}
                         </Show>
                         <span class="block text-xs text-neutral-500">
-                          {new Date(event.createdAt).toLocaleString()}
+                          {new Date(event.createdAt).toLocaleString(getLocale())}
                         </span>
                       </li>
                     )}
@@ -175,7 +174,7 @@ function ReviewDetail() {
                     <textarea
                       rows="4"
                       onInput={(e) => setRationale(e.currentTarget.value)}
-                      class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                      class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </label>
 
@@ -184,7 +183,7 @@ function ReviewDetail() {
                       type="button"
                       disabled={busy()}
                       onClick={() => void decide('approve')}
-                      class="h-10 rounded-md bg-[#1F6B45] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                      class="h-10 rounded-md bg-ok px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
                     >
                       {busy() ? m.review_deciding() : m.review_approve()}
                     </button>
@@ -200,7 +199,7 @@ function ReviewDetail() {
                       type="button"
                       disabled={busy()}
                       onClick={() => void decide('reject')}
-                      class="h-10 rounded-md bg-[#A3261F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                      class="h-10 rounded-md bg-danger px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
                     >
                       {m.review_reject()}
                     </button>
@@ -208,7 +207,7 @@ function ReviewDetail() {
 
                   <div aria-live="polite" class="mt-3 min-h-5 text-sm">
                     <Show when={error()}>
-                      {(message) => <p class="text-[#A3261F]">{message()}</p>}
+                      {(message) => <p class="text-danger">{message()}</p>}
                     </Show>
                   </div>
                 </section>

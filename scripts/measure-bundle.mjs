@@ -84,6 +84,18 @@ const routeKey = (path) =>
   Object.keys(manifest).filter((k) => k === `${path}.tsx` || k.startsWith(`${path}.tsx?`))
 
 /**
+ * The layouts every page renders inside, counted with every page.
+ *
+ * A layout's component is split from the entry like a page's, so walking the
+ * entry and the page alone never reaches it. While `_app`'s component was an
+ * `<Outlet />` that cost nothing worth noticing; once it carried the header
+ * and footer it was 5.6 KB with its imports — loaded by every page and counted
+ * on none. This gauge read 99.4 KB for an article page whose browser downloaded
+ * 105.1. Wrong in the reassuring direction is the worse way to be wrong.
+ */
+const LAYOUTS = [...routeKey('src/routes/__root'), ...routeKey('src/routes/_app')]
+
+/**
  * A third entry of `null` means the page is held to the budget; a string is the
  * reason it is not, printed next to the number.
  *
@@ -93,7 +105,7 @@ const routeKey = (path) =>
  * which is why they are here at all rather than left unmeasured.
  */
 const PAGES = [
-  ['the shared entry, on every page', [], null],
+  ['the shared entry and layout, on every page', [], null],
   ['/articles/{slug} — the reading view', routeKey('src/routes/_app/articles/$slug'), null],
   ['/articles', routeKey('src/routes/_app/articles/index'), null],
   ['/ — the home page', routeKey('src/routes/_app/index'), null],
@@ -109,11 +121,11 @@ const PAGES = [
   ],
 ]
 
-const article = weigh([...entry, ...routeKey('src/routes/_app/articles/$slug')])
+const article = weigh([...entry, ...LAYOUTS, ...routeKey('src/routes/_app/articles/$slug')])
 
 console.log('client JS, gzipped, per page (static imports only)\n')
 for (const [label, keys, exemption] of PAGES) {
-  const { bytes } = weigh([...entry, ...keys])
+  const { bytes } = weigh([...entry, ...LAYOUTS, ...keys])
   const note = exemption
     ? `  ${exemption}`
     : bytes / 1024 > BUDGET_KB

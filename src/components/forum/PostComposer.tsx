@@ -66,7 +66,7 @@ export default function PostComposer(props: {
           autofocus={props.autofocus}
           maxlength={MAX_FORUM_POST_CHARS + 200}
           onInput={(e) => setBody(e.currentTarget.value)}
-          class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+          class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
         >
           {props.initialValue ?? ''}
         </textarea>
@@ -76,7 +76,7 @@ export default function PostComposer(props: {
         <button
           type="submit"
           disabled={props.busy || !ready()}
-          class="h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+          class="h-10 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
         >
           {props.busy ? props.busyLabel : props.submitLabel}
         </button>

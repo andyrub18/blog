@@ -3,7 +3,6 @@ import { createServerFn } from '@tanstack/solid-start'
 import { Show } from 'solid-js'
 import ApplicationFiled from '../../components/auth/ApplicationFiled'
 import ApplyForm from '../../components/auth/ApplyForm'
-import LanguageSwitcher from '../../components/LanguageSwitcher'
 import { m } from '../../paraglide/messages'
 
 /**
@@ -56,11 +55,8 @@ function ApplyPage() {
   const state = Route.useLoaderData()
 
   return (
-    <main class="flex min-h-screen items-center justify-center bg-linear-to-br from-neutral-50 via-white to-neutral-100 px-4 py-12">
+    <main class="flex flex-1 items-center justify-center bg-surface px-4 py-12">
       <div class="w-full max-w-xl">
-        <div class="mb-4 flex justify-end">
-          <LanguageSwitcher />
-        </div>
         <div class="mb-8 flex flex-col items-center gap-3">
           <h1 class="text-center text-2xl font-bold text-neutral-900">
             {m.apply_title()}

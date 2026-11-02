@@ -294,7 +294,7 @@ describe('the published version', () => {
     const read = await articles.getReadableArticle({ slug, lang: 'fr', viewer: null })
     if (!read.ok) throw new Error(read.code)
     expect(read.value.html).toMatch(
-      /<p class="article-version">Version 3 · approuvée le /,
+      /<p class="article-version">(<svg[^>]*>.*?<\/svg>)?Version 3 · approuvée le /,
     )
     expect(read.value.html).toContain(`href="/fr/articles/${slug}/versions"`)
   })

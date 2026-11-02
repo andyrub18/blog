@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
-import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import {
   fetchNominations,
   voteOnNomination,
@@ -8,6 +7,7 @@ import {
 } from '../../../lib/membership/governance-actions'
 import { GOVERNANCE_ERROR_MESSAGE } from '../../../lib/membership/governance-messages'
 import { m } from '../../../paraglide/messages'
+import { getLocale } from '../../../paraglide/runtime'
 
 export const Route = createFileRoute('/_app/review/promotions')({
   loader: () => fetchNominations(),
@@ -67,11 +67,12 @@ function Promotions() {
   }
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-12">
+    <main class="flex-1 bg-neutral-50 px-4 py-12">
       <div class="mx-auto w-full max-w-3xl">
         <div class="mb-4 flex items-center justify-between gap-4">
-          <h1 class="text-2xl font-bold text-neutral-900">{m.promotions_title()}</h1>
-          <LanguageSwitcher />
+          <h1 class="font-serif text-3xl font-bold text-neutral-900">
+            {m.promotions_title()}
+          </h1>
         </div>
         <p class="mb-2 text-sm text-neutral-600">{m.promotions_subtitle()}</p>
         <p class="mb-4 text-sm font-medium text-neutral-800">
@@ -79,7 +80,7 @@ function Promotions() {
         </p>
         <Link
           to="/review/members"
-          class="mb-6 inline-block text-sm text-[#00209F] hover:underline"
+          class="mb-6 inline-block text-sm text-accent hover:underline"
         >
           {m.roster_title()} →
         </Link>
@@ -100,7 +101,7 @@ function Promotions() {
                   <p class="text-sm text-neutral-600">{item.subjectEmail}</p>
                   <p class="mt-1 text-xs text-neutral-500">
                     {m.promotions_openedBy()} ·{' '}
-                    {new Date(item.openedAt).toLocaleDateString()}
+                    {new Date(item.openedAt).toLocaleDateString(getLocale())}
                   </p>
                   <p class="mt-3 whitespace-pre-wrap text-sm text-neutral-700">
                     {item.rationale}
@@ -161,7 +162,7 @@ function Promotions() {
                               [item.promotionId]: e.currentTarget.value,
                             }))
                           }
-                          class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                          class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                         />
                       </label>
 
@@ -170,7 +171,7 @@ function Promotions() {
                           type="button"
                           disabled={busy() === item.promotionId}
                           onClick={() => void vote(item.promotionId, 'approve')}
-                          class="h-10 rounded-md bg-[#1F6B45] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                          class="h-10 rounded-md bg-ok px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
                         >
                           {busy() === item.promotionId
                             ? m.promotions_voting()
@@ -180,7 +181,7 @@ function Promotions() {
                           type="button"
                           disabled={busy() === item.promotionId}
                           onClick={() => void vote(item.promotionId, 'reject')}
-                          class="h-10 rounded-md bg-[#A3261F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                          class="h-10 rounded-md bg-danger px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
                         >
                           {m.promotions_reject()}
                         </button>
@@ -197,7 +198,7 @@ function Promotions() {
 
                     <div aria-live="polite" class="mt-3 min-h-5 text-sm">
                       <Show when={errors()[item.promotionId]}>
-                        {(message) => <p class="text-[#A3261F]">{message()}</p>}
+                        {(message) => <p class="text-danger">{message()}</p>}
                       </Show>
                     </div>
                   </Show>

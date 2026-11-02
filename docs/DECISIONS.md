@@ -890,3 +890,92 @@ about OAuth and magic links, neither of which we enable), and with it `seroval`
 and 1.6.7 has five advisories from late October, among them an unauthenticated
 event-loop DoS and deserialization calling attacker-chosen functions. It costs
 0.2 KB on the article page, leaving 1.0 KB of headroom.
+
+## D35 — The interface: a header, a theme, and pages rendered as words
+
+Nine phases built the movement's processes and no way to move between them: no
+header, no sign-in link on the home page, a forum that said "sign in" with
+nothing to click, the logo on one page as a 95 KB photograph cropped into a
+circle. The tests passed throughout — they sign in by going to `/fr/auth/login`
+directly. The interface was designed with KLEA on a shared canvas first, then
+built against it.
+
+**A header and a footer on every page** (`components/layout/`). Its menus —
+language, account, the phone's "Menu" — are `<details>`, so they open before
+the bundle has arrived; one effect closes them after a choice. Together they
+cost the reading view 0.3 KB, taken out of the headroom — or so the gauge said.
+They cost 6 KB; see D36.
+
+**One theme, two sets of colours, chosen by the device.** `styles.css` names each
+colour once; the dark set applies under `prefers-color-scheme: dark`. No switch:
+a manual one needs a control on every page and a cookie the server reads, and is
+worth adding only if members ask. The flag's blue is the light accent; the dark
+set uses a lighter blue, because #00209F on a dark ground cannot be read, and
+lightens the flag stripe for the same reason. Tailwind's greys, `white` and the
+status colours are mapped onto the theme, so the forty files written before it
+follow dark mode without being rewritten. Every text pair was measured at 4.5:1
+or better in both sets.
+
+**Pages that only link are rendered on the server.** As components, the new home
+page cost 7 KB more than as HTML: every sentence explaining the movement shipped in all
+four languages, and each message shared with another page became its own file
+with its own overhead. `front-page.ts` renders the home page and the article
+index as HTML in the reader's language instead — the reading view's approach,
+for the reading view's reason. The home page degrades rather than fails: if the article
+list cannot be read, it renders without it.
+
+**The logo, at the sizes it is shown.** The emblem is 11.9 KB at 320 px, the
+header mark 2.2 KB, the favicon a real `.ico`; the template's React icons, its
+manifest, the unused social-login icons and the `kleLogo*` files from before the
+rename are gone. At 16 px the roots become noise: a simplified mark for the
+favicon is KLEA's to design. The source image is in `docs/brand/`.
+
+**Dates in the page's language.** Twelve places formatted dates in the browser's
+default locale — "11/2/2026, 10:39 AM" on a French page. They now use the
+locale the page is in, on the server and in the browser alike.
+
+Not done in this pass: password recovery (there is no server side for it yet,
+so the sign-in page offers no link to it), counts on the signed-in home, an
+"author" badge in the forum, and the forms, editor and review pages beyond what
+the theme gives them. The Creole, English and Spanish strings added here want a
+native reader before release.
+
+**The next 6 KB.** Paraglide imports a URLPattern polyfill unconditionally:
+6.1 KB gzipped on every page, including the browsers that have URLPattern
+built in. Loading it only where it is missing would give the budget back more
+than this whole interface spent — but it sits under the locale routing that
+D23 and D28 had to repair, and deserves its own change and its own tests.
+
+## D36 — The gauge could not see the layout, and the polyfill loads on demand
+
+*Corrects D35's figures.* `npm run budget` summed the entry and the page's own
+route. The layout every page renders inside — `_app`, whose component is split
+from the entry like a page's — was in neither. While that component was an
+`<Outlet />` it did not matter. Once it held the header and footer, 5.6 KB with
+its imports went to every reader and onto no page's count: the gauge said 99.4 KB
+for an article page whose browser, loading a production build, downloaded 105.1.
+Every budget figure from D35 until this entry was low by that much. It was found
+by asking why seven header icons cost nothing. The gauge now counts the layouts
+(`LAYOUTS` in `scripts/measure-bundle.mjs`) and agrees with the browser to the
+tenth of a kilobyte.
+
+Two things brought the page back under:
+
+- **The URLPattern polyfill, only where it is missing.** Paraglide's runtime
+  imported it for everybody: 6.1 KB on every page, for the few browsers without
+  `URLPattern` — older Safari, older Firefox. The client build now gets an empty
+  module in its place (`urlPatternOnDemand`, `vite.config.ts`), and
+  `src/client.tsx` fetches the polyfill before the app starts, when and only
+  when `URLPattern` is absent. 4.7 KB back on every page. `e2e/locales.spec.ts`
+  checks both sides: a browser with it never fetches the polyfill, and a
+  browser without it still starts and still changes language.
+- **What the header and footer import.** The logout button swapped in the
+  sign-in form's "Connexion…" while it worked — the wrong word, and a message
+  file on every page; it now only disables. The account menu reuses "Écrire".
+  "Reading needs no account" left the footer for the pages where it decides
+  something. The header draws its own icons rather than through
+  `components/Icon`, whose shared chunk had put every icon in the site,
+  toolbar included, on the article page; the icons are split in two files by
+  who pays for them (`icons.ts`, `icons-workspace.ts`).
+
+The reading view: 99.7 KB, by the gauge and by the browser. 0.3 KB of headroom.

@@ -1,5 +1,4 @@
-import { createSignal, For, Show } from 'solid-js'
-import { LOCALE_LABELS, LOCALES, type Locale } from '../../i18n'
+import { createSignal, Show } from 'solid-js'
 import type {
   ImportErrorCode,
   ImportResult,
@@ -7,10 +6,20 @@ import type {
 import { importDocx } from '../../lib/articles/import/docx-actions'
 import type { ImportReport } from '../../lib/articles/import/html-to-prosemirror'
 import type { DocNode } from '../../lib/articles/prosemirror'
+import { ICON_CLOSE, ICON_FILE_IMPORT } from '../../lib/shared/icons-workspace'
 import { m } from '../../paraglide/messages'
+import FilePicker from '../FilePicker'
+import Icon from '../Icon'
 
 /**
- * Importing a Word file into one language of an article.
+ * Importing a Word file into the language on screen.
+ *
+ * It opens inside the editor, from the toolbar, because that is what it does:
+ * it fills the editor. It used to be a separate form under it with its own
+ * language list, so an author editing the French text could import into the
+ * Creole one from the same page — two ways of writing that looked like they
+ * competed. The language is now the editor's, and choosing another means
+ * opening that language first.
  *
  * Two things on this panel are there to prevent the complaint this feature will
  * otherwise generate every time. The first is the sentence next to the button
@@ -67,10 +76,15 @@ const describe = (kind: string) => KIND_MESSAGE[kind]?.() ?? kind
 
 type Props = {
   articleId: string
-  /** The language the editor is currently open on, used as the default. */
+  /** The language the editor is open on, which the import fills. */
   lang: string
+  /** That language's name, for the sentence that says so. */
+  languageName: string
+  /** Whether the editor already holds text the import would replace. */
+  replacing: boolean
   /** Handed the converted document, so the editor can show what just arrived. */
   onImported: (doc: DocNode) => void | Promise<void>
+  onClose: () => void
 }
 
 function summarise(counts: Record<string, number>): string {
@@ -113,66 +127,79 @@ export default function ImportPanel(props: Props) {
   }
 
   return (
-    <section class="rounded-lg border border-neutral-200 bg-white p-6">
-      <h2 class="text-lg font-semibold text-neutral-900">{m.import_title()}</h2>
-      <p class="mt-1 text-sm text-neutral-600">{m.import_subtitle()}</p>
+    <section
+      aria-labelledby="import-title"
+      class="border-b border-line bg-surface px-5 py-5"
+    >
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 id="import-title" class="flex items-center gap-2 font-bold text-ink">
+            <Icon d={ICON_FILE_IMPORT} class="size-5 text-accent" />
+            {m.import_title()}
+          </h2>
+          <p class="mt-1 text-sm text-ink-soft">
+            {m.import_subtitle()}{' '}
+            {m.import_intoLanguage({ language: props.languageName })}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => props.onClose()}
+          aria-label={m.common_close()}
+          title={m.common_close()}
+          class="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-neutral-700 hover:bg-neutral-100"
+        >
+          <Icon d={ICON_CLOSE} />
+        </button>
+      </div>
 
       <form onSubmit={submit} class="mt-4 flex flex-col gap-4">
         <input type="hidden" name="articleId" value={props.articleId} />
+        <input type="hidden" name="lang" value={props.lang} />
 
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="font-medium text-neutral-800">{m.import_langLabel()}</span>
-          <span class="text-xs text-neutral-500">{m.import_langHint()}</span>
-          <select
-            name="lang"
-            class="h-10 rounded-md border border-neutral-300 px-3 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
-          >
-            <For each={LOCALES}>
-              {(lang) => (
-                <option value={lang} selected={lang === props.lang}>
-                  {LOCALE_LABELS[lang as Locale]}
-                </option>
-              )}
-            </For>
-          </select>
-        </label>
+        <FilePicker
+          name="file"
+          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          required
+          label={m.import_fileLabel()}
+          hint={m.import_fileHint()}
+        />
 
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="font-medium text-neutral-800">{m.import_fileLabel()}</span>
-          <span class="text-xs text-neutral-500">{m.import_fileHint()}</span>
-          <input
-            type="file"
-            name="file"
-            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            required
-            class="text-sm"
-          />
-        </label>
+        {/* Only when there is something to lose. */}
+        <Show when={props.replacing}>
+          <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            {m.import_replaceWarning()}
+          </p>
+        </Show>
 
-        <p class="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          {m.import_replaceWarning()}
-        </p>
-
-        <div>
+        <div class="flex flex-wrap gap-3">
           <button
             type="submit"
             disabled={busy()}
-            class="h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+            class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-accent px-4 font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-60"
           >
+            <Icon d={ICON_FILE_IMPORT} />
             {busy() ? m.import_importing() : m.import_cta()}
+          </button>
+          <button
+            type="button"
+            onClick={() => props.onClose()}
+            class="inline-flex min-h-11 items-center rounded-lg border border-line bg-raised px-4 font-semibold text-neutral-700 hover:bg-neutral-100"
+          >
+            {m.common_cancel()}
           </button>
         </div>
 
-        <div aria-live="polite" class="min-h-5 text-sm">
+        <div aria-live="polite" class="empty:hidden text-sm">
           <Show when={error()}>
-            {(message) => <p class="text-[#A3261F]">{message()}</p>}
+            {(message) => <p class="text-danger">{message()}</p>}
           </Show>
         </div>
       </form>
 
       <Show when={result()}>
         {(imported) => (
-          <div class="mt-2 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-900">
+          <div class="mt-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">
             <p class="font-medium">{m.import_done()}</p>
             <p class="mt-1">{m.import_words({ count: imported().words })}</p>
             <p class="mt-2">

@@ -38,7 +38,7 @@ export default function VerifyEmailNotice(props: {
       <button
         type="button"
         onClick={props.onLogin}
-        class="h-11 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95"
+        class="h-11 rounded-md bg-accent px-4 text-sm font-semibold text-white hover:opacity-95"
       >
         {m.auth_verify_goLogin()}
       </button>

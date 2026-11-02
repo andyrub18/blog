@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/solid-router'
 import { createEffect, createSignal, For, onCleanup, Show, untrack } from 'solid-js'
 import type { Discussion, ForumPostView, ModerationRecord } from '../../lib/forum/forum'
 import {
@@ -403,9 +404,27 @@ export default function DiscussionThread(props: { initial: Discussion }) {
         <Show
           when={props.initial.canPost}
           fallback={
-            <p class="rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
-              {m.forum_signInToPost()}
-            </p>
+            <div class="flex flex-col gap-4 rounded-xl border border-accent-line bg-accent-soft p-6">
+              <p class="text-ink">{m.forum_signInToPost()}</p>
+              {/* The way in, for somebody signed out. A blocked account is
+                  signed in and has no door to be shown. */}
+              <Show when={props.initial.viewerId === null}>
+                <div class="flex flex-wrap gap-3">
+                  <Link
+                    to="/auth/login"
+                    class="inline-flex min-h-12 items-center rounded-lg bg-accent px-5 font-semibold text-on-accent hover:bg-accent-hover"
+                  >
+                    {m.articles_signIn()}
+                  </Link>
+                  <Link
+                    to="/auth/register/reader"
+                    class="inline-flex min-h-12 items-center rounded-lg border border-accent-line bg-raised px-5 font-semibold text-accent hover:bg-accent-soft"
+                  >
+                    {m.forum_registerToPost()}
+                  </Link>
+                </div>
+              </Show>
+            </div>
           }
         >
           <PostComposer
@@ -481,7 +500,7 @@ function PostCard(props: {
         <button
           type="button"
           onClick={props.onReply}
-          class="mt-3 text-xs font-medium text-[#00209F] hover:underline"
+          class="mt-3 text-xs font-medium text-accent hover:underline"
         >
           {m.forum_reply()}
         </button>
@@ -601,7 +620,7 @@ function PostBody(props: {
       <p class="text-sm font-medium text-neutral-900">
         {props.post.authorName}
         <span class="ml-2 text-xs font-normal text-neutral-500">
-          {new Date(props.post.createdAt).toLocaleString()}
+          {new Date(props.post.createdAt).toLocaleString(getLocale())}
           <Show when={props.post.editedAt}> · {m.forum_edited()}</Show>
         </span>
       </p>
@@ -664,7 +683,7 @@ function PostBody(props: {
             <span class="font-medium">{m.forum_moderationLog()}</span> ·{' '}
             {m.forum_moderationBy({
               name: record().actorName ?? '—',
-              date: new Date(record().createdAt).toLocaleString(),
+              date: new Date(record().createdAt).toLocaleString(getLocale()),
             })}{' '}
             — {record().rationale}
           </p>

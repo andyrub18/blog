@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
-import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import {
   decideProbation,
   fetchProbationDue,
 } from '../../../lib/membership/review-actions'
 import { REVIEW_ERROR_MESSAGE } from '../../../lib/membership/review-messages'
 import { m } from '../../../paraglide/messages'
+import { getLocale } from '../../../paraglide/runtime'
 
 export const Route = createFileRoute('/_app/review/probation')({
   // As with the queue, the loader's server function re-checks the role itself.
@@ -41,17 +41,15 @@ function ProbationQueue() {
   }
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-12">
+    <main class="flex-1 bg-neutral-50 px-4 py-12">
       <div class="mx-auto w-full max-w-3xl">
         <div class="mb-4 flex items-center justify-between gap-4">
-          <h1 class="text-2xl font-bold text-neutral-900">{m.probation_title()}</h1>
-          <LanguageSwitcher />
+          <h1 class="font-serif text-3xl font-bold text-neutral-900">
+            {m.probation_title()}
+          </h1>
         </div>
         <p class="mb-2 text-sm text-neutral-600">{m.probation_subtitle()}</p>
-        <Link
-          to="/review"
-          class="mb-6 inline-block text-sm text-[#00209F] hover:underline"
-        >
+        <Link to="/review" class="mb-6 inline-block text-sm text-accent hover:underline">
           {m.probation_openQueue()} →
         </Link>
 
@@ -72,11 +70,11 @@ function ProbationQueue() {
                   <p class="mt-1 text-xs text-neutral-500">
                     {m.probation_memberSince()}{' '}
                     {item.memberSince
-                      ? new Date(item.memberSince).toLocaleDateString()
+                      ? new Date(item.memberSince).toLocaleDateString(getLocale())
                       : '—'}{' '}
                     · {m.probation_dueSince()}{' '}
                     {item.probationUntil
-                      ? new Date(item.probationUntil).toLocaleDateString()
+                      ? new Date(item.probationUntil).toLocaleDateString(getLocale())
                       : '—'}
                   </p>
 
@@ -130,7 +128,7 @@ function ProbationQueue() {
                             [item.userId]: e.currentTarget.value,
                           }))
                         }
-                        class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                        class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                       />
                     </label>
 
@@ -139,7 +137,7 @@ function ProbationQueue() {
                         type="button"
                         disabled={busy() === item.userId}
                         onClick={() => void decide(item.userId, 'confirm')}
-                        class="h-10 rounded-md bg-[#1F6B45] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                        class="h-10 rounded-md bg-ok px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
                       >
                         {busy() === item.userId
                           ? m.probation_deciding()
@@ -149,7 +147,7 @@ function ProbationQueue() {
                         type="button"
                         disabled={busy() === item.userId}
                         onClick={() => void decide(item.userId, 'revert')}
-                        class="h-10 rounded-md bg-[#A3261F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                        class="h-10 rounded-md bg-danger px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
                       >
                         {m.probation_revert()}
                       </button>
@@ -157,7 +155,7 @@ function ProbationQueue() {
 
                     <div aria-live="polite" class="mt-3 min-h-5 text-sm">
                       <Show when={errors()[item.userId]}>
-                        {(message) => <p class="text-[#A3261F]">{message()}</p>}
+                        {(message) => <p class="text-danger">{message()}</p>}
                       </Show>
                     </div>
                   </Show>

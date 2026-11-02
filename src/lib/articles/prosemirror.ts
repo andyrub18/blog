@@ -13,6 +13,7 @@
  * the editor runs on a computer we do not control.
  */
 
+import { ICON_LIST, iconSvg } from '../shared/icons-workspace'
 import { slugify } from '../shared/validation'
 
 export type Mark = { type: string; attrs?: Record<string, string> }
@@ -456,7 +457,7 @@ export function renderOutlineToHtml(outline: Array<OutlineEntry>, label: string)
   // A paragraph, not a heading: this list sits inside the article's prose, and
   // an `<h2>` here would join the document's own outline and compete with the
   // sections it is listing.
-  return `<nav class="article-toc" aria-label="${escapeHtml(label)}"><p class="article-toc-label">${escapeHtml(label)}</p><ol>${items}</ol></nav>`
+  return `<nav class="article-toc" aria-label="${escapeHtml(label)}"><p class="article-toc-label">${iconSvg(ICON_LIST, 'article-icon')}${escapeHtml(label)}</p><ol>${items}</ol></nav>`
 }
 
 /** The markup alone, for callers with no use for the outline. */

@@ -1,5 +1,164 @@
 @import "tailwindcss";
 
+/*
+ * The theme: every colour the site uses, named once.
+ *
+ * Two sets, and the reader's device chooses between them: the dark set applies
+ * when the phone or computer is in dark mode. No JavaScript decides it, so a
+ * page is never painted in the wrong colours first and there is no switch to
+ * download. The flag's blue is the light set's accent; the dark set lightens
+ * it, because #00209F on a dark background cannot be read. Every pair used for
+ * text was measured at 4.5:1 or better in both sets.
+ *
+ * Tailwind's grey scale, `white` and the few status colours are mapped onto the
+ * theme as well, so screens written before it follow dark mode without being
+ * rewritten. New markup uses the names: `bg-page`, `bg-surface`, `bg-raised`,
+ * `text-ink`, `text-muted`, `bg-accent`, `text-on-accent`, `border-line`.
+ */
+:root {
+  color-scheme: light dark;
+
+  --k-page: #ffffff;
+  --k-surface: #f6f7f9;
+  --k-raised: #ffffff;
+  --k-ink: #14161f;
+  --k-ink-soft: #4a5060;
+  --k-muted: #5f6575;
+  --k-line: #e3e5ea;
+  --k-accent: #00209f;
+  --k-accent-hover: #001a80;
+  --k-on-accent: #ffffff;
+  --k-accent-soft: #e8ecfa;
+  --k-accent-line: #b9c3ec;
+  --k-flag-blue: #00209f;
+  --k-flag-red: #d21034;
+  --k-danger: #b4162f;
+  --k-ok: #1d6b3f;
+
+  --k-n50: #f6f7f9;
+  --k-n100: #f1f3f7;
+  --k-n200: #e3e5ea;
+  --k-n300: #c9cdd6;
+  --k-n400: #8e95a5;
+  --k-n500: #5f6575;
+  --k-n600: #4a5060;
+  --k-n700: #2a2f3a;
+  --k-n800: #1f2330;
+  --k-n900: #14161f;
+  --k-n950: #0b0d14;
+
+  --k-amber50: #fffbeb;
+  --k-amber200: #fde68a;
+  --k-amber300: #fcd34d;
+  --k-amber500: #f59e0b;
+  --k-amber700: #b45309;
+  --k-amber800: #92400e;
+  --k-amber900: #78350f;
+  --k-green50: #f0fdf4;
+  --k-green200: #bbf7d0;
+  --k-green900: #14532d;
+  --k-red50: #fef2f2;
+  --k-red700: #b91c1c;
+  --k-red900: #7f1d1d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --k-page: #12141b;
+    --k-surface: #1a1d26;
+    --k-raised: #202433;
+    --k-ink: #eceef3;
+    --k-ink-soft: #b7bdcb;
+    --k-muted: #9aa1b2;
+    --k-line: #2c3140;
+    --k-accent: #9db0ff;
+    --k-accent-hover: #bcc9ff;
+    --k-on-accent: #0b1033;
+    --k-accent-soft: #1f2850;
+    --k-accent-line: #3a4a8c;
+    --k-flag-blue: #2f4fe0;
+    --k-flag-red: #e0294b;
+    --k-danger: #ff8a9b;
+    --k-ok: #8fd9a8;
+
+    --k-n50: #1a1d26;
+    --k-n100: #262b3a;
+    --k-n200: #2c3140;
+    --k-n300: #4a5164;
+    --k-n400: #6e7588;
+    --k-n500: #9aa1b2;
+    --k-n600: #b7bdcb;
+    --k-n700: #d5d9e3;
+    --k-n800: #dde1ea;
+    --k-n900: #eceef3;
+    --k-n950: #f5f6f9;
+
+    --k-amber50: #2a2110;
+    --k-amber200: #5c4513;
+    --k-amber300: #7a5a17;
+    --k-amber500: #c99a2e;
+    --k-amber700: #f2c66b;
+    --k-amber800: #f5d184;
+    --k-amber900: #f8dda0;
+    --k-green50: #14301f;
+    --k-green200: #2a5a3c;
+    --k-green900: #a6e3bb;
+    --k-red50: #3d1520;
+    --k-red700: #ff9aad;
+    --k-red900: #ffb3bf;
+  }
+}
+
+@theme inline {
+  /* No font to download: the system's serif for reading, its sans for the interface. */
+  --font-serif:
+    Charter, "Bitstream Charter", "Iowan Old Style", "Sitka Text", Cambria, Georgia, serif;
+
+  --color-page: var(--k-page);
+  --color-surface: var(--k-surface);
+  --color-raised: var(--k-raised);
+  --color-ink: var(--k-ink);
+  --color-ink-soft: var(--k-ink-soft);
+  --color-muted: var(--k-muted);
+  --color-line: var(--k-line);
+  --color-accent: var(--k-accent);
+  --color-accent-hover: var(--k-accent-hover);
+  --color-on-accent: var(--k-on-accent);
+  --color-accent-soft: var(--k-accent-soft);
+  --color-accent-line: var(--k-accent-line);
+  --color-flag-blue: var(--k-flag-blue);
+  --color-flag-red: var(--k-flag-red);
+  --color-danger: var(--k-danger);
+  --color-ok: var(--k-ok);
+
+  --color-white: var(--k-raised);
+  --color-neutral-50: var(--k-n50);
+  --color-neutral-100: var(--k-n100);
+  --color-neutral-200: var(--k-n200);
+  --color-neutral-300: var(--k-n300);
+  --color-neutral-400: var(--k-n400);
+  --color-neutral-500: var(--k-n500);
+  --color-neutral-600: var(--k-n600);
+  --color-neutral-700: var(--k-n700);
+  --color-neutral-800: var(--k-n800);
+  --color-neutral-900: var(--k-n900);
+  --color-neutral-950: var(--k-n950);
+
+  --color-amber-50: var(--k-amber50);
+  --color-amber-200: var(--k-amber200);
+  --color-amber-300: var(--k-amber300);
+  --color-amber-500: var(--k-amber500);
+  --color-amber-700: var(--k-amber700);
+  --color-amber-800: var(--k-amber800);
+  --color-amber-900: var(--k-amber900);
+  --color-green-50: var(--k-green50);
+  --color-green-200: var(--k-green200);
+  --color-green-900: var(--k-green900);
+  --color-red-50: var(--k-red50);
+  --color-red-700: var(--k-red700);
+  --color-red-900: var(--k-red900);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -12,6 +171,8 @@ body,
 
 body {
   margin: 0;
+  background: var(--color-page);
+  color: var(--color-ink);
 }
 
 /*
@@ -24,6 +185,8 @@ body {
  */
 .article-prose {
   color: var(--color-neutral-800);
+  font-family: var(--font-serif);
+  font-size: 1.1875rem;
   line-height: 1.7;
 }
 
@@ -56,7 +219,7 @@ body {
 }
 
 .article-prose a {
-  color: #00209f;
+  color: var(--color-accent);
   text-decoration: underline;
 }
 
@@ -121,51 +284,99 @@ body {
 }
 
 /*
- * The contents list on a long document.
+ * The reading view: the text, and what helps read it.
  *
- * Server-rendered into the article HTML by `renderOutlineToHtml`, not a
- * component: the reading view ships no JavaScript of its own, and a 50-page
- * proposal is the page least able to afford any. Selectors are scoped under
- * `.article-prose` so they outrank the prose list rules above rather than
- * depending on source order.
+ * `articles.ts` writes the version line, the companion PDF and the contents list
+ * into an `.article-aside` ahead of the `.article-prose` body, all as server
+ * markup. On a phone they stay above the text, in that order. On a wide screen
+ * the aside becomes a column beside the text and stays in view while it
+ * scrolls, so a reader 30 pages into a proposal still has the contents to hand.
+ * CSS alone does it: the page ships no JavaScript for its layout.
  */
-.article-prose .article-toc {
-  background: var(--color-neutral-50);
-  border: 1px solid var(--color-neutral-200);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  padding: 1rem;
+.article-layout {
+  display: grid;
+  gap: 1.5rem;
 }
 
-.article-prose .article-toc-label {
-  color: var(--color-neutral-900);
-  font-weight: 600;
-  margin: 0;
-}
-
-.article-prose .article-toc ol {
+.article-aside {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  gap: 0.75rem;
+}
+
+@media (min-width: 64rem) {
+  .article-layout {
+    align-items: start;
+    column-gap: 3rem;
+    grid-template-columns: minmax(0, 42rem) 16rem;
+  }
+
+  .article-layout > .article-aside {
+    grid-column: 2;
+    grid-row: 1;
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+    position: sticky;
+    top: 1.5rem;
+  }
+
+  .article-layout > .article-prose {
+    grid-column: 1;
+    grid-row: 1;
+  }
+}
+
+/*
+ * The contents list on a long document.
+ *
+ * Server-rendered by `renderOutlineToHtml`, not a component: the reading view
+ * ships no JavaScript of its own, and a 50-page proposal is the page least able
+ * to afford any.
+ */
+.article-aside .article-toc {
+  background: var(--color-raised);
+  border: 1px solid var(--color-line);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
+.article-aside .article-toc-label {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.article-aside .article-toc ol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
   list-style: none;
-  margin-top: 0.5rem;
+  margin: 0.5rem 0 0;
   padding-left: 0;
 }
 
-.article-prose .article-toc a {
-  color: #00209f;
+.article-aside .article-toc a {
+  color: var(--color-neutral-700);
+  display: block;
+  padding: 0.3rem 0;
   text-decoration: none;
 }
 
-.article-prose .article-toc a:hover {
+.article-aside .article-toc a:hover {
+  color: var(--color-accent);
   text-decoration: underline;
 }
 
-.article-prose .article-toc .toc-l3 {
+.article-aside .article-toc .toc-l3 {
   padding-left: 1rem;
 }
 
-.article-prose .article-toc .toc-l4 {
+.article-aside .article-toc .toc-l4 {
   padding-left: 2rem;
 }
 
@@ -215,7 +426,7 @@ body {
 
 /* The editor's own table, where a cell needs to show it is selected. */
 .article-prose .ProseMirror .selectedCell::after {
-  background: rgba(0, 32, 159, 0.12);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
   content: "";
   inset: 0;
   pointer-events: none;
@@ -228,18 +439,38 @@ body {
 }
 
 /*
- * The companion PDF link (D26). Quiet on purpose: it is the second way to read
- * the article, not the first, and it sits above the contents list where a
- * reader deciding whether to take the whole thing offline will see it.
+ * The companion PDF link (D26), and which version this is (D31). The PDF is the
+ * second way to read the article, not the first; it sits where a reader
+ * deciding whether to take the whole thing offline will see it, with its size,
+ * because that reader is paying for the download.
  */
-.article-prose .article-companion {
-  margin: 0 0 1.25rem;
-  font-size: 0.875rem;
-  color: #525252;
+.article-aside .article-companion,
+.article-aside .article-version {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 0.75rem;
+  color: var(--color-muted);
+  margin: 0;
+  padding: 0.875rem 1.25rem;
 }
-.article-prose .article-companion a {
+/* The icons the server writes into the aside (`iconSvg`): a line's own colour
+   would make the history and download marks as grey as the text beside them. */
+.article-aside .article-icon {
+  color: var(--color-accent);
+  display: inline-block;
+  height: 1.05rem;
+  margin-right: 0.45rem;
+  vertical-align: -0.2em;
+  width: 1.05rem;
+}
+.article-aside .article-companion a {
+  color: var(--color-accent);
+  display: block;
+  font-weight: 700;
+}
+.article-aside .article-version a {
+  color: var(--color-accent);
   font-weight: 600;
-  color: #00209f;
 }
 
 /*
@@ -247,38 +478,53 @@ body {
  * deletion struck through as well as tinted, so neither depends on telling two
  * colours apart.
  */
+:root {
+  --k-ins: #dcfce7;
+  --k-del: #fee2e2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --k-ins: #173826;
+    --k-del: #4a1a25;
+  }
+}
 .article-diff ins,
 .diff-line ins {
-  background: #dcfce7;
-  color: #14532d;
+  background: var(--k-ins);
+  color: var(--color-green-900);
   text-decoration: underline;
 }
 .article-diff del,
 .diff-line del {
-  background: #fee2e2;
-  color: #7f1d1d;
+  background: var(--k-del);
+  color: var(--color-red-900);
   text-decoration: line-through;
 }
 .article-diff .diff-skip {
-  color: #737373;
+  color: var(--color-muted);
   font-size: 0.875rem;
   font-style: italic;
 }
 .article-diff .diff-context {
-  color: #737373;
+  color: var(--color-muted);
 }
 .article-diff .diff-note {
-  color: #737373;
+  color: var(--color-muted);
   font-size: 0.75rem;
 }
 .article-diff .diff-item::before {
   content: "• ";
 }
-.article-prose .article-version {
-  margin: 0 0 0.75rem;
-  font-size: 0.8125rem;
-  color: #525252;
+
+/*
+ * The header's menus are `<details>`: they open and close with no JavaScript,
+ * which matters for a reader whose bundle has not arrived yet. These two rules
+ * remove the browser's disclosure triangle, which the header draws itself.
+ */
+.site-menu > summary {
+  cursor: pointer;
+  list-style: none;
 }
-.article-prose .article-version a {
-  color: #00209f;
+.site-menu > summary::-webkit-details-marker {
+  display: none;
 }

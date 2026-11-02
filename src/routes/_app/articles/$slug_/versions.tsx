@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { For, Show } from 'solid-js'
 import VersionChanges from '../../../../components/articles/VersionChanges'
-import LanguageSwitcher from '../../../../components/LanguageSwitcher'
 import { fetchVersionHistory } from '../../../../lib/articles/version-actions'
 import { m } from '../../../../paraglide/messages'
 import { getLocale } from '../../../../paraglide/runtime'
@@ -33,17 +32,16 @@ function VersionsPage() {
       : '—'
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-12">
+    <main class="flex-1 bg-neutral-50 px-4 py-12">
       <div class="mx-auto w-full max-w-2xl">
         <div class="mb-6 flex items-center justify-between gap-4">
           <Link
             to="/articles/$slug"
             params={{ slug: Route.useParams()().slug }}
-            class="text-sm text-[#00209F] hover:underline"
+            class="text-sm text-accent hover:underline"
           >
             ← {m.forum_backToArticle()}
           </Link>
-          <LanguageSwitcher />
         </div>
 
         <Show

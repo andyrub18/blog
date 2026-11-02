@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/solid-router'
 import { For, Show } from 'solid-js'
-import LanguageSwitcher from '../../../../components/LanguageSwitcher'
 import { LOCALE_LABELS } from '../../../../i18n'
 import { fetchSubmissionQueue } from '../../../../lib/deliberation/article-review-actions'
 import { MIN_REVIEWERS } from '../../../../lib/deliberation/deliberation'
@@ -28,17 +27,15 @@ function SubmissionQueue() {
   const queue = Route.useLoaderData()
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-12">
+    <main class="flex-1 bg-neutral-50 px-4 py-12">
       <div class="mx-auto w-full max-w-3xl">
         <div class="mb-4 flex items-center justify-between gap-4">
-          <h1 class="text-2xl font-bold text-neutral-900">{m.deliberation_title()}</h1>
-          <LanguageSwitcher />
+          <h1 class="font-serif text-3xl font-bold text-neutral-900">
+            {m.deliberation_title()}
+          </h1>
         </div>
         <p class="mb-2 text-sm text-neutral-600">{m.deliberation_subtitle()}</p>
-        <Link
-          to="/review"
-          class="mb-6 inline-block text-sm text-[#00209F] hover:underline"
-        >
+        <Link to="/review" class="mb-6 inline-block text-sm text-accent hover:underline">
           {m.review_title()} →
         </Link>
 
@@ -75,7 +72,7 @@ function SubmissionQueue() {
                       <p
                         class={
                           card.reviewers >= MIN_REVIEWERS && card.contradictors > 0
-                            ? 'mt-1 text-xs text-[#1F6B45]'
+                            ? 'mt-1 text-xs text-ok'
                             : 'mt-1 text-xs text-amber-700'
                         }
                       >
@@ -88,7 +85,7 @@ function SubmissionQueue() {
                     <Link
                       to="/review/articles/$submissionId"
                       params={{ submissionId: card.submissionId }}
-                      class="shrink-0 rounded-md bg-[#00209F] px-4 py-2 text-sm font-semibold text-white hover:opacity-95"
+                      class="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-95"
                     >
                       {m.deliberation_open()}
                     </Link>

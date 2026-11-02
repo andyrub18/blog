@@ -1,5 +1,7 @@
 import { createFileRoute, Outlet } from '@tanstack/solid-router'
 import { createEffect } from 'solid-js'
+import SiteFooter from '../components/layout/SiteFooter'
+import SiteHeader from '../components/layout/SiteHeader'
 import { fetchPublicConfig } from '../lib/auth/public-config'
 import { fetchSessionUser } from '../lib/auth/session'
 
@@ -20,6 +22,8 @@ export const Route = createFileRoute('/_app')({
 })
 
 function AppLayout() {
+  const context = Route.useRouteContext()
+
   /**
    * Mark the document once the client has taken over.
    *
@@ -39,5 +43,16 @@ function AppLayout() {
     },
   )
 
-  return <Outlet />
+  // Every page sits between the same header and footer. They read the session
+  // from the context `beforeLoad` refreshes, so signing in or out changes them
+  // without a reload.
+  return (
+    <div class="flex min-h-screen flex-col">
+      <SiteHeader user={context().user} />
+      <div class="flex flex-1 flex-col">
+        <Outlet />
+      </div>
+      <SiteFooter user={context().user} />
+    </div>
+  )
 }

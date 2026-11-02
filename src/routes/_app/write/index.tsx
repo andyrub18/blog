@@ -1,12 +1,13 @@
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/solid-router'
 import { createSignal, For, Show } from 'solid-js'
-import LanguageSwitcher from '../../../components/LanguageSwitcher'
+import Icon from '../../../components/Icon'
 import { LOCALE_LABELS, LOCALES } from '../../../i18n'
 import {
   createArticleAction,
   fetchMyArticles,
 } from '../../../lib/articles/article-actions'
 import { ARTICLE_ERROR_MESSAGE } from '../../../lib/articles/article-messages'
+import { ICON_FILE_TEXT, ICON_PLUS } from '../../../lib/shared/icons-workspace'
 import {
   MIN_ARTICLE_SUMMARY_CHARS,
   MIN_ARTICLE_TITLE_CHARS,
@@ -64,16 +65,20 @@ function WriteDesk() {
   }
 
   return (
-    <main class="min-h-screen bg-neutral-50 px-4 py-12">
+    <main class="flex-1 bg-neutral-50 px-4 py-12">
       <div class="mx-auto w-full max-w-3xl">
         <div class="mb-4 flex items-center justify-between gap-4">
-          <h1 class="text-2xl font-bold text-neutral-900">{m.write_title()}</h1>
-          <LanguageSwitcher />
+          <h1 class="font-serif text-3xl font-bold text-neutral-900">
+            {m.write_title()}
+          </h1>
         </div>
         <p class="mb-6 text-sm text-neutral-600">{m.write_subtitle()}</p>
 
-        <section class="mb-8 rounded-lg border border-neutral-200 bg-white p-6">
-          <h2 class="text-lg font-semibold text-neutral-900">{m.write_newTitle()}</h2>
+        <section class="mb-8 rounded-xl border border-line bg-raised p-6">
+          <h2 class="flex items-center gap-2 text-lg font-bold text-ink">
+            <Icon d={ICON_PLUS} class="size-5 text-accent" />
+            {m.write_newTitle()}
+          </h2>
           <p class="mt-1 mb-4 text-sm text-neutral-600">{m.write_newSubtitle()}</p>
 
           <form onSubmit={create} class="flex flex-col gap-4">
@@ -86,7 +91,7 @@ function WriteDesk() {
                 minlength={MIN_ARTICLE_TITLE_CHARS}
                 required
                 onInput={(e) => setTitle(e.currentTarget.value)}
-                class="h-10 rounded-md border border-neutral-300 px-3 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                class="h-10 rounded-md border border-neutral-300 px-3 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
             </label>
 
@@ -108,7 +113,7 @@ function WriteDesk() {
                 minlength={MIN_ARTICLE_SUMMARY_CHARS}
                 required
                 onInput={(e) => setSummary(e.currentTarget.value)}
-                class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                class="rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
             </label>
 
@@ -125,7 +130,7 @@ function WriteDesk() {
                     e.currentTarget.value === 'members' ? 'members' : 'public',
                   )
                 }
-                class="h-10 rounded-md border border-neutral-300 px-3 outline-none focus:border-[#00209F] focus:ring-2 focus:ring-[#00209F]/20"
+                class="h-10 rounded-md border border-neutral-300 px-3 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
               >
                 <option value="public">{m.write_visibilityPublic()}</option>
                 <option value="members">{m.write_visibilityMembers()}</option>
@@ -136,15 +141,16 @@ function WriteDesk() {
               <button
                 type="submit"
                 disabled={busy()}
-                class="h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-accent px-4 font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-60"
               >
+                <Icon d={ICON_PLUS} />
                 {busy() ? m.write_creating() : m.write_create()}
               </button>
             </div>
 
             <div aria-live="polite" class="min-h-5 text-sm">
               <Show when={error()}>
-                {(message) => <p class="text-[#A3261F]">{message()}</p>}
+                {(message) => <p class="text-danger">{message()}</p>}
               </Show>
             </div>
           </form>
@@ -161,10 +167,10 @@ function WriteDesk() {
           <ul class="flex flex-col gap-3">
             <For each={articles()}>
               {(item) => (
-                <li class="rounded-lg border border-neutral-200 bg-white p-4">
+                <li class="rounded-xl border border-line bg-raised p-5">
                   <div class="flex items-start justify-between gap-4">
                     <div class="min-w-0">
-                      <p class="truncate font-medium text-neutral-900">
+                      <p class="truncate font-serif text-lg font-bold text-ink">
                         {item.translations[0]?.title || item.slug}
                       </p>
                       <p class="mt-1 text-xs text-neutral-500">
@@ -177,8 +183,9 @@ function WriteDesk() {
                     <Link
                       to="/write/$articleId"
                       params={{ articleId: item.articleId }}
-                      class="shrink-0 rounded-md bg-[#00209F] px-4 py-2 text-sm font-semibold text-white hover:opacity-95"
+                      class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-accent px-4 font-semibold text-on-accent hover:bg-accent-hover"
                     >
+                      <Icon d={ICON_FILE_TEXT} class="size-4" />
                       {m.write_open()}
                     </Link>
                   </div>

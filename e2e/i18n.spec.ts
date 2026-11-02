@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { openLanguageMenu } from './helpers'
 
 /**
  * Language routing. These run without a database: they only exercise the
@@ -7,23 +8,36 @@ import { expect, test } from '@playwright/test'
 test.describe('language routing', () => {
   test('serves the French home page', async ({ page }) => {
     await page.goto('/fr')
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('KLEA')
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      'Ce que le mouvement propose',
+    )
   })
 
   test('serves the Creole home page', async ({ page }) => {
     await page.goto('/ht')
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('KLEA')
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ht')
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      'Sa mouvman an pwopoze',
+    )
   })
 
   test('switching language keeps you on the same page', async ({ page }) => {
     await page.goto('/fr/auth/login')
-    await page.getByRole('button', { name: 'Kreyòl' }).click()
+    await openLanguageMenu(page)
+    await page.getByRole('link', { name: 'Kreyòl' }).click()
     await expect(page).toHaveURL(/\/ht\/auth\/login\/?$/)
+    // The page itself, not only its address. Switching used to change the URL
+    // over a page that stayed in French, and this test, checking the URL alone,
+    // passed throughout.
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ht')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Byenveni')
   })
 
   test('the language choice survives a reload', async ({ page }) => {
     await page.goto('/fr')
-    await page.getByRole('button', { name: 'Kreyòl' }).click()
+    await openLanguageMenu(page)
+    await page.getByRole('link', { name: 'Kreyòl' }).click()
     await expect(page).toHaveURL(/\/ht\/?$/)
     await page.reload()
     await expect(page).toHaveURL(/\/ht\/?$/)

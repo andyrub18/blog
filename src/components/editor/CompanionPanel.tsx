@@ -8,9 +8,12 @@ import {
   removeCompanionPdf,
 } from '../../lib/articles/companion/companion-actions'
 import type { PdfCleaning } from '../../lib/articles/companion/pdf'
+import { ICON_FILE_TEXT } from '../../lib/shared/icons-workspace'
 import { formatMegabytes } from '../../lib/shared/validation'
 import { m } from '../../paraglide/messages'
 import { getLocale } from '../../paraglide/runtime'
+import FilePicker from '../FilePicker'
+import Icon from '../Icon'
 
 /**
  * Attaching the author's typeset PDF to one language of an article (D26).
@@ -166,12 +169,18 @@ export default function CompanionPanel(props: Props) {
   }
 
   return (
-    <section
-      class="rounded-lg border border-neutral-200 bg-white p-6"
-      data-testid="companion"
-    >
-      <h2 class="text-lg font-semibold text-neutral-900">{m.companion_title()}</h2>
-      <p class="mt-1 text-sm text-neutral-600">{m.companion_subtitle()}</p>
+    <section class="rounded-xl border border-line bg-raised p-6" data-testid="companion">
+      {/* Optional, and said so: the text is the article; the PDF only travels
+          with it. Without the word, an upload beside the editor reads as a
+          second way to hand the text in. */}
+      <h2 class="flex flex-wrap items-center gap-2 text-lg font-bold text-ink">
+        <Icon d={ICON_FILE_TEXT} class="size-5 text-accent" />
+        {m.companion_title()}
+        <span class="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600">
+          {m.common_optional()}
+        </span>
+      </h2>
+      <p class="mt-1 text-sm text-ink-soft">{m.companion_subtitle()}</p>
 
       <div aria-live="polite" class="mt-4 flex flex-col gap-2 text-sm">
         <Show when={published()}>
@@ -219,31 +228,26 @@ export default function CompanionPanel(props: Props) {
             </Show>
           )}
         </Show>
-        <Show when={error()}>
-          {(message) => <p class="text-[#A3261F]">{message()}</p>}
-        </Show>
+        <Show when={error()}>{(message) => <p class="text-danger">{message()}</p>}</Show>
       </div>
 
       <form onSubmit={attach} class="mt-4 flex flex-col gap-4">
         <input type="hidden" name="articleId" value={props.articleId} />
         <input type="hidden" name="lang" value={props.lang} />
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="font-medium text-neutral-800">{m.companion_fileLabel()}</span>
-          <span class="text-xs text-neutral-500">{m.companion_fileHint()}</span>
-          <input
-            type="file"
-            name="file"
-            accept="application/pdf,.pdf"
-            required
-            class="text-sm"
-          />
-        </label>
+        <FilePicker
+          name="file"
+          accept="application/pdf,.pdf"
+          required
+          label={m.companion_fileLabel()}
+          hint={m.companion_fileHint()}
+        />
         <div class="flex flex-wrap items-center gap-3">
           <button
             type="submit"
             disabled={busy()}
-            class="h-10 rounded-md bg-[#00209F] px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+            class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-accent px-4 font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-60"
           >
+            <Icon d={ICON_FILE_TEXT} />
             {busy()
               ? m.companion_working()
               : hasCompanion()
@@ -255,7 +259,7 @@ export default function CompanionPanel(props: Props) {
               type="button"
               disabled={busy()}
               onClick={() => void remove()}
-              class="text-sm font-medium text-[#A3261F] hover:underline disabled:opacity-60"
+              class="text-sm font-medium text-danger hover:underline disabled:opacity-60"
             >
               {m.companion_remove()}
             </button>

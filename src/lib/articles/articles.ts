@@ -13,6 +13,7 @@ import {
   type Role,
   user,
 } from '../db/schema'
+import { ICON_DOWNLOAD, ICON_HISTORY, iconSvg } from '../shared/icons-workspace'
 import {
   formatMegabytes,
   isValidArticleSummary,
@@ -695,11 +696,16 @@ export async function getReadableArticle(input: {
     historyLabel: m.articles_versionHistory(),
   })
 
+  // The aside is what the stylesheet turns into a column beside the text on a
+  // wide screen (`.article-layout`); on a phone it stays above it, as before.
   const html =
+    '<aside class="article-aside">' +
     versionHtml +
     companionHtml +
     renderOutlineToHtml(rendered.outline, m.articles_contents()) +
-    rendered.html
+    '</aside><div class="article-prose">' +
+    rendered.html +
+    '</div>'
 
   return {
     ok: true,
@@ -735,7 +741,7 @@ export function renderVersionToHtml(input: {
   historyHref: string
   historyLabel: string
 }): string {
-  return `<p class="article-version">${escapeHtml(input.label)} · <a href="${escapeHtml(input.historyHref)}">${escapeHtml(input.historyLabel)}</a></p>`
+  return `<p class="article-version">${iconSvg(ICON_HISTORY, 'article-icon')}${escapeHtml(input.label)} · <a href="${escapeHtml(input.historyHref)}">${escapeHtml(input.historyLabel)}</a></p>`
 }
 
 export function renderCompanionToHtml(input: {
@@ -743,7 +749,7 @@ export function renderCompanionToHtml(input: {
   label: string
   meta: string
 }): string {
-  return `<p class="article-companion"><a href="${escapeHtml(input.href)}" download>${escapeHtml(input.label)}</a> <span>${escapeHtml(input.meta)}</span></p>`
+  return `<p class="article-companion"><a href="${escapeHtml(input.href)}" download>${iconSvg(ICON_DOWNLOAD, 'article-icon')}${escapeHtml(input.label)}</a> <span>${escapeHtml(input.meta)}</span></p>`
 }
 
 export type AuthoredArticle = {

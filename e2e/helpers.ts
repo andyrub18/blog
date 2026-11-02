@@ -36,6 +36,17 @@ export async function waitForInteractive(page: Page): Promise<void> {
     .waitFor({ state: 'attached', timeout: 30_000 })
 }
 
+/**
+ * Open the header's language menu. The languages sit inside a `<details>`, so
+ * they are in the page but not on screen until it opens. Waits for the bundle
+ * first: choosing a language runs a handler, and a click before hydration is
+ * lost (see `waitForInteractive`).
+ */
+export async function openLanguageMenu(page: Page): Promise<void> {
+  await waitForInteractive(page)
+  await page.locator('summary', { hasText: /Changer de langue/i }).click()
+}
+
 /** Sign in through the real form, so the session cookie is set the way it is in life. */
 export async function signIn(page: Page, email: string): Promise<void> {
   await page.goto('/fr/auth/login')
