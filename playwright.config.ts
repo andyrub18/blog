@@ -33,10 +33,11 @@ export default defineConfig({
       // double the sign-ins — enough to trip our own per-IP rate limit, which
       // buckets every local caller together when no proxy sets
       // `x-forwarded-for`. Correctness of the flow is covered on chromium. The
-      // reset tests also spend single-use links the seed made: a second browser
-      // would find them spent.
+      // reset tests also spend single-use links the seed made, and the two-factor
+      // test turns one account's codes on and off: a second browser running
+      // either at the same time would find the state already changed.
       testIgnore:
-        /(review|probation|governance|write|deliberation|import|companion|protected-text|password-reset)\.spec\.ts/,
+        /(review|probation|governance|write|deliberation|import|companion|protected-text|password-reset|two-factor)\.spec\.ts/,
     },
   ],
   webServer: process.env.E2E_BASE_URL

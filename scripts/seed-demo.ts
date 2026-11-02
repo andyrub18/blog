@@ -38,6 +38,7 @@ import {
   user as userTable,
   type Role,
   account as accountTable,
+  twoFactor as twoFactorTable,
   verification,
 } from '../src/lib/db/schema'
 
@@ -75,6 +76,9 @@ const ACCOUNTS = [
   // reset link is what verifies it.
   { key: 'forgetful', name: 'Bliye', email: 'forgetful@kleayiti.test', role: 'reader' },
   { key: 'lostmail', name: 'Lèt Pèdi', email: 'lostmail@kleayiti.test', role: 'reader' },
+  // Reserved for the two-factor test, which turns codes on and off for it. A
+  // senior member, because theirs are the accounts the codes exist to protect.
+  { key: 'guarded', name: 'Senyò Pwoteje', email: 'guarded@kleayiti.test', role: 'senior_member' },
 ] as const satisfies ReadonlyArray<{
   key: string
   name: string
@@ -864,6 +868,9 @@ async function main() {
 
   await resetRecoverable(ids.forgetful, KNOWN_RESET_TOKENS.forgetful, true)
   await resetRecoverable(ids.lostmail, KNOWN_RESET_TOKENS.lostmail, false)
+  // A run that stopped halfway leaves codes on, and the next could not sign in.
+  await db.delete(twoFactorTable).where(eq(twoFactorTable.userId, ids.guarded))
+  await db.update(userTable).set({ twoFactorEnabled: false }).where(eq(userTable.id, ids.guarded))
   console.info('· forgetful and lostmail (unverified) have the demo password and a reset link')
 
   await resetArticles(ids.confirmed, Object.values(ids))

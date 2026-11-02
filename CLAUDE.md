@@ -51,6 +51,7 @@ npm run db:generate    # drizzle migration from schema changes
 npm run db:migrate     # apply migrations
 npm run db:seed        # create the super admin
 npm run db:seed:demo   # demo accounts + a pending application (dev only)
+npm run two-factor:reset -- <email>   # turn off codes at sign-in for one account (D40)
 ```
 
 ## Architecture
@@ -186,7 +187,19 @@ with `useSearch`, used `Switch`, and imported `guard` from `auth-actions.ts`.
 Together they split the router's shared chunk and the preload helper out
 into new chunks, and the reading view, which uses none of them, grew 1.1 KB.
 Reach for what the site already ships (`Show`, `useLocation`) and compare
-`npm run budget` before and after.
+`npm run budget` before and after. A page component that reads its own `Route`
+(`Route.useRouteContext()`, `Route.useParams()`) pulls the route's definition
+out of the entry into a chunk both import: 0.4 KB on every page for `/account`.
+Read through a hook with `from` (`useRouteContext({ from: '/_app' })`) instead.
+
+**Read the session through `getSession` in `session.server.ts`, never with
+`auth.api.getSession` on `getRequest().headers`.** After every server function,
+Solid re-runs the calling page's loaders in the same request, and
+`getRequest()` is the request as it arrived. When the call replaced the session
+— turning codes at sign-in on or off does (D40) — the old cookie names a deleted
+session, and Better Auth answers by expiring the new cookie: the person was
+signed out by securing their account. `auth-cookies.ts` records every cookie a
+request sets where Solid reads them, and `getSession` folds them in first.
 
 **Never trust `file.type` on an upload.** It is set by the client. Check magic
 bytes — `stageApplicationPdf` in `src/lib/membership/uploads.ts` is the reference.
@@ -577,6 +590,16 @@ that the reply's timing does not tell either (D38). Better Auth's own
 `/request-password-reset` and `/reset-password` are closed over HTTP
 (`disabledPaths`); `password-reset-actions.ts` reaches them in-process, behind
 `guard()` and a limit per address. Reset tokens are stored hashed.
+
+**Codes at sign-in are opt-in, for now (D40).** Making them mandatory for the
+accounts that read dossiers is the movement's decision, still to be taken. Better
+Auth's `/two-factor/*` endpoints are closed over HTTP; `two-factor-actions.ts`
+reaches them behind `guard()`, asks for the password again for every change,
+refuses a blocked account after its code as after its password, and clears the
+sign-in counters only once the code is accepted. Someone who has lost their phone
+and every backup code is helped from the server, never from a page:
+`npm run two-factor:reset -- <email>`, after the movement has established that
+the request is theirs.
 
 Counters are in Postgres (`auth_throttle`), not memory: an in-memory counter
 resets on deploy and is per-instance, so an attacker gets a fresh budget from

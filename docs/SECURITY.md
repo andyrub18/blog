@@ -119,6 +119,9 @@ forget — a legitimate senior member account that has been compromised or turne
 13. **Mandatory TOTP 2FA for `senior_member` and `super_admin`**, optional for everyone
     else. Better Auth has a 2FA plugin with account lockout after repeated failures. These
     are the accounts that can read dossiers; this is the highest-value control on the list.
+    **Opt-in for everyone: DONE** (D40). Codes from an authenticator app, ten backup codes,
+    the plugin's lockout, and a server-side reset for a lost phone. **Mandatory for the
+    dossier readers: not yet**, by KLEA's choice, to be made later.
 14. **Audit log** as specified in `phases/01-ENROLLMENT.md`, including every dossier
     download. Review it periodically — an audit log nobody reads is a log file.
 15. **Session hygiene:** reasonable expiry, a visible list of active sessions, and a

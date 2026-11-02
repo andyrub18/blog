@@ -60,6 +60,20 @@ export const RULES = {
   // The token is 24 random characters and expires in an hour; this is not what
   // stops guessing it. It keeps the endpoint from being a free probe.
   resetPassword: { limit: 10, windowSeconds: 15 * 60 },
+  /**
+   * The sign-in code, per connection, as loose as `signIn` and for the same
+   * reason. What stops guessing is Better Auth's own count, per account: five
+   * tries per sign-in, then the password again, and ten failures in a row lock
+   * the account's codes for fifteen minutes.
+   */
+  verifyTwoFactor: { limit: 30, windowSeconds: 15 * 60 },
+  /**
+   * Turning codes on or off, or new backup codes: each asks for the password,
+   * so each is a password guess by whoever holds an open session. Keyed to the
+   * account as well as the connection, like `signInPerEmail`.
+   */
+  twoFactorSettings: { limit: 20, windowSeconds: 60 * 60 },
+  twoFactorSettingsPerAccount: { limit: 10, windowSeconds: 60 * 60 },
   // The invitation lookup is public by necessity — the holder has no account
   // yet. A 32-byte token is not guessable, so this is not really brute-force
   // defence; it stops the endpoint being used as a free probe.

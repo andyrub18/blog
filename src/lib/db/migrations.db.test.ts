@@ -32,16 +32,19 @@ const doc = (text: string) =>
 
 const DOCUMENTATION = `'d', 's', 'r', 'r', 'i'`
 
+/**
+ * A member, written with the columns every migration under test already has.
+ *
+ * Not through `schema.user`: Drizzle's insert names every column of today's
+ * table, and these tests stand the database at an older migration. Each column
+ * added to `user` since (`two_factor_enabled`, D40) failed every test here.
+ */
 async function author(harness: TestDatabase): Promise<string> {
   const id = randomUUID()
-  await harness.db.insert(schema.user).values({
-    id,
-    name: 'Auteur',
-    email: `${id}@kleayiti.test`,
-    emailVerified: true,
-    role: 'member',
-    memberStatus: 'active',
-  })
+  await harness.db.execute(
+    sql`insert into "user" (id, name, email, email_verified, role, member_status)
+        values (${id}, 'Auteur', ${`${id}@kleayiti.test`}, true, 'member', 'active')`,
+  )
   return id
 }
 

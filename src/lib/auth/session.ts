@@ -9,6 +9,8 @@ export type SessionUser = {
   role: Role
   memberStatus: string
   image?: string | null
+  /** Sign-in asks for an authenticator code too (D40). */
+  twoFactorEnabled?: boolean | null
 }
 
 /**

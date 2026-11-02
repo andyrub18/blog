@@ -1185,3 +1185,104 @@ reached by a click, splitting it costs nobody a round trip. Measure first.
 on the discussion and version pages never worked in a browser. They called
 `Route.useParams()` inside the `params` prop, which Solid compiles to a getter,
 so the hook ran inside the click handler and threw. No test clicked them.
+
+## D40 — Codes at sign-in, opt-in for now
+
+Password recovery (D38) made a member's mailbox a way into their account:
+whoever reads the mail can choose a new password. For a senior member that is
+every applicant's dossier. SECURITY.md calls two-factor sign-in for those
+accounts the highest-value control on its list.
+
+**Opt-in, by KLEA's decision.** Anyone can turn codes on from "Sécurité du
+compte". Nobody is made to yet. Making them mandatory for `senior_member` and
+`super_admin` is the planned next step, and the movement's call, not the code's.
+
+**What a person sees.** Their home page, rendered on the server, has a door
+saying whether codes are on. The page behind it turns them on in three steps on
+one screen:
+
+1. Add the key to an authenticator app: as a QR image, as an `otpauth://` link
+   for the phone the person is reading on, or typed in by hand.
+2. Keep ten backup codes.
+3. Type the first code.
+
+Nothing changes at sign-in until that first code is accepted, so somebody who
+stops halfway is not locked out by an app that was never set up. Sign-in then
+asks for a code after the password. A backup code works once.
+
+**What is enforced, and where.** Better Auth's two-factor plugin keeps the
+secret and the backup codes encrypted with the server's secret. Its defaults
+are kept on purpose:
+
+- five tries per pending sign-in, then the password again;
+- ten failures in a row, across sign-ins, lock the account's codes for fifteen
+  minutes.
+
+Its HTTP endpoints are closed (`disabledPaths`). The server functions in
+`two-factor-actions.ts` are the only way in:
+
+- each runs behind `guard()`;
+- each change asks for the password, since whoever finds a phone with an open
+  session must not be able to switch the second factor off, or on with their
+  own app;
+- a blocked account is refused after its code, as it is after its password;
+- the sign-in counters are cleared only once the code is accepted, so a right
+  password alone does not reset them.
+
+The QR image is drawn on the server by `uqr` (0.1.3, no dependencies, pinned)
+and sent as an SVG data URL for an `<img>`. The browser carries no QR library,
+and no markup.
+
+**A lost phone.** Backup codes first. Without them, the operator runs
+`npm run two-factor:reset -- <email>` on the server. It turns codes off and
+ends every session on the account. There is no page for this, because a page
+that could switch off someone else's codes would be the first thing worth
+stealing a senior's session for. How the movement establishes that the
+request comes from the account's owner, and not from whoever has their mailbox,
+is the movement's procedure; the command does not encode one.
+
+**A password reset does not get around codes.** The reset link proves the
+mailbox, and the code proves the phone. Proving both is the point.
+
+**The bug this found.** Turning codes on replaces the session, and the person
+was signed out by doing it. After every server function, Solid re-runs the
+calling page's loaders in the same request, so the response carries fresh
+data. It folds the cookies the call set into that re-run, but only those on its
+own response stub, which Start's adapter never creates. Better Auth's cookies
+went through TanStack's `setCookie` alone. On top of that, `getRequest()` is
+the request as it arrived. So the re-run looked the session up with the old
+cookie, found it deleted, and expired the new one in the same response.
+
+`auth-cookies.ts` now records every cookie on Solid's stub, creating it when
+missing, and `getSession` folds those cookies in (`cookie-fold.ts`) before
+asking Better Auth. `e2e/two-factor.spec.ts` reloads the page after turning
+codes on and after turning them off. Run without the fix, it fails.
+
+**What it cost.** The reading view went from 98.7 to 98.9 KB. Two choices kept
+it there:
+
+- The door is on the server-rendered home page, not in the header's account
+  menu. The menu link was measured at 0.3 KB on every page, readers included.
+- The security page reads the layout's context with
+  `useRouteContext({ from: '/_app' })`. Its first draft used
+  `Route.useRouteContext()`, and a component that imports its own `Route` moves
+  the route's definition into a chunk of its own: 0.4 KB on every page.
+
+**Tests.** `e2e/two-factor.spec.ts` reads the key off the setup page and
+computes the codes a phone would show (`totp` in `e2e/helpers.ts`). It covers:
+
+- a wrong password refused;
+- a wrong first code refused;
+- a sign-in that asks for a code, refuses a wrong one and accepts the right one;
+- a backup code accepted once and refused the second time;
+- codes turned off, with the password alone then enough;
+- the session surviving both changes;
+- the closed endpoints answering 404.
+
+The seed resets the account it uses, `guarded`. The command was run by hand
+against the test database: codes on, one stored secret, 24 sessions; afterwards
+codes off, no secret, no sessions.
+
+**Not done.** No mail tells a person that codes were turned on or off on their
+account; it should, before codes are made mandatory. "Trust this device" is
+not offered.

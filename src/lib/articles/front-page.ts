@@ -2,7 +2,13 @@ import { LOCALE_LABELS, type Locale } from '../../i18n'
 import { m } from '../../paraglide/messages'
 import { localizeHref } from '../../paraglide/runtime'
 import type { Role } from '../db/schema'
-import { ICON_APPLICATIONS, ICON_APPLY, ICON_BOOK, ICON_PEN } from '../shared/icons'
+import {
+  ICON_APPLICATIONS,
+  ICON_APPLY,
+  ICON_BOOK,
+  ICON_LOCK,
+  ICON_PEN,
+} from '../shared/icons'
 import { ICON_DELIBERATION, ICON_PROBATION, iconSvg } from '../shared/icons-workspace'
 import type { ArticleCard } from './articles'
 import { escapeHtml as e } from './prosemirror'
@@ -33,7 +39,7 @@ const SECTION_TITLE = 'font-serif text-3xl font-bold'
 const badge = (d: string) =>
   `<span class="inline-flex size-11 items-center justify-center rounded-xl bg-accent-soft text-accent">${iconSvg(d, 'size-6')}</span>`
 
-export type FrontPageUser = { name: string; role: Role }
+export type FrontPageUser = { name: string; role: Role; twoFactorEnabled?: boolean }
 
 export function renderFrontPage(input: {
   user: FrontPageUser | null
@@ -140,6 +146,15 @@ function renderDesk(user: FrontPageUser, href: (path: string) => string): string
     user.role === 'reader'
       ? door('/articles', ICON_BOOK, m.articles_title(), m.articles_subtitle())
       : '',
+    // Here rather than in the header's account menu: the header ships to every
+    // reader, and this page says whether codes are on, which is the nudge an
+    // opt-in setting needs (D40).
+    door(
+      '/account',
+      ICON_LOCK,
+      m.account_security_nav(),
+      user.twoFactorEnabled ? m.account_2fa_doorOn() : m.account_2fa_doorOff(),
+    ),
   ].join('')
 
   return (

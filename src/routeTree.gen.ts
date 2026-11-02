@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppAccountRouteImport } from './routes/_app/account'
 import { Route as AppApplyRouteImport } from './routes/_app/apply'
 import { Route as AppArticlesIndexRouteImport } from './routes/_app/articles/index'
 import { Route as AppArticlesSlugRouteImport } from './routes/_app/articles/$slug'
@@ -44,6 +45,11 @@ const AppRoute = AppRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAccountRoute = AppAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => AppRoute,
 } as any)
 const AppApplyRoute = AppApplyRouteImport.update({
@@ -176,6 +182,7 @@ const AppReviewArticlesSubmissionIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/account': typeof AppAccountRoute
   '/apply': typeof AppApplyRoute
   '/articles/$slug': typeof AppArticlesSlugRoute
   '/auth/login': typeof AppAuthLoginRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/review/articles/': typeof AppReviewArticlesIndexRoute
 }
 export interface FileRoutesByTo {
+  '/account': typeof AppAccountRoute
   '/apply': typeof AppApplyRoute
   '/': typeof AppIndexRoute
   '/articles/$slug': typeof AppArticlesSlugRoute
@@ -232,6 +240,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/_app/account': typeof AppAccountRoute
   '/_app/apply': typeof AppApplyRoute
   '/_app/': typeof AppIndexRoute
   '/_app/articles/$slug': typeof AppArticlesSlugRoute
@@ -263,6 +272,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
     | '/apply'
     | '/articles/$slug'
     | '/auth/login'
@@ -290,6 +300,7 @@ export interface FileRouteTypes {
     | '/review/articles/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/account'
     | '/apply'
     | '/'
     | '/articles/$slug'
@@ -318,6 +329,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/_app/account'
     | '/_app/apply'
     | '/_app/'
     | '/_app/articles/$slug'
@@ -367,6 +379,13 @@ declare module '@tanstack/solid-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/account': {
+      id: '/_app/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AppAccountRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/apply': {
@@ -566,6 +585,7 @@ const AppAuthRegisterRouteWithChildren = AppAuthRegisterRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppAccountRoute: typeof AppAccountRoute
   AppApplyRoute: typeof AppApplyRoute
   AppIndexRoute: typeof AppIndexRoute
   AppArticlesSlugRoute: typeof AppArticlesSlugRoute
@@ -588,6 +608,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAccountRoute: AppAccountRoute,
   AppApplyRoute: AppApplyRoute,
   AppIndexRoute: AppIndexRoute,
   AppArticlesSlugRoute: AppArticlesSlugRoute,
